@@ -18,7 +18,7 @@ export default function Callback() {
     });
   }, []);
   return (
-    <main className="mx-auto grid max-w-md gap-4 px-4 py-24">
+    <main className="mx-auto grid max-w-float gap-4 px-4 py-24">
       <p role="status">{message}</p>
       <a className="underline" href="/signin">Back to sign-in</a>
     </main>

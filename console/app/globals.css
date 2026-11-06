@@ -1,2 +1,12 @@
 @import "tailwindcss";
 @import "../styles/interlace/index.css";
+
+/* Sign-in preview of the three signals: quiet loops, off when the viewer asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .signal-bar { transform-origin: bottom; animation: signal-bar 2.4s ease-in-out infinite alternate; }
+  .signal-log { animation: signal-log 2s ease-out infinite; }
+  .signal-span { transform-origin: left; animation: signal-span 3s ease-in-out infinite; }
+}
+@keyframes signal-bar { from { transform: scaleY(0.35); } to { transform: scaleY(1); } }
+@keyframes signal-log { from { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; transform: none; } to { opacity: 0.35; } }
+@keyframes signal-span { from { transform: scaleX(0.2); opacity: 0.5; } 50% { transform: scaleX(1); opacity: 1; } to { transform: scaleX(1); opacity: 0.7; } }

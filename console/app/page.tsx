@@ -9,6 +9,7 @@ import { accessToken } from "@/lib/session";
 import { closeAction, goLiveAction, newCodeAction, signOutAction } from "./actions";
 import { Countdown } from "./countdown";
 import { ConfirmClose } from "./confirm-close";
+import { Mark } from "./mark";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,10 @@ export default async function Console() {
   const tone = room.status === "live" ? "default" : room.status === "locked" ? "destructive" : "secondary";
 
   return (
-    <main className="mx-auto grid max-w-3xl gap-6 px-4 py-10">
+    <main className="mx-auto grid max-w-content gap-6 px-4 py-10">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
+          <Mark className="size-8" />
           <h1 className="text-2xl font-semibold">Workshop console</h1>
           <Badge data-testid="room-status" variant={tone}>{room.status === "live" ? "Live" : room.status === "locked" ? "Joining locked" : "Closed"}</Badge>
         </div>
