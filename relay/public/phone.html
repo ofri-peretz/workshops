@@ -650,6 +650,9 @@
         return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
       }
       const R = {
+        waiting(v) {
+          return `<span class="label">${esc(v.workshop)}</span><h1>Starting soon</h1><p class="card">${esc(v.promise)}</p><p data-testid="waiting-people">${v.people} here</p>${findMe(v)}`;
+        },
         chat(v) {
           return `<h1>${esc(v.phone || v.title)}</h1>${v.group != null ? `<p class="card">Your messages took <b>${fmt(v.group)}</b> each.</p>` : ""}`;
         },

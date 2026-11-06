@@ -199,6 +199,14 @@ await ctl("reset");
 assert.equal(room().intro, "returning", "a reset keeps the intro");
 await ctl("start", { w: 2 });
 assert.equal(here(), "intro");
+const waiter = await phone();
+assert.equal((await waiter.view()).type, "waiting", "after Go live, phones wait for the presenter");
+assert.equal((await screen()).scene.type, "waiting", "the big screen waits too, with the join code");
+await ctl("begin");
+assert.equal((await waiter.view()).type, "intro", "Begin starts every phone on the intro");
+await ctl("start", { w: 2 });
+await ctl("next");
+assert.equal([here(), (await screen()).scene.type].join(), "intro,intro", "Next from the waiting room begins on the intro");
 await ctl("prev");
 assert.equal(here(), "intro", "Back stops at the start");
 

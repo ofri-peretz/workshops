@@ -88,9 +88,14 @@ test.describe("relay", () => {
     await expectFits(page, "home");
   });
 
-  test("intro and outro carry the links", async ({ page }) => {
+  test("waiting room, intro and outro carry the links", async ({ page }) => {
     await control(page, { op: "start", w: 5, intro: "returning" });
     await page.goto(`${RELAY}/?c=424242`);
+    await expect(page.getByRole("heading", { name: "Starting soon" })).toBeVisible();
+    await expect(page.locator(".findme a")).toHaveCount(4);
+    await expectFits(page, "waiting room");
+    await control(page, { op: "begin" });
+    await page.reload();
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     await expect(page.locator(".findme a")).toHaveCount(4);
     const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;

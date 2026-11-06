@@ -758,6 +758,9 @@
         qa(v, s) {
           return `<span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1>${findMe(v)}`;
         },
+        waiting(v, s) {
+          return `<div class="grid2"><div style="display:grid;gap:22px"><span class="label">Starting soon</span><h1>${esc(s.title)}</h1><p class="lead">${esc(v.promise)}</p><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}<p class="lead" data-testid="waiting-people">${v.people} here</p></div><div class="qrbig" id="qrbig"></div></div>`;
+        },
         takeaway(v, s) {
           return `<h1>${esc(s.title)}</h1><div class="checks">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
         },

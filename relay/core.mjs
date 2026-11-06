@@ -92,7 +92,7 @@ const minutes = (room, upto) => room.path.slice(0, upto).reduce((t, id, k) => {
 export function fresh(w = 1) {
   return {
     workshop: w, path: spineOf(w), pos: 0, choices: {}, forkOrder: {}, over: 0, curious: {}, instrumented: false,
-    groupsShown: false, broken: false, shown: new Set(), slo: null, audience: "tech", intro: "first",
+    groupsShown: false, broken: false, shown: new Set(), slo: null, audience: "tech", intro: "first", begun: true,
     phones: new Map(), // id -> { id, group, sends, dups, answers, used, last, job }
     chat: [], reqs: [], jobs: { n: 0, slow: 0 }, load: [], incidents: [],
   };
@@ -139,7 +139,9 @@ export function reduce(room, ev) {
 function control(room, { op, i, w, a, id, t, intro }) {
   const s = sceneAt(room);
   if (op === "reset") return { ...fresh(room.workshop), audience: room.audience, intro: room.intro }; // stay in this workshop
-  if (op === "start") return { ...fresh(w), audience: a ?? room.audience, intro: intro ?? "first" }; // switch workshops with an empty room
+  if (op === "start") return { ...fresh(w), audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
+  if (op === "begin" || (op === "next" && !room.begun)) { room.begun = true; return room; }
+  if (op === "goto" || op === "detour") room.begun = true; // jumping to a scene starts the workshop
   if (op === "audience") { room.audience = a; return room; } // who's in the room decides the intro
   if (op === "next") {
     if (s.type === "fork") choose(room, s, forkOf(room.workshop, s.id).default); // no vote: stay on the default
@@ -173,7 +175,7 @@ function control(room, { op, i, w, a, id, t, intro }) {
 
 export function validControl({ op, i, w, a, id, intro }) {
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
-  if (["next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
+  if (["begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
   if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
   return (op === "goto" || op === "choose") && Number.isInteger(i) && i >= 0 && i < 100;
@@ -293,7 +295,9 @@ function outage(room, now) {
 
 const ALWAYS_LEAD = new Set(["intro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
+const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
 export function phoneView(room, p) {
+  if (!room.begun) { const W = WORKSHOPS[room.workshop]; return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
   const s = sceneAt(room), shown = room.shown.has(s.id), W = WORKSHOPS[room.workshop];
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: s.act, title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
@@ -323,7 +327,7 @@ export function phoneView(room, p) {
 export function screenView(room, now) {
   const s = sceneAt(room), W = WORKSHOPS[room.workshop];
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
-  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, scene: room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
+  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),

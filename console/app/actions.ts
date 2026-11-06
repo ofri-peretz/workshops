@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 import { accessToken, clearSession, sendSignInLink } from "@/lib/session";
-import { closeRoom, goLive, newJoinCode } from "@/lib/room";
+import { closeRoom, goLive, newJoinCode, relayControl } from "@/lib/room";
 
 const signedIn = async () => {
   const jwt = await accessToken();
@@ -22,6 +22,12 @@ export async function requestLink(): Promise<{ sent?: boolean; error?: string }>
 
 export async function goLiveAction(form: FormData) {
   await goLive(await signedIn(), String(form.get("workshop") || "1"), { intro: String(form.get("intro") || "first"), audience: String(form.get("audience") || "tech") });
+  revalidatePath("/");
+}
+
+export async function beginAction() {
+  await signedIn();
+  await relayControl({ op: "begin" });
   revalidatePath("/");
 }
 

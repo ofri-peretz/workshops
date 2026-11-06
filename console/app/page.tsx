@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
-import { readRoom } from "@/lib/room";
+import { readRoom, readStage } from "@/lib/room";
 import { accessToken } from "@/lib/session";
-import { closeAction, goLiveAction, newCodeAction, signOutAction } from "./actions";
+import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction } from "./actions";
 import { Countdown } from "./countdown";
 import { ConfirmClose } from "./confirm-close";
 import { Mark } from "./mark";
+import { Refresh } from "./refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ export default async function Console() {
   const jwt = await accessToken();
   if (!jwt) redirect("/signin");
   const room = await readRoom(jwt);
+  const stage = room.status === "closed" ? null : await readStage();
+  const waiting = stage?.begun === false;
   const phone = env.phoneUrl();
   const joinLink = room.code ? `${phone}?c=${room.code}` : null;
   const qr = joinLink ? await QRCode.toDataURL(joinLink, { margin: 1, width: 320 }) : null;
@@ -60,7 +63,7 @@ export default async function Console() {
         <section data-testid="workshops" aria-labelledby="pick" className="grid gap-4">
           <div className="grid gap-1">
             <h2 id="pick" className="text-lg font-semibold">Open a workshop</h2>
-            <p className="text-sm text-muted-foreground">Going live empties the room into that workshop, opens it for 2 hours, and makes a join code that works for 60 minutes.</p>
+            <p className="text-sm text-muted-foreground">Going live opens the doors: phones join and wait until you press Begin. The room stays open 2 hours; the join code works for 60 minutes.</p>
           </div>
           <form action={goLiveAction} className="grid gap-4">
           <Card data-testid="intro-settings">
@@ -96,7 +99,7 @@ export default async function Console() {
       ) : (
         <Card data-testid="live-card">
           <CardHeader>
-            <CardTitle>{room.status === "locked" ? "Too many wrong codes: joining is paused" : "The room is open"}</CardTitle>
+            <CardTitle>{room.status === "locked" ? "Too many wrong codes: joining is paused" : waiting ? "Doors open: phones are waiting" : "The workshop is running"}</CardTitle>
             <CardDescription>
               Room closes <Countdown until={room.liveUntil} /> · code stops admitting new phones <Countdown until={room.joinUntil} />
             </CardDescription>
@@ -107,6 +110,13 @@ export default async function Console() {
               <img src={qr} alt={`QR code that opens ${joinLink}`} width={200} height={200} className="rounded-md bg-white p-2" />
             ) : null}
             <div className="grid gap-3">
+              {waiting ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <Refresh every={5000} />
+                  <span data-testid="waiting-count" className="text-lg font-semibold tabular-nums">{stage.people} waiting</span>
+                  <form action={beginAction}><Button data-testid="begin" type="submit" size="lg">Begin</Button></form>
+                </div>
+              ) : null}
               {room.code ? (
                 <>
                   <span className="text-sm text-muted-foreground">Join code</span>
