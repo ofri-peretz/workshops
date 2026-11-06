@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
 async function forward(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   if (!(await accessToken())) return Response.json({ error: "Sign in to the console first." }, { status: 401 });
   const { path } = await params;
-  if (!["screen", "control", "status"].includes(path.join("/"))) return Response.json({ error: "not found" }, { status: 404 });
+  if (!["screen", "control", "status", "metrics"].includes(path.join("/"))) return Response.json({ error: "not found" }, { status: 404 });
   const target = new URL(`${env.relayUrl()}/api/${path.join("/")}`);
   target.searchParams.set("t", env.presenterToken());
   const r = await fetch(target, {

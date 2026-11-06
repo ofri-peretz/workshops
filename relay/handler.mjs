@@ -2,7 +2,7 @@
 // function both call it; only the store differs.
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { SCENES } from "./scenes.mjs";
-import { CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
+import { promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
 
 const ID = /^[0-9a-f-]{36}$/;
 const TRACEPARENT = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/; // W3C Trace Context
@@ -66,6 +66,8 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       }
 
       if (method === "GET" && path === "/status") return json(200, statusSummary(room, Date.now()));
+      if (method === "GET" && path === "/metrics") // what a Prometheus scrape of Relay would read
+        return new Response(promText(room, Date.now()), { headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" } });
       if (!p) return json(401, { error: "join first" });
       if (method === "GET" && path === "/view") return json(200, phoneView(room, p));
 

@@ -13,6 +13,7 @@ import { ConfirmClose } from "./confirm-close";
 export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
+  { id: "5", name: "Signals: metrics, logs and traces, live (60 min)" },
   { id: "1", name: "Relay is slow: feel it, measure it" },
   { id: "2", name: "Relay breaks: find it, prove it" },
   { id: "3", name: "GraphQL measured" },
@@ -51,7 +52,7 @@ export default async function Console() {
               <label className="grid gap-1 text-sm">
                 <span className="text-muted-foreground">Workshop</span>
                 <select id="workshop" name="workshop" className="h-9 rounded-md border border-border bg-background px-3">
-                  {WORKSHOPS.map((w) => <option key={w.id} value={w.id}>{w.id} · {w.name}</option>)}
+                  {WORKSHOPS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </label>
               <Button data-testid="go-live" type="submit">Go live</Button>

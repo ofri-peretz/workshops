@@ -184,6 +184,11 @@
         color: var(--fg);
       }
       #gateForm { display: grid; gap: 10px; margin-top: 12px; }
+      .logs { display: grid; gap: 6px; overflow-x: auto; }
+      .logline { display: block; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-all; padding: 6px 8px; border-radius: 8px; background: var(--bg); }
+      .logline.warn { box-shadow: inset 3px 0 0 var(--c1); }
+      .logline.error { box-shadow: inset 3px 0 0 var(--bad); }
+      .logline.slow { outline: 2px solid var(--c1); }
       #code { font: 600 28px/1.2 var(--mono); letter-spacing: 0.3em; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
       .label {
         font: 500 11px var(--mono);
@@ -687,6 +692,24 @@
         dots(v) {
           return `<h1>${esc(v.title)}</h1>${v.worst != null ? `<div class="card"><span class="label">Your slowest message</span><span class="big">${fmt(v.worst)}</span><p>${v.faster}% of the room's messages were faster.</p></div>` : `<p class="card">Your messages will show up here once you've sent one.</p>`}${leadHtml(v)}`;
         },
+        metrics(v) {
+          const more = `<button type="button" class="primary" id="sendmore">Send Dana a message</button>`;
+          return `<h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${more}
+      <div class="card"><span class="label">Counter · your messages</span><span class="big">${v.mySent ?? 0}</span>
+      <div class="row"><span>Of them failed</span><b class="${v.myErrors ? "err" : ""}">${v.myErrors ?? 0}</b></div><div class="row"><span>The room's counter</span><b>${v.roomTotal ?? 0}</b></div></div>
+      <div class="card"><span class="label">Histogram → p95</span><div class="row"><span>Your p95</span><b>${fmt(v.myP95)}</b></div><div class="row"><span>The room's p95</span><b>${fmt(v.roomP95)}</b></div></div>
+      <a class="btn" href="/api/metrics" target="_blank" rel="noopener">See the raw /metrics page a scraper reads</a>${leadHtml(v)}`;
+        },
+        logs(v) {
+          const more = `<button type="button" class="primary" id="sendmore">Send Dana a message</button>`;
+          const lines = local.allLogs ? v.lines : v.myLines;
+          const slow = (v.myLines || []).reduce((a, b) => ((b.duration_ms ?? 0) > (a?.duration_ms ?? -1) ? b : a), null);
+          const row = (l) => `<code class="logline ${l.level}${slow && l.trace_id === slow.trace_id ? " slow" : ""}">${esc(JSON.stringify({ time: l.time.slice(11, 23), level: l.level, status: l.status, duration_ms: l.duration_ms, client: l.client, trace_id: l.trace_id && l.trace_id.slice(0, 12) + "…" }))}</code>`;
+          return `<h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p><div class="card"><span class="label">Your client id</span><span class="big">${esc(v.client)}</span></div>${more}
+      <button type="button" id="alllogs" aria-pressed="${!!local.allLogs}">${local.allLogs ? "Show only my lines" : "Show the whole room's log"}</button>
+      <div class="card logs">${lines && lines.length ? lines.map(row).join("") : "<p>No lines yet. Send a message.</p>"}</div>
+      ${slow ? `<p>Your slowest: <b>${fmt(slow.duration_ms)}</b>, trace <code>${esc((slow.trace_id || "").slice(0, 12))}…</code></p>` : ""}${leadHtml(v)}`;
+        },
         fanout(v) {
           const j = v.job;
           return `<h1>${esc(v.title)}</h1><button type="button" class="primary" id="job">Run a job · ${v.calls} calls</button>
@@ -754,7 +777,7 @@
       function render() {
         const v = view;
         if (!v) return;
-        $("where").textContent = `Workshop ${v.workshopId} · ${v.act}`;
+        $("where").textContent = `${v.workshopId === 5 ? "Signals" : "Workshop " + v.workshopId} · ${v.act}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
         const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v);
@@ -790,6 +813,8 @@
         $("termsBtn").setAttribute("aria-expanded", String(!s.hidden));
       };
       function wire(v) {
+        const all = $("alllogs");
+        if (all) all.onclick = () => { local.allLogs = !local.allLogs; render(); };
         const more = $("sendmore");
         if (more) more.onclick = () => $("send").click(); // the chat is hidden here; its Send still works
         document.querySelectorAll("#tsvg [data-span]").forEach((g) => (g.onclick = () => { local.span = +g.dataset.span; render(); }));

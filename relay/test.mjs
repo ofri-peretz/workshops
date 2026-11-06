@@ -31,7 +31,7 @@ const schemaSql = readFileSync(new URL("./schema.sql", import.meta.url), "utf8")
 assert.deepEqual(written.filter((k) => !allowedKinds(schemaSql).includes(k)), [], "schema.sql allows every event kind the handler writes");
 assert.deepEqual(written.filter((k) => !allowedKinds(schemaSql.replace(",'curious'", "")).includes(k)), ["curious"], "mutation: a kind missing from the schema fails");
 
-// ---- every workshop, over every combination of fork choices, is 30 minutes ----------------------
+// ---- every workshop, over every combination of fork choices, fits its minutes -------------------
 for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
   assert.equal(ids[0], "intro", `workshop ${w} opens with the intro`);
@@ -42,7 +42,7 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   const combos = forks.reduce((acc, f) => acc.flatMap((c) => f.detours.map((d) => [...c, d])), [[]]);
   for (const c of combos) {
     const total = base + c.reduce((t, d) => t + d.scenes.reduce((u, id) => u + SCENE[id].min, 0), 0);
-    assert.equal(total, 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is 30 min`);
+    assert.equal(total, W.minutes ?? 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is ${W.minutes ?? 30} min`);
   }
 }
 
@@ -64,7 +64,10 @@ const screen = async () => (await fetch(base + "/screen?t=t")).json();
 async function phone() {
   const r = await fetch(base + "/join", { method: "POST", body: JSON.stringify({ code: CODE }) });
   const cookie = r.headers.get("set-cookie").split(";")[0];
-  return (path, body, headers = {}) => fetch(base + path, { method: "POST", headers: { cookie, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const call = (path, body, headers = {}) => fetch(base + path, { method: "POST", headers: { cookie, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+  call.view = async () => (await fetch(base + "/view", { headers: { cookie } })).json();
+  call.cookie = cookie;
+  return call;
 }
 
 // Four phones land in four different groups; slower groups wait longer.
@@ -186,7 +189,7 @@ assert.equal(room().path.length, WORKSHOPS[1].spine.length, "reset restores the 
 await go("qa");
 await ctl("next");
 assert.equal(here(), "qa", "Next stops at the end of the workshop");
-assert.equal((await ctl("start", { w: 5 })).status, 400);
+assert.equal((await ctl("start", { w: 9 })).status, 400, "an unknown workshop is refused");
 await ctl("start", { w: 2 });
 assert.equal(here(), "intro");
 await ctl("prev");
@@ -208,6 +211,28 @@ assert.equal(here(), "graphql", "Next without a vote takes the default detour");
 await ctl("start", { w: 3 });
 assert.equal((await screen()).total, 30);
 
+// ---- Signals: 60 minutes; its live demos read the room's own messages ---------------------------
+await ctl("start", { w: 5 });
+assert.equal((await screen()).total, 60, "Signals is 60 minutes");
+const sig = [await phone(), await phone()];
+for (const ph of sig) for (let i = 0; i < 3; i++) await ph("/send", {});
+await go("sig-metrics");
+const m = (await screen()).results;
+assert.equal(m.total, 6, "the counter counts every message");
+assert.deepEqual(m.buckets, [...m.buckets].sort((a, b) => a - b), "histogram buckets are cumulative");
+assert.ok(m.p95 != null && m.p95FromBuckets != null, "p95 exact and from buckets");
+const mine = await sig[0].view();
+assert.equal(mine.mySent, 3, "each phone sees its own counter");
+const prom = await (await fetch(base + "/metrics")).text();
+assert.match(prom, /^# TYPE relay_messages_total counter$/m);
+assert.match(prom, /^relay_send_duration_seconds_bucket\{le="\+Inf"\} \d+$/m);
+for (const line of prom.trim().split("\n")) assert.match(line, /^(# (HELP|TYPE) \w+ .+|\w+(\{[^}]*\})? -?[\d.]+)$/, `valid Prometheus text: ${line}`);
+await go("sig-logs");
+const logs = await sig[1].view();
+assert.equal(logs.myLines.length, 3, "a phone finds its own lines");
+assert.ok(logs.myLines.every((l) => l.client === logs.client && /^[0-9a-f]{32}$/.test(l.trace_id)), "every log line carries the client and a trace id");
+assert.ok(!JSON.stringify(logs.lines).includes(sig[0].cookie.split("=")[1]), "log lines never show a phone's cookie id");
+
 // ---- the room is closed unless the presenter opened it; the join code is guarded -----------------
 const join = (code, ip = "198.51.100.1") => fetch(base + "/join", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify({ code }) });
 const wrong = CODE === "000000" ? "000001" : "000000";
@@ -225,6 +250,7 @@ assert.equal((await join(wrong, "203.0.113.200")).status, 429, "30 wrong tries a
 assert.equal((await join(CODE, "203.0.113.201")).status, 429, "locked means locked, even with the right code");
 store.setAccess({ liveUntil: Date.now() - 1 });
 for (const path of ["/view", "/send", "/status"]) assert.equal((await insider(path)).status, 403, `closed: ${path} is 403`);
+assert.equal((await fetch(base + "/metrics")).status, 403, "closed: /metrics is 403 too");
 assert.equal((await fetch(base + "/status")).status, 403, "closed: the status page API is 403 too");
 assert.equal((await screen()).total !== undefined, true, "the presenter's screen still works while closed");
 

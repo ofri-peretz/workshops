@@ -1,5 +1,5 @@
 // Workshops are paths through the scene library: a spine of scene ids with forks. At a fork the room
-// votes between detours of exactly the slot's length, so every path is 30 minutes (self-checked).
+// votes between detours of exactly the slot's length, so every path fits the workshop (30 minutes unless it sets `minutes`; self-checked).
 // `after` lists the spine scenes a detour goes deeper on: their "Go deeper" taps order the options.
 // Longer formats (half-day, full day) are longer spines over the same library.
 
@@ -7,12 +7,24 @@ const fork = (id, detours, dflt = 0) => ({ fork: id, slot: 3, title: "What next?
 
 // Every intro shows the series: three tracks on performance you can see, the current one marked.
 export const SERIES = [
-  { track: "Backend", what: "APIs: latency, percentiles, uptime, incidents, traces and load tests", status: "Workshops 1–4" },
-  { track: "Frontend", what: "The browser: what each phone felt — LCP, INP, CLS and the room's p75", status: "Coming next" },
-  { track: "AI / LLM", what: "Model calls as traces: tokens, cost, latency and tool calls per session", status: "Coming next" },
+  { track: "1 · Signals", what: "Metrics, logs and traces: what each one is, how it works, and how to use them in an outage", status: "Today", w: [5] },
+  { track: "2 · API performance", what: "Latency the way users feel it, percentiles, N+1 and unselective queries, GraphQL, load tests", status: "Next", w: [1, 3] },
+  { track: "3 · Web performance", what: "What the browser felt: LCP, INP and CLS at the room's p75", status: "Coming", w: [] },
+  { track: "4 · Before users notice", what: "SLOs and the nines, error budgets, alerts on what users feel, status pages", status: "Coming", w: [2] },
 ];
 
 export const WORKSHOPS = {
+  5: {
+    title: "Signals — metrics, logs and traces, live",
+    minutes: 60,
+    promise: "In 60 minutes: run metrics, logs and traces on your own phone, then use all three to find a live outage.",
+    spine: ["intro", "join", "felt", "signals",
+      "sig-metrics", "two", "dots", "mean", "histogram", "impact",
+      "sig-logs",
+      "yourtrace", "spanparts", "gap", "propagate", "browser",
+      "outage", "first", "update", "spike", "exemplar",
+      "sig-monday", "next4", "qa"],
+  },
   1: {
     title: "Relay is slow — feel it, measure it",
     promise: "In 30 minutes: feel latency on your own phone, measure it the way SRE teams do, and set a target you can defend.",

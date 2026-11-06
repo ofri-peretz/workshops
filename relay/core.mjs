@@ -213,6 +213,8 @@ export function results(room, s, now) {
       const ok = room.chat.filter((c) => c.ok && c.rtt != null), ms = ok.map((c) => c.rtt);
       return { dots: ok.map((c) => ({ ms: c.rtt, g: c.g })), mean: mean(ms), p50: pct(ms, 0.5), p95: pct(ms, 0.95), p99: pct(ms, 0.99), max: ms.length ? Math.round(Math.max(...ms)) : null };
     }
+    case "metrics": return metricsOf(room, now);
+    case "logs": return { lines: room.chat.slice(-14).map(logLine).reverse(), ...levels(room.chat) };
     case "fanout": return { ...room.jobs, share: room.jobs.n ? room.jobs.slow / room.jobs.n : null };
     case "requests": {
       const ok = room.reqs.filter((r) => r.ok).length;
@@ -232,6 +234,54 @@ export function results(room, s, now) {
   }
 }
 const traced = (room) => room.chat.filter((c) => c.spans && c.rtt != null).sort((a, b) => a.rtt - b.rtt);
+
+// ---- metrics and logs, computed from the same messages the room just sent ------------------------
+export const BUCKETS = [250, 500, 1000, 2500, 5000, 10000]; // histogram upper bounds, ms (le)
+const waited = (c) => c.rtt ?? c.ms;
+export const clientId = (phoneId) => hash(phoneId).toString(16).padStart(8, "0").slice(0, 6); // a stand-in for a request's client, never the cookie id
+// A percentile read from bucket counts, interpolated inside the bucket: what Prometheus's
+// histogram_quantile() does, and why a p95 can sit flat on a bucket edge.
+export function bucketQuantile(q, counts, total) {
+  if (!total) return null;
+  const rank = q * total;
+  for (let i = 0, lo = 0, below = 0; i < BUCKETS.length; lo = BUCKETS[i], below = counts[i], i++)
+    if (counts[i] >= rank) return Math.round(lo + ((BUCKETS[i] - lo) * (rank - below)) / Math.max(1, counts[i] - below));
+  return BUCKETS.at(-1);
+}
+function metricsOf(room, now) {
+  const done = room.chat.filter((c) => waited(c) != null), ms = done.map(waited);
+  const cumulative = BUCKETS.map((le) => ms.filter((x) => x <= le).length);
+  const secs = [...Array(60)].map((_, i) => {
+    const from = now - (60 - i) * 1000, xs = room.chat.filter((c) => c.t >= from && c.t < from + 1000);
+    return { sent: xs.length, phones: new Set(room.chat.filter((c) => c.t >= from - 14000 && c.t < from + 1000).map((c) => c.id)).size };
+  });
+  return {
+    total: room.chat.length, errors: room.chat.filter((c) => !c.ok).length,
+    rate: room.chat.filter((c) => c.t > now - 10000).length / 10,
+    sending: new Set(room.chat.filter((c) => c.t > now - 15000).map((c) => c.id)).size,
+    buckets: cumulative, count: ms.length, p95: pct(ms, 0.95), p95FromBuckets: bucketQuantile(0.95, cumulative, ms.length), mean: mean(ms), secs,
+  };
+}
+function logLine(c) {
+  const ms = waited(c);
+  return { time: new Date(c.t).toISOString(), level: !c.ok ? "error" : ms != null && ms > 2500 ? "warn" : "info", route: "POST /send",
+    status: c.ok ? 200 : 503, duration_ms: ms == null ? null : Math.round(ms), client: clientId(c.id), trace_id: c.trace ?? null };
+}
+const levels = (chat) => ({ count: chat.length, errors: chat.filter((c) => !c.ok).length, slowest: chat.length ? logLine(chat.reduce((a, b) => ((waited(b) ?? 0) > (waited(a) ?? 0) ? b : a))) : null });
+
+/** Relay's own /metrics page in Prometheus text format: one counter, one gauge, one histogram. */
+export function promText(room, now) {
+  const m = metricsOf(room, now), sum = room.chat.reduce((t, c) => t + (waited(c) ?? 0), 0) / 1000;
+  return [
+    "# HELP relay_messages_total Messages sent to Relay since the room opened.", "# TYPE relay_messages_total counter",
+    `relay_messages_total{status="200"} ${m.total - m.errors}`, `relay_messages_total{status="503"} ${m.errors}`,
+    "# HELP relay_phones_sending Phones that sent a message in the last 15 seconds.", "# TYPE relay_phones_sending gauge",
+    `relay_phones_sending ${m.sending}`,
+    "# HELP relay_send_duration_seconds How long each message took, as the phone measured it.", "# TYPE relay_send_duration_seconds histogram",
+    ...BUCKETS.map((le, i) => `relay_send_duration_seconds_bucket{le="${le / 1000}"} ${m.buckets[i]}`),
+    `relay_send_duration_seconds_bucket{le="+Inf"} ${m.count}`, `relay_send_duration_seconds_sum ${sum.toFixed(3)}`, `relay_send_duration_seconds_count ${m.count}`, "",
+  ].join("\n");
+}
 function outage(room, now) {
   const mins = [...Array(20)].map((_, i) => {
     const from = now - (20 - i) * 60000, xs = room.chat.filter((c) => c.t >= from && c.t < from + 60000);
@@ -258,6 +308,14 @@ export function phoneView(room, p) {
     if (mine.length) { const worst = Math.max(...mine); v.worst = Math.round(worst); v.faster = Math.round((100 * all.filter((c) => c.rtt < worst).length) / all.length); }
   }
   if (p && s.type === "fanout") v.job = p.job;
+  if (p && s.type === "metrics") {
+    const mine = room.chat.filter((c) => c.id === p.id), ms = mine.map(waited).filter((x) => x != null), all = room.chat.map(waited).filter((x) => x != null);
+    Object.assign(v, { mySent: mine.length, myErrors: mine.filter((c) => !c.ok).length, myP95: pct(ms, 0.95), roomP95: pct(all, 0.95), roomTotal: room.chat.length });
+  }
+  if (p && s.type === "logs") {
+    const id = clientId(p.id);
+    Object.assign(v, { client: id, lines: room.chat.slice(-30).map(logLine).reverse(), myLines: room.chat.filter((c) => c.id === p.id).slice(-8).map(logLine).reverse() });
+  }
   if (p && s.type === "trace") v.trace = buildTrace(room.chat.findLast((c) => c.id === p.id && c.spans));
   return v;
 }

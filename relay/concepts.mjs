@@ -47,6 +47,11 @@ export const CONCEPTS = {
   exemplars: { claim: "Exemplars link a point on a latency chart to the trace behind it", from: "4.1" },
   "span-status": { claim: "A failed step marks its span and its parents as errors", from: "4.1" },
   "browser-timing": { claim: "The browser times DNS, connect, TLS, first byte and download of every request", from: "4.1" },
+  // Signals (5.0)
+  "counter-gauge": { claim: "A counter only goes up and you read its rate; a gauge goes up and down and you read its value now", from: "5.0" },
+  "bucket-quantile": { claim: "A percentile from a histogram is estimated inside one bucket, so it can sit flat on a bucket edge", from: "5.0" },
+  "logs-road": { claim: "Logs go to stdout, a shipper sends them on, and they're searchable seconds later: late for alerting, right for one request", from: "5.0" },
+  "log-ids": { claim: "A log line without a trace id can't be joined to its trace or found from a complaint", from: "5.0" },
 };
 
 export const GLOSSARY = {
@@ -113,4 +118,10 @@ export const GLOSSARY = {
   "Resource Timing": { def: "The browser API that times each request a page makes.", example: "performance.getEntriesByType(\"resource\")" },
   TTFB: { def: "Time to first byte: from sending the request until the answer starts arriving.", example: "3.1 s for the 3 s group." },
   "Server-Timing": { def: "A response header where the server reports its own timings to the browser.", example: "relay.deliver;dur=3001" },
+  counter: { def: "A number that only goes up, until the process restarts. You read how fast it grows.", example: "relay_messages_total 1204; rate() = 3 msg/s." },
+  gauge: { def: "A number that goes up and down. You read its value now.", example: "Phones sending right now: 37." },
+  "structured log": { def: "A log line made of named fields, usually JSON, so it can be filtered instead of searched.", example: '{"status":503,"duration_ms":3012,"trace_id":"4bf9…"}' },
+  stdout: { def: "The process's standard output. Containers and serverless platforms collect what apps write there.", example: "console.log, System.out, a ConsoleAppender." },
+  "log shipper": { def: "An agent that reads log streams and sends them to a store, adding where they came from.", example: "Fluent Bit, Filebeat, the CloudWatch agent, the OpenTelemetry Collector." },
+  scrape: { def: "A metrics server pulling a service's /metrics page on a schedule.", example: "Prometheus GETs /metrics every 15 s." },
 };
