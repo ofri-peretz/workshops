@@ -1,0 +1,257 @@
+<title>Signals Rehearsal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column; a sticky tab bar; the drill card leads, the term grid sits under it as a map of what you know. */
+:root {
+  --bg: #ffffff; --surface: #faf7f4; --fg: #0d0b09; --muted: #4d453c; --line: #eae7e2;
+  --orange: #a84c17; --orange-subtle: #fef4ed; --green: #0a6b47; --green-subtle: #e9f5ef;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0a0a; --surface: #171412; --fg: #f0ede9; --muted: #c9c3bb; --line: #2c261f;
+  --orange: #f4794a; --orange-subtle: #3d1a08; --green: #34c78a; --green-subtle: #0d2a1e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0a0a0a; --surface: #171412; --fg: #f0ede9; --muted: #c9c3bb; --line: #2c261f;
+  --orange: #f4794a; --orange-subtle: #3d1a08; --green: #34c78a; --green-subtle: #0d2a1e; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+h1 { font: 700 clamp(30px, 6vw, 44px)/1.05 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 700 24px/1.15 var(--display); margin: 0; text-wrap: balance; }
+h3 { font: 600 17px/1.3 var(--body); margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.lede { color: var(--muted); }
+.meter { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font: 500 14px var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { flex: 1 1 200px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar .k { background: var(--green); } .bar .n { background: var(--orange); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; }
+nav a { font: 600 14px var(--body); color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 6px; white-space: nowrap; }
+nav a[aria-current="page"] { color: var(--fg); background: var(--surface); box-shadow: inset 0 -2px 0 var(--orange); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+section { display: grid; gap: 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 16px; min-height: 260px; align-content: start; }
+.card .where { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.term { font: 600 clamp(24px, 5vw, 34px)/1.15 var(--mono); overflow-wrap: anywhere; }
+.term.claim { font: 700 clamp(22px, 4.5vw, 30px)/1.2 var(--display); }
+.answer { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; }
+.example { font: 400 14px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.prompt { color: var(--muted); font-size: 15px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button.b { font: 600 15px var(--body); padding: 10px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+button.primary { background: var(--orange); border-color: var(--orange); color: var(--bg); }
+button.knew { background: var(--green-subtle); border-color: var(--green); color: var(--fg); }
+button.notyet { background: var(--orange-subtle); border-color: var(--orange); color: var(--fg); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cell { text-align: left; font: 400 13px/1.3 var(--mono); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.dot.k { background: var(--green); border-color: var(--green); } .dot.n { background: var(--orange); border-color: var(--orange); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.empty { color: var(--muted); }
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+ol.challenges { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 70ch; }
+ol.challenges b { font-weight: 600; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+td code, .mono { font: 13px/1.45 var(--mono); color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.series { display: grid; gap: 12px; }
+.ws { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.ws.now { border-color: var(--orange); background: var(--orange-subtle); }
+.ws .n { font: 700 28px/1 var(--display); color: var(--orange); }
+.ws .body { display: grid; gap: 6px; min-width: 0; }
+.ws .sub { color: var(--muted); font-size: 14px; }
+.note { font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .answer { animation: in .18s ease-out; } @keyframes in { from { opacity: .4; transform: translateY(4px); } } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Monitoring &amp; performance · rehearsal</div>
+    <h1>Signals Rehearsal</h1>
+    <p class="lede">Every term the four workshops teach, to test yourself before Sunday: say the answer out loud, then check it. Your marks stay in this browser.</p>
+    <div class="meter" aria-live="polite"><div class="bar"><i class="k" id="barK"></i><i class="n" id="barN"></i></div><span id="meterText"></span></div>
+  </header>
+
+  <nav aria-label="Sections">
+    <a href="#drill">Drill</a><a href="#pipeline">Where signals go</a><a href="#standards">Older standards</a><a href="#series">The series</a>
+  </nav>
+
+  <section id="v-drill">
+    <div class="chips" id="filters" role="group" aria-label="Which terms"></div>
+    <div class="chips"><button class="chip" id="onlyNot" aria-pressed="false">Only the ones I don't know yet</button><button class="chip" id="shuffle" aria-pressed="false">Shuffle</button></div>
+    <article class="card" id="card" aria-live="polite"></article>
+    <div class="legend"><span><i class="dot k"></i>Knew it</span><span><i class="dot n"></i>Not yet</span><span><i class="dot"></i>Not tried</span></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="v-pipeline" hidden>
+    <h2>Where signals go after your code writes them</h2>
+    <p class="lede">The same request leaves three kinds of evidence, and each travels a different road to a different store. Connecting the dots means knowing these roads, and that the ids on each piece (trace id, request id) are what join them back together.</p>
+    <h3>Logs: from stdout to a search box</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["App writes a line<br/>to stdout / stderr"] --> B["Container runtime<br/>or Lambda runtime"]
+  B --> C["Node file<br/>/var/log/containers/*.log"]
+  C --> D["Log shipper<br/>Fluent Bit · Filebeat · CloudWatch agent · OTel Collector"]
+  B -. "Lambda, ECS awslogs" .-> E
+  D --> E["Store + search<br/>CloudWatch Logs · Elasticsearch/Kibana · Loki/Grafana · Splunk"]
+    </pre></div>
+    <h3>Metrics: pulled on a schedule</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["App keeps counters, gauges,<br/>histograms in memory"] --> B["/metrics page<br/>(Micrometer: /actuator/prometheus)"]
+  P["Prometheus<br/>scrapes every 15 s"] -- "GET" --> B
+  P --> G["Grafana dashboards<br/>+ alert rules"]
+  A -. "or push via OTLP" .-> C["OTel Collector"] --> P
+    </pre></div>
+    <h3>Traces: pushed, then joined by trace id</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  U["Caller sends<br/>traceparent header"] --> S1["Service A<br/>OTel SDK or agent"]
+  S1 -- "traceparent" --> S2["Service B"]
+  S1 -- "OTLP" --> C["OTel Collector<br/>batch · sample · redact"]
+  S2 -- "OTLP" --> C
+  C --> T["Tempo · Jaeger · X-Ray"]
+  T --> G["Grafana: trace view,<br/>linked from logs and metrics"]
+    </pre></div>
+    <h3>What goes wrong on the log road</h3>
+    <ol class="challenges">
+      <li><b>Stack traces split.</b> A 40-line Java exception becomes 40 separate events unless the app logs JSON or the shipper is told how to join multiline records.</li>
+      <li><b>Free text can't be filtered.</b> "Payment failed for order 991" needs a regex; <span class="mono">{"event":"payment_failed","order":991}</span> needs a filter.</li>
+      <li><b>No id, no join.</b> Without a request id and trace id on each line, you can't go from a log line to its trace, or from a customer's complaint to the line.</li>
+      <li><b>Logs are late.</b> Shipping, parsing and indexing take seconds to minutes. Alert on metrics; use logs to explain.</li>
+      <li><b>Lines get lost.</b> A crash can drop what was still buffered; a shipper under pressure drops or delays; node log rotation can delete files before they're read.</li>
+      <li><b>Cost grows with volume.</b> Stores bill per GB ingested and per day kept. DEBUG in production, or a log line per request in a hot path, is often the biggest monitoring bill.</li>
+      <li><b>Secrets and personal data leak in.</b> Tokens, emails and payloads end up in a store many people can search. Redact in the app or the collector.</li>
+      <li><b>Time disagrees.</b> Time zones, clock skew between hosts, and "time logged" vs "time ingested" reorder events. Log UTC in ISO 8601.</li>
+      <li><b>Fine in logs, fatal in metrics.</b> A user id on a log line is normal; as a metric label it creates a series per user.</li>
+    </ol>
+    <h3>OpenTelemetry in one paragraph</h3>
+    <p>OpenTelemetry is the open, vendor-neutral standard for producing telemetry. Each language has one API and SDK (or an auto-instrumentation agent) that creates traces, metrics and logs with the same names everywhere (semantic conventions) and the same context (trace id). Everything travels as OTLP to an OTel Collector, which can batch, sample, drop personal data and fan out to any backend. Changing vendors means changing the Collector's exporter, not the code.</p>
+  </section>
+
+  <section id="v-standards" hidden>
+    <h2>Older standards you may meet</h2>
+    <p class="lede">Teams rarely start clean. When someone says "we have StatsD" or shows a B3 header, this is what it means and where it sits today.</p>
+    <div class="tablewrap"><table><thead><tr><th>Standard</th><th>What it is</th><th>Today</th><th>How you'll recognize it</th></tr></thead><tbody id="older"></tbody></table></div>
+    <p class="note">These are also in the Drill, under "Older standards".</p>
+  </section>
+
+  <section id="v-series" hidden>
+    <h2>The series</h2>
+    <p class="lede">Four workshops. Sunday is the first one; the other three are shown, not taught.</p>
+    <div class="series" id="seriesList"></div>
+  </section>
+</div>
+
+<script>
+const DATA = {"items":[{"id":"t:latency","kind":"term","group":"w2","title":"latency","def":"How long something takes, from the moment it's asked for until the answer arrives.","example":"Your message to Dana took 3 s."},{"id":"t:retry","kind":"term","group":"w2","title":"retry","def":"Sending the same request again because the first answer was slow or failed.","example":"Tapping Send twice."},{"id":"t:timeout","kind":"term","group":"w2","title":"timeout","def":"How long a caller waits before giving up and treating the request as failed.","example":"The app gives up after 2 s."},{"id":"t:consumer","kind":"term","group":"w2","title":"consumer","def":"Whoever calls your API: a person, an app, or another team's service.","example":"The app that calls Relay's API."},{"id":"t:response time","kind":"term","group":"w2","title":"response time","def":"What the caller waited: network, gateway, queue and service together.","example":"The time your phone measured."},{"id":"t:service time","kind":"term","group":"w2","title":"service time","def":"The part of the response time spent inside the service's own code.","example":"The time Relay reported."},{"id":"t:status code","kind":"term","group":"w2","title":"status code","def":"The HTTP number that says how a request ended: 2xx worked, 4xx caller error, 5xx server error.","example":"500 Internal Server Error."},{"id":"t:duration","kind":"term","group":"w2","title":"duration","def":"How long one request took, recorded for every request.","example":"182 ms."},{"id":"t:RED method","kind":"term","group":"w2","title":"RED method","def":"Rate, Errors, Duration: the three things to watch for every service.","example":"Requests/s, error %, p99."},{"id":"t:mean","kind":"term","group":"w1","title":"mean","def":"The average: sum divided by count. Hides the slow minority.","example":"98 × 50 ms and 2 × 5 s average 149 ms."},{"id":"t:percentile","kind":"term","group":"w1","title":"percentile","def":"The value that N% of measurements are at or below.","example":"p99 = 1 s: 99% of messages took 1 s or less."},{"id":"t:p50","kind":"term","group":"w1","title":"p50","def":"The median: half the requests were faster, half slower.","example":"The typical wait."},{"id":"t:p95","kind":"term","group":"w1","title":"p95","def":"95% of requests were at or below this; ignores 1 in 20.","example":"A common but optimistic target."},{"id":"t:p99","kind":"term","group":"w1","title":"p99","def":"99% of requests were at or below this; the tail most users still meet.","example":"Relay's target percentile."},{"id":"t:tail","kind":"term","group":"w2","title":"tail","def":"The slowest requests: what p95, p99 and above describe.","example":"The 7 s group."},{"id":"t:fan-out","kind":"term","group":"w2","title":"fan-out","def":"One job calling many services or endpoints, waiting for all of them.","example":"100 calls per job."},{"id":"t:uptime","kind":"term","group":"w4","title":"uptime","def":"The share of requests (or time) the service worked, measured from outside it.","example":"99 good of 100 = 99%."},{"id":"t:SLA","kind":"term","group":"w4","title":"SLA","def":"Service Level Agreement: a contract promise with a remedy, usually credits.","example":"EC2: 99.99% per region."},{"id":"t:nines","kind":"term","group":"w4","title":"nines","def":"Shorthand for uptime targets: three nines = 99.9%, four = 99.99%.","example":"99.99% allows 4 min 19 s a month."},{"id":"t:downtime","kind":"term","group":"w4","title":"downtime","def":"The time a target allows the service to be failing.","example":"99.9% allows 43 min a month."},{"id":"t:SLI","kind":"term","group":"w4","title":"SLI","def":"Service Level Indicator: the measured ratio of good requests to all requests.","example":"Messages under 1 s ÷ all messages."},{"id":"t:SLO","kind":"term","group":"w4","title":"SLO","def":"Service Level Objective: the target for an SLI over a window.","example":"99.9% within 1 s, over 28 days."},{"id":"t:error budget","kind":"term","group":"w4","title":"error budget","def":"What the SLO allows to fail; spend it on releases, stop when it's gone.","example":"0.1% of a month's messages."},{"id":"t:incident","kind":"term","group":"w4","title":"incident","def":"An unplanned interruption or degradation that users notice.","example":"Messages failing to send."},{"id":"t:status page","kind":"term","group":"w4","title":"status page","def":"A public page with components, today's state, past uptime and incidents.","example":"status.workshop.ofriperetz.dev"},{"id":"t:incident update","kind":"term","group":"w4","title":"incident update","def":"A timed message on the status page during an incident.","example":"Some messages fail. Next update in 15 min."},{"id":"t:error rate","kind":"term","group":"w1","title":"error rate","def":"Failed requests divided by all requests in a window.","example":"12 of 60 messages this minute."},{"id":"t:log","kind":"term","group":"w1","title":"log","def":"A record of one event, usually one line per request.","example":"POST /send 503 3012ms"},{"id":"t:metric","kind":"term","group":"w1","title":"metric","def":"A number aggregated over time, cheap to store and graph.","example":"Requests per second."},{"id":"t:trace","kind":"term","group":"w1","title":"trace","def":"The path of one request through every service, made of spans.","example":"Gateway → Relay → database."},{"id":"t:span","kind":"term","group":"w1","title":"span","def":"One timed step inside a trace.","example":"db query, 15 ms."},{"id":"t:GraphQL","kind":"term","group":"w2","title":"GraphQL","def":"A query language where clients ask one endpoint for exactly the fields they need.","example":"POST /graphql."},{"id":"t:operation","kind":"term","group":"w2","title":"operation","def":"One named GraphQL query or mutation: the unit to measure.","example":"query OrderDetails."},{"id":"t:closed model","kind":"term","group":"w2","title":"closed model","def":"A load test where each virtual user waits for its answer before sending again.","example":"k6 with a fixed number of VUs."},{"id":"t:virtual user","kind":"term","group":"w2","title":"virtual user","def":"A simulated client in a load test.","example":"1,500 VUs."},{"id":"t:open model","kind":"term","group":"w2","title":"open model","def":"A load test where requests arrive at a fixed rate whether or not answers came back.","example":"k6 constant-arrival-rate."},{"id":"t:arrival rate","kind":"term","group":"w2","title":"arrival rate","def":"How many requests start per second, independent of how fast they finish.","example":"40 requests/s."},{"id":"t:Little's Law","kind":"term","group":"w2","title":"Little's Law","def":"In flight = arrival rate × latency.","example":"40/s × 2 s = 80 in flight."},{"id":"t:coordinated omission","kind":"term","group":"w2","title":"coordinated omission","def":"When a load test sends less while the server is slow, so it never measures the worst waits.","example":"The closed round's calm p99."},{"id":"t:affected requests","kind":"term","group":"w4","title":"affected requests","def":"Volume × (1 − percentile): how many requests are slower than the percentile.","example":"10M/day at p99 → 100,000."},{"id":"t:histogram","kind":"term","group":"w1","title":"histogram","def":"Counts of requests per latency bucket; histograms add up across servers, percentiles don't.","example":"≤100 ms: 9,120 · ≤1 s: 860 · >1 s: 20."},{"id":"t:semantic conventions","kind":"term","group":"w2","title":"semantic conventions","def":"OpenTelemetry's standard names and units for telemetry.","example":"http.server.request.duration (s)."},{"id":"t:blended percentile","kind":"term","group":"w2","title":"blended percentile","def":"A percentile over mixed kinds of requests; it describes none of them.","example":"POST /graphql p99 = 700 ms."},{"id":"t:parse","kind":"term","group":"w2","title":"parse","def":"Turning the query text into a tree.","example":"Syntax errors happen here."},{"id":"t:validate","kind":"term","group":"w2","title":"validate","def":"Checking the query against the schema before running it.","example":"Unknown field errors."},{"id":"t:execute","kind":"term","group":"w2","title":"execute","def":"Running the resolvers to produce the data.","example":"Database calls happen here."},{"id":"t:N+1","kind":"term","group":"w2","title":"N+1","def":"One call for a list plus one per item.","example":"50 orders → 51 queries."},{"id":"t:DataLoader","kind":"term","group":"w2","title":"DataLoader","def":"A batching layer that merges per-item calls into one.","example":"51 queries → 2."},{"id":"t:query cost","kind":"term","group":"w2","title":"query cost","def":"An estimate of how expensive a query is: fields, depth, list sizes, or measured time.","example":"Depth 6 × 100 items."},{"id":"t:client name","kind":"term","group":"w2","title":"client name","def":"An identifier each consumer sends so you can measure per consumer.","example":"apollographql-client-name header."},{"id":"t:operation mix","kind":"term","group":"w2","title":"operation mix","def":"Which operations production traffic contains, and in what share.","example":"70% Viewer, 25% OrderDetails, 5% Report."},{"id":"t:trace id","kind":"term","group":"w1","title":"trace id","def":"The 16-byte id every span of one request shares.","example":"4bf92f35…"},{"id":"t:root span","kind":"term","group":"w1","title":"root span","def":"The first span of a trace; every other span hangs under it.","example":"relay.send on your phone."},{"id":"t:parent span","kind":"term","group":"w1","title":"parent span","def":"The span a step happened inside of.","example":"POST /send is db.append's parent."},{"id":"t:attribute","kind":"term","group":"w1","title":"attribute","def":"A key-value fact on a span that makes traces searchable.","example":"http.route=/send"},{"id":"t:span status","kind":"term","group":"w2","title":"span status","def":"Whether a span's work succeeded or failed (OK, ERROR, unset).","example":"POST /send: ERROR, 503."},{"id":"t:traceparent","kind":"term","group":"w2","title":"traceparent","def":"The W3C Trace Context header that carries the trace id and parent span id to the next service.","example":"00-4bf9…-00f0…-01"},{"id":"t:sampling","kind":"term","group":"w2","title":"sampling","def":"Keeping only some traces to control cost.","example":"Keep 1%."},{"id":"t:tail sampling","kind":"term","group":"w2","title":"tail sampling","def":"Deciding which traces to keep after they finish: keep the slow and failed ones.","example":"Keep every trace over 1 s."},{"id":"t:exemplar","kind":"term","group":"w2","title":"exemplar","def":"A trace id stored next to a metric sample, linking a chart to a request.","example":"The dot on the p99 line at 14:02."},{"id":"t:Resource Timing","kind":"term","group":"w3","title":"Resource Timing","def":"The browser API that times each request a page makes.","example":"performance.getEntriesByType(\"resource\")"},{"id":"t:TTFB","kind":"term","group":"w3","title":"TTFB","def":"Time to first byte: from sending the request until the answer starts arriving.","example":"3.1 s for the 3 s group."},{"id":"t:Server-Timing","kind":"term","group":"w2","title":"Server-Timing","def":"A response header where the server reports its own timings to the browser.","example":"relay.deliver;dur=3001"},{"id":"t:counter","kind":"term","group":"w1","title":"counter","def":"A number that only goes up, until the process restarts. You read how fast it grows, not its value.","example":"relay_messages_total 1204; rate() over 1 min = 3.1 msg/s"},{"id":"t:gauge","kind":"term","group":"w1","title":"gauge","def":"A number that goes up and down. You read its current value.","example":"Phones connected: 37. Free DB connections: 4."},{"id":"t:label","kind":"term","group":"w1","title":"label","def":"A key=value pair that splits one metric into several series.","example":"http_requests_total{route=\"/send\", status=\"503\"}"},{"id":"t:cardinality","kind":"term","group":"w1","title":"cardinality","def":"How many series a metric has: one per combination of label values. Every label multiplies it.","example":"5 routes × 4 statuses × 50 clients = 1,000 series. Add user_id and it's millions."},{"id":"t:scrape","kind":"term","group":"w1","title":"scrape","def":"Prometheus pulling a service's /metrics page on a schedule (pull), instead of the service pushing numbers out.","example":"Every 15 s Prometheus GETs /actuator/prometheus."},{"id":"t:structured log","kind":"term","group":"w1","title":"structured log","def":"A log line made of named fields (usually JSON) instead of free text, so a machine can filter and group it.","example":"{\"level\":\"error\",\"route\":\"/send\",\"status\":503,\"ms\":3012,\"trace_id\":\"4bf92f…\"}"},{"id":"t:request id","kind":"term","group":"w1","title":"request id","def":"A unique id per request, written on every log line and returned to the caller, so one request can be found from a support ticket.","example":"X-Request-Id: 7f3a…"},{"id":"t:log level","kind":"term","group":"w1","title":"log level","def":"How serious a line is: DEBUG, INFO, WARN, ERROR. Production usually keeps INFO and above; DEBUG costs money.","example":"WARN pool 90% used"},{"id":"t:stdout","kind":"term","group":"w1","title":"stdout","def":"The process's standard output stream. In containers and serverless, apps write logs there and the platform ships them; the app doesn't manage files.","example":"console.log / System.out / a logback ConsoleAppender"},{"id":"t:log shipper","kind":"term","group":"w1","title":"log shipper","def":"An agent that reads log streams or files and sends them to a store, adding metadata (pod, host, service).","example":"Fluent Bit, Fluentd, Filebeat, the CloudWatch agent, the OpenTelemetry Collector"},{"id":"t:OpenTelemetry","kind":"term","group":"w1","title":"OpenTelemetry","def":"The open standard (CNCF) for producing traces, metrics and logs: one API and SDK per language, one wire protocol, any backend. It merged OpenTracing and OpenCensus in 2019.","example":"Instrument once, send to Tempo, Jaeger, Datadog or CloudWatch."},{"id":"t:OTLP","kind":"term","group":"w1","title":"OTLP","def":"The OpenTelemetry Protocol: how SDKs and collectors send traces, metrics and logs, over gRPC or HTTP.","example":"Port 4317 (gRPC), 4318 (HTTP)"},{"id":"t:OTel Collector","kind":"term","group":"w1","title":"OTel Collector","def":"A standalone service that receives telemetry, processes it (batch, filter, sample, redact) and exports it to one or more backends.","example":"App → OTLP → Collector → Tempo + Prometheus + Loki"},{"id":"t:auto-instrumentation","kind":"term","group":"w1","title":"auto-instrumentation","def":"An agent or library that creates spans and metrics for common frameworks without code changes.","example":"The OpenTelemetry Java agent: -javaagent:opentelemetry-javaagent.jar"},{"id":"t:alert","kind":"term","group":"w1","title":"alert","def":"A rule that notifies a person when a signal crosses a threshold for long enough. Good alerts fire on what users feel.","example":"Error rate > 5% for 5 minutes → page on-call"},{"id":"t:index","kind":"term","group":"w2","title":"index","def":"A sorted structure the database keeps on one or more columns, so it can find rows without reading the whole table.","example":"CREATE INDEX ON messages (room_id, sent_at)"},{"id":"t:selectivity","kind":"term","group":"w2","title":"selectivity","def":"The share of rows a condition matches. A selective condition matches few rows, so an index on it pays off; an unselective one doesn't.","example":"user_id = 42 matches 0.001% (use the index); status = 'active' matches 90% (a full scan is cheaper)"},{"id":"t:full table scan","kind":"term","group":"w2","title":"full table scan","def":"The database reads every row because no index helps, or because the condition matches most rows anyway.","example":"EXPLAIN shows Seq Scan / COLLSCAN"},{"id":"t:query plan","kind":"term","group":"w2","title":"query plan","def":"The steps the database chose for a query. EXPLAIN shows it: which index, how many rows read vs returned.","example":"rows examined 1,000,000 → returned 10: a selectivity problem"},{"id":"t:connection pool","kind":"term","group":"w2","title":"connection pool","def":"A fixed set of open database connections shared by requests. When all are busy, requests wait, and that wait is invisible unless measured.","example":"HikariCP max 10; pending 37"},{"id":"t:Core Web Vitals","kind":"term","group":"w3","title":"Core Web Vitals","def":"Google's three user-experience metrics for web pages: LCP, INP and CLS, judged at the 75th percentile of real visits.","example":"web.dev/vitals"},{"id":"t:LCP","kind":"term","group":"w3","title":"LCP","def":"Largest Contentful Paint: when the largest visible element finished rendering. Good is 2.5 s or less.","example":"The hero image appeared at 3.1 s: needs improvement"},{"id":"t:INP","kind":"term","group":"w3","title":"INP","def":"Interaction to Next Paint: how long the page takes to visibly respond to taps, clicks and keys, near the worst of the visit. Good is 200 ms or less.","example":"Send button repainted after 480 ms: poor"},{"id":"t:CLS","kind":"term","group":"w3","title":"CLS","def":"Cumulative Layout Shift: how much visible content moves unexpectedly. Good is 0.1 or less.","example":"An ad loads and pushes the button down"},{"id":"t:p75","kind":"term","group":"w3","title":"p75","def":"The value 75% of visits are at or under. Web vitals are judged at p75 of real visits.","example":"LCP p75 = 2.3 s: good"},{"id":"t:RUM","kind":"term","group":"w3","title":"RUM","def":"Real user monitoring: measuring in real users' browsers (field data), as opposed to a lab test on one machine.","example":"The phones' own timings in Relay are RUM."},{"id":"t:synthetic probe","kind":"term","group":"w4","title":"synthetic probe","def":"A scheduled request from outside the service that checks it answers correctly. It measures uptime the service can't report about itself.","example":"Every minute, from 3 regions: GET /health → 200 in \u003c 1 s"},{"id":"t:burn rate","kind":"term","group":"w4","title":"burn rate","def":"How fast the error budget is being spent compared with the pace that would use it up exactly at the end of the window.","example":"Burn rate 14 for 1 hour = 2% of a 30-day budget gone"},{"id":"t:on-call","kind":"term","group":"w4","title":"on-call","def":"The person who gets paged when an alert fires and owns the first response.","example":"Rotates weekly; acknowledges within 5 minutes"},{"id":"c:feel-latency","kind":"idea","group":"ideas","title":"Feel latency","def":"The same app feels instant or broken depending on the wait"},{"id":"c:resends","kind":"idea","group":"ideas","title":"Resends","def":"Slow answers make people tap again: more load when the server is already slow"},{"id":"c:consumer-timeout","kind":"idea","group":"ideas","title":"Consumer timeout","def":"A consumer's timeout turns a late answer into a failed one"},{"id":"c:response-vs-service","kind":"idea","group":"ideas","title":"Response vs service","def":"Response time is what the caller waited; service time is only the part inside the service"},{"id":"c:two-numbers","kind":"idea","group":"ideas","title":"Two numbers","def":"Status code + duration per request is enough to compute everything else"},{"id":"c:averages-lie","kind":"idea","group":"ideas","title":"Averages lie","def":"An average describes nobody; it hides the people who waited"},{"id":"c:percentiles","kind":"idea","group":"ideas","title":"Percentiles","def":"p50 is typical, p95/p99 are the tail, max is for debugging"},{"id":"c:tail-at-scale","kind":"idea","group":"ideas","title":"Tail at scale","def":"A job of 100 calls hits a 1-in-100 slow call 63% of the time"},{"id":"c:uptime","kind":"idea","group":"ideas","title":"Uptime","def":"Uptime is the share of requests that worked, measured outside the service"},{"id":"c:no-100","kind":"idea","group":"ideas","title":"No 100","def":"Nobody promises 100%; the remedy for a breach is credits"},{"id":"c:nines","kind":"idea","group":"ideas","title":"Nines","def":"Each nine buys less downtime and costs more"},{"id":"c:slo","kind":"idea","group":"ideas","title":"Slo","def":"Write the target in one sentence: what %, how fast, over how long"},{"id":"c:status-page","kind":"idea","group":"ideas","title":"Status page","def":"A status page is the promise made visible; consumers look there first"},{"id":"c:incident-update","kind":"idea","group":"ideas","title":"Incident update","def":"A good update says what users see, since when, what's next and when you'll speak again"},{"id":"c:error-budget","kind":"idea","group":"ideas","title":"Error budget","def":"Failures per minute against the target show how fast the budget burns"},{"id":"c:three-signals","kind":"idea","group":"ideas","title":"Three signals","def":"Logs for one request, metrics over time, traces for where one request's time went"},{"id":"c:trace-gantt","kind":"idea","group":"ideas","title":"Trace gantt","def":"Read a trace as a Gantt chart; every gap is time without a span"},{"id":"c:graphql-200","kind":"idea","group":"ideas","title":"Graphql 200","def":"In GraphQL a 200 can carry errors: read the body, not the status"},{"id":"c:closed-load","kind":"idea","group":"ideas","title":"Closed load","def":"Closed-model load tests slow down with the server and hide the tail"},{"id":"c:littles-law","kind":"idea","group":"ideas","title":"Littles law","def":"In flight = rate × latency: past capacity the queue grows and latency explodes"},{"id":"c:open-load","kind":"idea","group":"ideas","title":"Open load","def":"Test at a fixed arrival rate, not a fixed number of users (coordinated omission)"},{"id":"c:latency-business","kind":"idea","group":"ideas","title":"Latency business","def":"Latency is a business number: the consumer decides what slow costs"},{"id":"c:percentile-impact","kind":"idea","group":"ideas","title":"Percentile impact","def":"Affected requests = volume × (1 − percentile)"},{"id":"c:histograms","kind":"idea","group":"ideas","title":"Histograms","def":"Percentiles can't be averaged; store histograms, which add up"},{"id":"c:standard-names","kind":"idea","group":"ideas","title":"Standard names","def":"Use the OpenTelemetry names: http.server.request.duration, seconds, histogram"},{"id":"c:nines-roadmap","kind":"idea","group":"ideas","title":"Nines roadmap","def":"An extra nine is a roadmap decision: failover and on-call instead of features"},{"id":"c:blended-p99","kind":"idea","group":"ideas","title":"Blended p99","def":"One endpoint gives one meaningless p99: the blend describes no operation"},{"id":"c:operation-unit","kind":"idea","group":"ideas","title":"Operation unit","def":"In GraphQL the operation is the unit you measure and promise"},{"id":"c:errors-count","kind":"idea","group":"ideas","title":"Errors count","def":"Budget the errors that are your fault; track client mistakes separately"},{"id":"c:graphql-phases","kind":"idea","group":"ideas","title":"Graphql phases","def":"Inside one request: parse → validate → execute, each its own span"},{"id":"c:n-plus-one","kind":"idea","group":"ideas","title":"N plus one","def":"Count the calls: a list of N items with a resolver each makes N+1 calls"},{"id":"c:query-cost","kind":"idea","group":"ideas","title":"Query cost","def":"Measure cost, not requests: GraphQL requests differ by orders of magnitude"},{"id":"c:per-consumer","kind":"idea","group":"ideas","title":"Per consumer","def":"Measure per consumer: client name on every request, a promise per consumer"},{"id":"c:load-by-operation","kind":"idea","group":"ideas","title":"Load by operation","def":"Load-test the production mix of operations, report p99 per operation"},{"id":"c:flagship-live","kind":"idea","group":"ideas","title":"Flagship live","def":"The host's own service, shown live against these ideas"},{"id":"c:trace-anatomy","kind":"idea","group":"ideas","title":"Trace anatomy","def":"A trace is a tree of spans that share one trace id"},{"id":"c:span-anatomy","kind":"idea","group":"ideas","title":"Span anatomy","def":"A span is a name, start, duration, parent, attributes and status; no personal data"},{"id":"c:context-propagation","kind":"idea","group":"ideas","title":"Context propagation","def":"traceparent carries the trace across services; one service that drops it splits the trace"},{"id":"c:sampling","kind":"idea","group":"ideas","title":"Sampling","def":"Random head sampling loses the slow and failed traces; tail sampling keeps them"},{"id":"c:exemplars","kind":"idea","group":"ideas","title":"Exemplars","def":"Exemplars link a point on a latency chart to the trace behind it"},{"id":"c:span-status","kind":"idea","group":"ideas","title":"Span status","def":"A failed step marks its span and its parents as errors"},{"id":"c:browser-timing","kind":"idea","group":"ideas","title":"Browser timing","def":"The browser times DNS, connect, TLS, first byte and download of every request"},{"id":"o:syslog","kind":"older","group":"older","title":"syslog","name":"syslog","what":"The classic Unix log protocol and line format (RFC 3164, then RFC 5424).","now":"Still common on VMs and network gear; containers log to stdout instead.","spot":"/var/log/messages, port 514, \u003c134>Oct 11 22:14:15 host app: …"},{"id":"o:ELK / Elastic Stack","kind":"older","group":"older","title":"ELK / Elastic Stack","name":"ELK / Elastic Stack","what":"Elasticsearch stores and searches logs, Logstash parses them, Kibana shows them; Beats (Filebeat) ship them.","now":"Widely used; OpenSearch is the open fork.","spot":"Kibana Discover, index patterns like logs-*"},{"id":"o:Fluentd / Fluent Bit","kind":"older","group":"older","title":"Fluentd / Fluent Bit","name":"Fluentd / Fluent Bit","what":"CNCF log shippers. Fluent Bit is the light one, often a DaemonSet on every Kubernetes node.","now":"Current. The OTel Collector can do the same job.","spot":"fluent-bit.conf, [INPUT] tail /var/log/containers/*.log"},{"id":"o:StatsD","kind":"older","group":"older","title":"StatsD","name":"StatsD","what":"Push metrics over UDP: counters, gauges, timers (Etsy, 2011). Fire-and-forget, so packets can drop.","now":"Legacy; Prometheus and OTel metrics replaced it in most new systems.","spot":"app.send.count:1|c on port 8125"},{"id":"o:Graphite","kind":"older","group":"older","title":"Graphite","name":"Graphite","what":"A time-series store with dotted metric names and no labels.","now":"Legacy; labels (Prometheus) replaced dotted names.","spot":"servers.web01.cpu.load"},{"id":"o:JMX","kind":"older","group":"older","title":"JMX","name":"JMX","what":"Java Management Extensions: the JVM exposes metrics as MBeans.","now":"Still inside every JVM; usually exported via Micrometer or the Prometheus JMX exporter.","spot":"jconsole, java.lang:type=Memory"},{"id":"o:Micrometer","kind":"older","group":"older","title":"Micrometer","name":"Micrometer","what":"The JVM metrics facade Spring Boot uses; one API, many backends (Prometheus, CloudWatch…). Micrometer Tracing replaced Spring Cloud Sleuth in Spring Boot 3.","now":"Current on the JVM; bridges to OpenTelemetry.","spot":"/actuator/prometheus, http_server_requests_seconds"},{"id":"o:Prometheus format / OpenMetrics","kind":"older","group":"older","title":"Prometheus format / OpenMetrics","name":"Prometheus format / OpenMetrics","what":"The text format a /metrics page uses; OpenMetrics is its standardized version.","now":"Current. OTel can export to it.","spot":"# TYPE http_requests_total counter"},{"id":"o:Zipkin and B3","kind":"older","group":"older","title":"Zipkin and B3","name":"Zipkin and B3","what":"An early open-source tracer (Twitter) and its propagation headers.","now":"Still seen; W3C traceparent is the standard (a W3C Recommendation since 2020).","spot":"X-B3-TraceId, X-B3-SpanId"},{"id":"o:Jaeger","kind":"older","group":"older","title":"Jaeger","name":"Jaeger","what":"A CNCF tracing backend from Uber. Its own client libraries are retired in favour of OpenTelemetry SDKs.","now":"The backend is current; it accepts OTLP.","spot":"uber-trace-id header, Jaeger UI"},{"id":"o:OpenTracing / OpenCensus","kind":"older","group":"older","title":"OpenTracing / OpenCensus","name":"OpenTracing / OpenCensus","what":"Two earlier open tracing/metrics APIs.","now":"Merged into OpenTelemetry in 2019; both are archived.","spot":"io.opentracing imports, opencensus packages"},{"id":"o:AWS X-Ray","kind":"older","group":"older","title":"AWS X-Ray","name":"AWS X-Ray","what":"AWS's tracing service with its own header and SDK.","now":"Current; also takes OTel through the AWS distro (ADOT).","spot":"X-Amzn-Trace-Id: Root=1-…"}],"older":[{"name":"syslog","what":"The classic Unix log protocol and line format (RFC 3164, then RFC 5424).","now":"Still common on VMs and network gear; containers log to stdout instead.","spot":"/var/log/messages, port 514, \u003c134>Oct 11 22:14:15 host app: …"},{"name":"ELK / Elastic Stack","what":"Elasticsearch stores and searches logs, Logstash parses them, Kibana shows them; Beats (Filebeat) ship them.","now":"Widely used; OpenSearch is the open fork.","spot":"Kibana Discover, index patterns like logs-*"},{"name":"Fluentd / Fluent Bit","what":"CNCF log shippers. Fluent Bit is the light one, often a DaemonSet on every Kubernetes node.","now":"Current. The OTel Collector can do the same job.","spot":"fluent-bit.conf, [INPUT] tail /var/log/containers/*.log"},{"name":"StatsD","what":"Push metrics over UDP: counters, gauges, timers (Etsy, 2011). Fire-and-forget, so packets can drop.","now":"Legacy; Prometheus and OTel metrics replaced it in most new systems.","spot":"app.send.count:1|c on port 8125"},{"name":"Graphite","what":"A time-series store with dotted metric names and no labels.","now":"Legacy; labels (Prometheus) replaced dotted names.","spot":"servers.web01.cpu.load"},{"name":"JMX","what":"Java Management Extensions: the JVM exposes metrics as MBeans.","now":"Still inside every JVM; usually exported via Micrometer or the Prometheus JMX exporter.","spot":"jconsole, java.lang:type=Memory"},{"name":"Micrometer","what":"The JVM metrics facade Spring Boot uses; one API, many backends (Prometheus, CloudWatch…). Micrometer Tracing replaced Spring Cloud Sleuth in Spring Boot 3.","now":"Current on the JVM; bridges to OpenTelemetry.","spot":"/actuator/prometheus, http_server_requests_seconds"},{"name":"Prometheus format / OpenMetrics","what":"The text format a /metrics page uses; OpenMetrics is its standardized version.","now":"Current. OTel can export to it.","spot":"# TYPE http_requests_total counter"},{"name":"Zipkin and B3","what":"An early open-source tracer (Twitter) and its propagation headers.","now":"Still seen; W3C traceparent is the standard (a W3C Recommendation since 2020).","spot":"X-B3-TraceId, X-B3-SpanId"},{"name":"Jaeger","what":"A CNCF tracing backend from Uber. Its own client libraries are retired in favour of OpenTelemetry SDKs.","now":"The backend is current; it accepts OTLP.","spot":"uber-trace-id header, Jaeger UI"},{"name":"OpenTracing / OpenCensus","what":"Two earlier open tracing/metrics APIs.","now":"Merged into OpenTelemetry in 2019; both are archived.","spot":"io.opentracing imports, opencensus packages"},{"name":"AWS X-Ray","what":"AWS's tracing service with its own header and SDK.","now":"Current; also takes OTel through the AWS distro (ADOT).","spot":"X-Amzn-Trace-Id: Root=1-…"}],"series":[{"n":1,"title":"Signals","what":"Metrics, logs and traces: what each one is, how it works, and how to use all three in an outage."},{"n":2,"title":"API performance","what":"Latency, percentiles, timeouts and retries, N+1 and DB selectivity, GraphQL per operation, load tests that tell the truth."},{"n":3,"title":"Web performance","what":"What the browser felt: LCP, INP and CLS at the room's p75, network phases, real users vs the lab."},{"n":4,"title":"Before users notice","what":"SLOs and the nines, error budgets and burn rate, alerts that page on what users feel, status pages and incident updates."}]};
+const KEY = "signals-rehearsal-v1";
+let marks = {};
+try { marks = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { marks = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch (e) {} };
+
+const GROUPS = [
+  { id: "all", label: "All" },
+  { id: "w1", label: "1 · Signals" },
+  { id: "w2", label: "2 · API performance" },
+  { id: "w3", label: "3 · Web performance" },
+  { id: "w4", label: "4 · Before users notice" },
+  { id: "ideas", label: "Big ideas" },
+  { id: "older", label: "Older standards" },
+];
+const items = DATA.items;
+let group = "w1", onlyNot = false, shuffled = false, order = [], pos = 0, revealed = false;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function pool() {
+  return items.filter((it) => (group === "all" || it.group === group) && (!onlyNot || marks[it.id] !== "k"));
+}
+function rebuild(keepId) {
+  order = pool().map((it) => it.id);
+  if (shuffled) for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  pos = Math.max(0, keepId ? order.indexOf(keepId) : 0);
+  revealed = false;
+  render();
+}
+function renderFilters() {
+  $("filters").innerHTML = GROUPS.map((g) => {
+    const n = g.id === "all" ? items.length : items.filter((i) => i.group === g.id).length;
+    return `<button class="chip" data-g="${g.id}" aria-pressed="${g.id === group}">${esc(g.label)} · ${n}</button>`;
+  }).join("");
+}
+function renderMeter() {
+  const k = items.filter((i) => marks[i.id] === "k").length, n = items.filter((i) => marks[i.id] === "n").length;
+  $("barK").style.width = (100 * k / items.length) + "%";
+  $("barN").style.width = (100 * n / items.length) + "%";
+  $("meterText").textContent = `${k} known · ${n} not yet · ${items.length - k - n} not tried · ${items.length} in all`;
+}
+function renderCard() {
+  const card = $("card");
+  if (!order.length) { card.innerHTML = `<p class="empty">Nothing left in this set. Pick another set above, or turn off "Only the ones I don't know yet".</p>`; return; }
+  const it = items.find((i) => i.id === order[pos]);
+  const where = GROUPS.find((g) => g.id === it.group).label;
+  const front = it.kind === "idea"
+    ? `<div class="term claim">${esc(it.title)}</div><p class="prompt">Explain it in one sentence, the way you'd say it to the room.</p>`
+    : `<div class="term">${esc(it.title)}</div><p class="prompt">${it.kind === "older" ? "What is it, and where does it sit today?" : "Define it, then give one example."}</p>`;
+  const back = revealed ? `<div class="answer">${it.kind === "older"
+      ? `<p>${esc(it.what)}</p><p><b>Today:</b> ${esc(it.now)}</p><p class="example">${esc(it.spot)}</p>`
+      : `<p>${esc(it.def)}</p>${it.example ? `<p class="example">${esc(it.example)}</p>` : ""}`}</div>` : "";
+  const buttons = revealed
+    ? `<button class="b knew" data-mark="k">Knew it</button><button class="b notyet" data-mark="n">Not yet</button>`
+    : `<button class="b primary" id="reveal">Show answer</button><button class="b" id="skip">Skip</button>`;
+  card.innerHTML = `<div class="where">${esc(where)} · ${pos + 1} of ${order.length}</div>${front}${back}<div class="actions">${buttons}</div>`;
+}
+function renderGrid() {
+  const shown = items.filter((it) => group === "all" || it.group === group);
+  $("grid").innerHTML = shown.map((it) => `<button class="cell" data-id="${esc(it.id)}" title="${esc(it.title)}"><i class="dot ${marks[it.id] || ""}"></i><span>${esc(it.title)}</span></button>`).join("");
+}
+function render() { renderFilters(); renderMeter(); renderCard(); renderGrid(); }
+function next() { pos = order.length ? (pos + 1) % order.length : 0; revealed = false; renderCard(); }
+
+$("filters").addEventListener("click", (e) => { const b = e.target.closest("[data-g]"); if (!b) return; group = b.dataset.g; rebuild(); });
+$("onlyNot").addEventListener("click", (e) => { onlyNot = !onlyNot; e.currentTarget.setAttribute("aria-pressed", onlyNot); rebuild(); });
+$("shuffle").addEventListener("click", (e) => { shuffled = !shuffled; e.currentTarget.setAttribute("aria-pressed", shuffled); rebuild(); });
+$("card").addEventListener("click", (e) => {
+  if (e.target.id === "reveal") { revealed = true; renderCard(); return; }
+  if (e.target.id === "skip") { next(); return; }
+  const m = e.target.closest("[data-mark]"); if (!m) return;
+  const id = order[pos]; marks[id] = m.dataset.mark; save(); renderMeter(); renderGrid();
+  if (onlyNot && marks[id] === "k") { order.splice(pos, 1); if (pos >= order.length) pos = 0; revealed = false; renderCard(); } else next();
+});
+$("grid").addEventListener("click", (e) => { const c = e.target.closest("[data-id]"); if (!c) return; onlyNot = false; $("onlyNot").setAttribute("aria-pressed", "false"); rebuild(c.dataset.id); $("card").scrollIntoView({ block: "nearest" }); });
+document.addEventListener("keydown", (e) => {
+  if (location.hash && location.hash !== "#drill") return;
+  if (e.key === " " && !revealed && order.length) { e.preventDefault(); revealed = true; renderCard(); }
+  else if (revealed && (e.key === "k" || e.key === "n")) { const b = document.querySelector(`[data-mark="${e.key}"]`); if (b) b.click(); }
+  else if (e.key === "ArrowRight") next();
+});
+
+$("older").innerHTML = DATA.older.map((o) => `<tr><td>${esc(o.name)}</td><td>${esc(o.what)}</td><td>${esc(o.now)}</td><td><code>${esc(o.spot)}</code></td></tr>`).join("");
+$("seriesList").innerHTML = DATA.series.map((s) => `<div class="ws ${s.n === 1 ? "now" : ""}"><div class="n">${s.n}</div><div class="body"><h3>${esc(s.title)}${s.n === 1 ? " · Sunday" : ""}</h3><p class="sub">${esc(s.what)}</p><p class="note">${items.filter((i) => i.group === "w" + s.n).length} terms in the drill</p></div></div>`).join("");
+
+const VIEWS = ["drill", "pipeline", "standards", "series"];
+function route() {
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "drill";
+  VIEWS.forEach((x) => { $("v-" + x).hidden = x !== v; });
+  document.querySelectorAll("nav a").forEach((a) => { if (a.getAttribute("href") === "#" + v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+}
+addEventListener("hashchange", route);
+route();
+rebuild();
+</script>

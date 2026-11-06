@@ -1,0 +1,11 @@
+{
+  "name": "workshops",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "scripts": {
+    "test": "node scripts/scrub.mjs && node relay/test.mjs",
+    "prepare": "git config core.hooksPath .githooks",
+    "relay": "node relay/server.mjs"
+  }
+}

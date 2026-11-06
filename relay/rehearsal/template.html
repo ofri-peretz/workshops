@@ -1,0 +1,257 @@
+<title>Signals Rehearsal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column; a sticky tab bar; the drill card leads, the term grid sits under it as a map of what you know. */
+:root {
+  --bg: #ffffff; --surface: #faf7f4; --fg: #0d0b09; --muted: #4d453c; --line: #eae7e2;
+  --orange: #a84c17; --orange-subtle: #fef4ed; --green: #0a6b47; --green-subtle: #e9f5ef;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0a0a; --surface: #171412; --fg: #f0ede9; --muted: #c9c3bb; --line: #2c261f;
+  --orange: #f4794a; --orange-subtle: #3d1a08; --green: #34c78a; --green-subtle: #0d2a1e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0a0a0a; --surface: #171412; --fg: #f0ede9; --muted: #c9c3bb; --line: #2c261f;
+  --orange: #f4794a; --orange-subtle: #3d1a08; --green: #34c78a; --green-subtle: #0d2a1e; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+h1 { font: 700 clamp(30px, 6vw, 44px)/1.05 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 700 24px/1.15 var(--display); margin: 0; text-wrap: balance; }
+h3 { font: 600 17px/1.3 var(--body); margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.lede { color: var(--muted); }
+.meter { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font: 500 14px var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { flex: 1 1 200px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar .k { background: var(--green); } .bar .n { background: var(--orange); }
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; }
+nav a { font: 600 14px var(--body); color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 6px; white-space: nowrap; }
+nav a[aria-current="page"] { color: var(--fg); background: var(--surface); box-shadow: inset 0 -2px 0 var(--orange); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+section { display: grid; gap: 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 16px; min-height: 260px; align-content: start; }
+.card .where { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.term { font: 600 clamp(24px, 5vw, 34px)/1.15 var(--mono); overflow-wrap: anywhere; }
+.term.claim { font: 700 clamp(22px, 4.5vw, 30px)/1.2 var(--display); }
+.answer { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 16px; }
+.example { font: 400 14px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.prompt { color: var(--muted); font-size: 15px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button.b { font: 600 15px var(--body); padding: 10px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+button.primary { background: var(--orange); border-color: var(--orange); color: var(--bg); }
+button.knew { background: var(--green-subtle); border-color: var(--green); color: var(--fg); }
+button.notyet { background: var(--orange-subtle); border-color: var(--orange); color: var(--fg); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cell { text-align: left; font: 400 13px/1.3 var(--mono); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.dot.k { background: var(--green); border-color: var(--green); } .dot.n { background: var(--orange); border-color: var(--orange); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.empty { color: var(--muted); }
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+ol.challenges { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 70ch; }
+ol.challenges b { font-weight: 600; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface); }
+td code, .mono { font: 13px/1.45 var(--mono); color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.series { display: grid; gap: 12px; }
+.ws { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.ws.now { border-color: var(--orange); background: var(--orange-subtle); }
+.ws .n { font: 700 28px/1 var(--display); color: var(--orange); }
+.ws .body { display: grid; gap: 6px; min-width: 0; }
+.ws .sub { color: var(--muted); font-size: 14px; }
+.note { font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .answer { animation: in .18s ease-out; } @keyframes in { from { opacity: .4; transform: translateY(4px); } } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Monitoring &amp; performance · rehearsal</div>
+    <h1>Signals Rehearsal</h1>
+    <p class="lede">Every term the four workshops teach, to test yourself before Sunday: say the answer out loud, then check it. Your marks stay in this browser.</p>
+    <div class="meter" aria-live="polite"><div class="bar"><i class="k" id="barK"></i><i class="n" id="barN"></i></div><span id="meterText"></span></div>
+  </header>
+
+  <nav aria-label="Sections">
+    <a href="#drill">Drill</a><a href="#pipeline">Where signals go</a><a href="#standards">Older standards</a><a href="#series">The series</a>
+  </nav>
+
+  <section id="v-drill">
+    <div class="chips" id="filters" role="group" aria-label="Which terms"></div>
+    <div class="chips"><button class="chip" id="onlyNot" aria-pressed="false">Only the ones I don't know yet</button><button class="chip" id="shuffle" aria-pressed="false">Shuffle</button></div>
+    <article class="card" id="card" aria-live="polite"></article>
+    <div class="legend"><span><i class="dot k"></i>Knew it</span><span><i class="dot n"></i>Not yet</span><span><i class="dot"></i>Not tried</span></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="v-pipeline" hidden>
+    <h2>Where signals go after your code writes them</h2>
+    <p class="lede">The same request leaves three kinds of evidence, and each travels a different road to a different store. Connecting the dots means knowing these roads, and that the ids on each piece (trace id, request id) are what join them back together.</p>
+    <h3>Logs: from stdout to a search box</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["App writes a line<br/>to stdout / stderr"] --> B["Container runtime<br/>or Lambda runtime"]
+  B --> C["Node file<br/>/var/log/containers/*.log"]
+  C --> D["Log shipper<br/>Fluent Bit · Filebeat · CloudWatch agent · OTel Collector"]
+  B -. "Lambda, ECS awslogs" .-> E
+  D --> E["Store + search<br/>CloudWatch Logs · Elasticsearch/Kibana · Loki/Grafana · Splunk"]
+    </pre></div>
+    <h3>Metrics: pulled on a schedule</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["App keeps counters, gauges,<br/>histograms in memory"] --> B["/metrics page<br/>(Micrometer: /actuator/prometheus)"]
+  P["Prometheus<br/>scrapes every 15 s"] -- "GET" --> B
+  P --> G["Grafana dashboards<br/>+ alert rules"]
+  A -. "or push via OTLP" .-> C["OTel Collector"] --> P
+    </pre></div>
+    <h3>Traces: pushed, then joined by trace id</h3>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  U["Caller sends<br/>traceparent header"] --> S1["Service A<br/>OTel SDK or agent"]
+  S1 -- "traceparent" --> S2["Service B"]
+  S1 -- "OTLP" --> C["OTel Collector<br/>batch · sample · redact"]
+  S2 -- "OTLP" --> C
+  C --> T["Tempo · Jaeger · X-Ray"]
+  T --> G["Grafana: trace view,<br/>linked from logs and metrics"]
+    </pre></div>
+    <h3>What goes wrong on the log road</h3>
+    <ol class="challenges">
+      <li><b>Stack traces split.</b> A 40-line Java exception becomes 40 separate events unless the app logs JSON or the shipper is told how to join multiline records.</li>
+      <li><b>Free text can't be filtered.</b> "Payment failed for order 991" needs a regex; <span class="mono">{"event":"payment_failed","order":991}</span> needs a filter.</li>
+      <li><b>No id, no join.</b> Without a request id and trace id on each line, you can't go from a log line to its trace, or from a customer's complaint to the line.</li>
+      <li><b>Logs are late.</b> Shipping, parsing and indexing take seconds to minutes. Alert on metrics; use logs to explain.</li>
+      <li><b>Lines get lost.</b> A crash can drop what was still buffered; a shipper under pressure drops or delays; node log rotation can delete files before they're read.</li>
+      <li><b>Cost grows with volume.</b> Stores bill per GB ingested and per day kept. DEBUG in production, or a log line per request in a hot path, is often the biggest monitoring bill.</li>
+      <li><b>Secrets and personal data leak in.</b> Tokens, emails and payloads end up in a store many people can search. Redact in the app or the collector.</li>
+      <li><b>Time disagrees.</b> Time zones, clock skew between hosts, and "time logged" vs "time ingested" reorder events. Log UTC in ISO 8601.</li>
+      <li><b>Fine in logs, fatal in metrics.</b> A user id on a log line is normal; as a metric label it creates a series per user.</li>
+    </ol>
+    <h3>OpenTelemetry in one paragraph</h3>
+    <p>OpenTelemetry is the open, vendor-neutral standard for producing telemetry. Each language has one API and SDK (or an auto-instrumentation agent) that creates traces, metrics and logs with the same names everywhere (semantic conventions) and the same context (trace id). Everything travels as OTLP to an OTel Collector, which can batch, sample, drop personal data and fan out to any backend. Changing vendors means changing the Collector's exporter, not the code.</p>
+  </section>
+
+  <section id="v-standards" hidden>
+    <h2>Older standards you may meet</h2>
+    <p class="lede">Teams rarely start clean. When someone says "we have StatsD" or shows a B3 header, this is what it means and where it sits today.</p>
+    <div class="tablewrap"><table><thead><tr><th>Standard</th><th>What it is</th><th>Today</th><th>How you'll recognize it</th></tr></thead><tbody id="older"></tbody></table></div>
+    <p class="note">These are also in the Drill, under "Older standards".</p>
+  </section>
+
+  <section id="v-series" hidden>
+    <h2>The series</h2>
+    <p class="lede">Four workshops. Sunday is the first one; the other three are shown, not taught.</p>
+    <div class="series" id="seriesList"></div>
+  </section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const KEY = "signals-rehearsal-v1";
+let marks = {};
+try { marks = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { marks = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch (e) {} };
+
+const GROUPS = [
+  { id: "all", label: "All" },
+  { id: "w1", label: "1 · Signals" },
+  { id: "w2", label: "2 · API performance" },
+  { id: "w3", label: "3 · Web performance" },
+  { id: "w4", label: "4 · Before users notice" },
+  { id: "ideas", label: "Big ideas" },
+  { id: "older", label: "Older standards" },
+];
+const items = DATA.items;
+let group = "w1", onlyNot = false, shuffled = false, order = [], pos = 0, revealed = false;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function pool() {
+  return items.filter((it) => (group === "all" || it.group === group) && (!onlyNot || marks[it.id] !== "k"));
+}
+function rebuild(keepId) {
+  order = pool().map((it) => it.id);
+  if (shuffled) for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  pos = Math.max(0, keepId ? order.indexOf(keepId) : 0);
+  revealed = false;
+  render();
+}
+function renderFilters() {
+  $("filters").innerHTML = GROUPS.map((g) => {
+    const n = g.id === "all" ? items.length : items.filter((i) => i.group === g.id).length;
+    return `<button class="chip" data-g="${g.id}" aria-pressed="${g.id === group}">${esc(g.label)} · ${n}</button>`;
+  }).join("");
+}
+function renderMeter() {
+  const k = items.filter((i) => marks[i.id] === "k").length, n = items.filter((i) => marks[i.id] === "n").length;
+  $("barK").style.width = (100 * k / items.length) + "%";
+  $("barN").style.width = (100 * n / items.length) + "%";
+  $("meterText").textContent = `${k} known · ${n} not yet · ${items.length - k - n} not tried · ${items.length} in all`;
+}
+function renderCard() {
+  const card = $("card");
+  if (!order.length) { card.innerHTML = `<p class="empty">Nothing left in this set. Pick another set above, or turn off "Only the ones I don't know yet".</p>`; return; }
+  const it = items.find((i) => i.id === order[pos]);
+  const where = GROUPS.find((g) => g.id === it.group).label;
+  const front = it.kind === "idea"
+    ? `<div class="term claim">${esc(it.title)}</div><p class="prompt">Explain it in one sentence, the way you'd say it to the room.</p>`
+    : `<div class="term">${esc(it.title)}</div><p class="prompt">${it.kind === "older" ? "What is it, and where does it sit today?" : "Define it, then give one example."}</p>`;
+  const back = revealed ? `<div class="answer">${it.kind === "older"
+      ? `<p>${esc(it.what)}</p><p><b>Today:</b> ${esc(it.now)}</p><p class="example">${esc(it.spot)}</p>`
+      : `<p>${esc(it.def)}</p>${it.example ? `<p class="example">${esc(it.example)}</p>` : ""}`}</div>` : "";
+  const buttons = revealed
+    ? `<button class="b knew" data-mark="k">Knew it</button><button class="b notyet" data-mark="n">Not yet</button>`
+    : `<button class="b primary" id="reveal">Show answer</button><button class="b" id="skip">Skip</button>`;
+  card.innerHTML = `<div class="where">${esc(where)} · ${pos + 1} of ${order.length}</div>${front}${back}<div class="actions">${buttons}</div>`;
+}
+function renderGrid() {
+  const shown = items.filter((it) => group === "all" || it.group === group);
+  $("grid").innerHTML = shown.map((it) => `<button class="cell" data-id="${esc(it.id)}" title="${esc(it.title)}"><i class="dot ${marks[it.id] || ""}"></i><span>${esc(it.title)}</span></button>`).join("");
+}
+function render() { renderFilters(); renderMeter(); renderCard(); renderGrid(); }
+function next() { pos = order.length ? (pos + 1) % order.length : 0; revealed = false; renderCard(); }
+
+$("filters").addEventListener("click", (e) => { const b = e.target.closest("[data-g]"); if (!b) return; group = b.dataset.g; rebuild(); });
+$("onlyNot").addEventListener("click", (e) => { onlyNot = !onlyNot; e.currentTarget.setAttribute("aria-pressed", onlyNot); rebuild(); });
+$("shuffle").addEventListener("click", (e) => { shuffled = !shuffled; e.currentTarget.setAttribute("aria-pressed", shuffled); rebuild(); });
+$("card").addEventListener("click", (e) => {
+  if (e.target.id === "reveal") { revealed = true; renderCard(); return; }
+  if (e.target.id === "skip") { next(); return; }
+  const m = e.target.closest("[data-mark]"); if (!m) return;
+  const id = order[pos]; marks[id] = m.dataset.mark; save(); renderMeter(); renderGrid();
+  if (onlyNot && marks[id] === "k") { order.splice(pos, 1); if (pos >= order.length) pos = 0; revealed = false; renderCard(); } else next();
+});
+$("grid").addEventListener("click", (e) => { const c = e.target.closest("[data-id]"); if (!c) return; onlyNot = false; $("onlyNot").setAttribute("aria-pressed", "false"); rebuild(c.dataset.id); $("card").scrollIntoView({ block: "nearest" }); });
+document.addEventListener("keydown", (e) => {
+  if (location.hash && location.hash !== "#drill") return;
+  if (e.key === " " && !revealed && order.length) { e.preventDefault(); revealed = true; renderCard(); }
+  else if (revealed && (e.key === "k" || e.key === "n")) { const b = document.querySelector(`[data-mark="${e.key}"]`); if (b) b.click(); }
+  else if (e.key === "ArrowRight") next();
+});
+
+$("older").innerHTML = DATA.older.map((o) => `<tr><td>${esc(o.name)}</td><td>${esc(o.what)}</td><td>${esc(o.now)}</td><td><code>${esc(o.spot)}</code></td></tr>`).join("");
+$("seriesList").innerHTML = DATA.series.map((s) => `<div class="ws ${s.n === 1 ? "now" : ""}"><div class="n">${s.n}</div><div class="body"><h3>${esc(s.title)}${s.n === 1 ? " · Sunday" : ""}</h3><p class="sub">${esc(s.what)}</p><p class="note">${items.filter((i) => i.group === "w" + s.n).length} terms in the drill</p></div></div>`).join("");
+
+const VIEWS = ["drill", "pipeline", "standards", "series"];
+function route() {
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "drill";
+  VIEWS.forEach((x) => { $("v-" + x).hidden = x !== v; });
+  document.querySelectorAll("nav a").forEach((a) => { if (a.getAttribute("href") === "#" + v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+}
+addEventListener("hashchange", route);
+route();
+rebuild();
+</script>

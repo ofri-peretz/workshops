@@ -1,0 +1,2 @@
+#!/bin/sh
+node scripts/scrub.mjs && node relay/test.mjs >/dev/null

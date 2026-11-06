@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Relay</title>
+    <style>
+      /* Phone: the audience's controls. Interlace chrome; the chat itself looks like a phone's messages app. */
+      :root {
+        --bg: #faf7f4;
+        --card: #fff;
+        --fg: #0d0b09;
+        --muted: #4d453c;
+        --line: #eae7e2;
+        --quiet: #f5f3f0;
+        --primary: #7d350c;
+        --primary-fg: #fff;
+        --primary-subtle: #fef4ed;
+        --strand: oklch(0.55 0.16 41);
+        --good: #065f46;
+        --bad: #991b1b;
+        --good-bg: #ffffff; /* kit card: status colour stays on the text */
+        --bad-bg: #ffffff;
+        --in: #f5f3f0;
+        --in-fg: #0d0b09;
+        --screen: #fff;
+        --c1: oklch(0.55 0.16 41); /* kit chart-1: server spans */
+        --c2: oklch(0.55 0.14 162); /* kit chart-2: phone spans */
+        --mark-o: #a84c17; /* the Interlace mark: orange leads, green follows */
+        --mark-g: #0a6b47;
+        --sans:
+          "Inter", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI",
+          Roboto, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0a0a;
+          --card: #171412;
+          --fg: #f0ede9;
+          --muted: #c9c3bb;
+          --line: #252019;
+          --quiet: #201c17;
+          --primary: #fbb99a;
+          --primary-fg: #0a0a0a;
+          --primary-subtle: #3d1a08;
+          --strand: oklch(0.78 0.14 41);
+          --good: #34d399;
+          --bad: #fca5a5;
+          --good-bg: #171412;
+          --bad-bg: #171412;
+          --in: #201c17;
+          --in-fg: #f0ede9;
+          --screen: #0a0a0a;
+          --c1: oklch(0.78 0.14 41);
+          --c2: oklch(0.78 0.12 162);
+          --mark-o: #f4794a;
+          --mark-g: #0d9460;
+          color-scheme: dark;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.4 var(--sans);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+        border-bottom: 2px solid var(--strand);
+        background: var(--card);
+      }
+      header .brandrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      header .mark {
+        width: 24px;
+        height: 24px;
+      }
+      header button.tbtn {
+        width: auto;
+        font: 600 13px var(--sans);
+        padding: 6px 10px;
+        border-radius: 99px;
+        text-align: center;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      #terms dl {
+        margin: 0;
+        display: grid;
+        gap: 10px;
+      }
+      #terms dt {
+        font-weight: 700;
+      }
+      #terms dd {
+        margin: 2px 0 0;
+        color: var(--muted);
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      svg text {
+        font: 11px var(--mono);
+        fill: var(--muted);
+      }
+      button.deeper {
+        text-align: center;
+        font-size: 15px;
+        padding: 10px;
+        color: var(--primary);
+        border-color: var(--primary);
+      }
+      header b {
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-size: 18px;
+      }
+      header span {
+        font: 500 11px var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      main {
+        overflow-y: auto;
+        padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+        display: grid;
+        align-content: start;
+        gap: 14px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .lead {
+        border-left: 3px solid var(--strand);
+        padding-left: 12px;
+        color: var(--fg);
+      }
+      .big {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        color: var(--fg);
+      }
+      .label {
+        font: 500 11px var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      button {
+        font: 600 16px var(--sans);
+        border-radius: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--fg);
+        text-align: left;
+        width: 100%;
+      }
+      button.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--primary-fg);
+        text-align: center;
+        font-size: 18px;
+        padding: 18px;
+      }
+      button[aria-pressed="true"] {
+        border-color: var(--primary);
+        background: var(--primary-subtle);
+      }
+      button.right {
+        border-color: var(--good);
+        background: var(--good-bg);
+      }
+      button.wrong {
+        opacity: 0.55;
+      }
+      button:disabled {
+        opacity: 0.55;
+      }
+      button:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+      }
+      .opts {
+        display: grid;
+        gap: 8px;
+      }
+      .chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .chips button {
+        width: auto;
+        text-align: center;
+        padding: 10px 14px;
+      }
+      .ok {
+        color: var(--good);
+      }
+      .err {
+        color: var(--bad);
+      }
+      .split {
+        display: flex;
+        height: 18px;
+        border-radius: 99px;
+        overflow: hidden;
+        background: var(--quiet);
+      }
+      .split i {
+        display: block;
+        height: 100%;
+      }
+      .split .s {
+        background: var(--strand);
+      }
+      .split .n {
+        background: var(--muted);
+        opacity: 0.35;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      a.btn {
+        display: block;
+        text-align: center;
+        font-weight: 600;
+        padding: 14px;
+        border-radius: 12px;
+        background: var(--primary);
+        color: var(--primary-fg);
+        text-decoration: none;
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-weight: 600;
+      }
+      .switch input {
+        width: 54px;
+        height: 32px;
+        accent-color: var(--primary);
+      }
+      .check {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .check input {
+        width: 22px;
+        height: 22px;
+        margin-top: 1px;
+        accent-color: var(--primary);
+        flex: none;
+      }
+      /* chat */
+      #chat {
+        display: none;
+        grid-template-rows: auto 1fr auto;
+        background: var(--screen);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        overflow: hidden;
+        height: min(62vh, 520px);
+      }
+      #chat.on {
+        display: grid;
+      }
+      .ctop {
+        display: grid;
+        justify-items: center;
+        gap: 2px;
+        padding: 10px;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-subtle);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        font-weight: 600;
+      }
+      .ctop small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      #msgs {
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      #msgs .spacer {
+        flex: 1;
+      }
+      .msg {
+        max-width: 78%;
+        padding: 8px 13px;
+        border-radius: 19px;
+        overflow-wrap: anywhere;
+        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+      .in {
+        background: var(--in);
+        color: var(--in-fg);
+        align-self: flex-start;
+        border-bottom-left-radius: 5px;
+      }
+      .out {
+        background: var(--primary);
+        color: var(--primary-fg);
+        align-self: flex-end;
+        border-bottom-right-radius: 5px;
+      }
+      .out.pending {
+        opacity: 0.55;
+      }
+      .out.again {
+        box-shadow:
+          0 0 0 2px var(--screen),
+          0 0 0 4px var(--bad);
+      }
+      .out.failed {
+        background: var(--bad);
+      }
+      .receipt {
+        align-self: flex-end;
+        font-size: 11px;
+        color: var(--muted);
+        padding-right: 4px;
+        margin-bottom: 6px;
+      }
+      .receipt.err {
+        color: var(--bad);
+      }
+      .cbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+        border-top: 1px solid var(--line);
+      }
+      .field {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 8px 14px;
+        color: var(--muted);
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #send {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 0;
+        padding: 0;
+        background: var(--primary);
+        color: var(--primary-fg);
+        font: 700 20px var(--sans);
+        text-align: center;
+        flex: none;
+      }
+      #send:active {
+        transform: scale(0.88);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brandrow">
+        <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg>
+        <b>Relay</b>
+      </div>
+      <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
+      <span id="where">Joining…</span>
+    </header>
+    <main>
+      <section id="terms" class="card" hidden aria-label="Terms so far"></section>
+      <div id="top"></div>
+      <section id="chat" aria-label="Chat with Dana">
+        <div class="ctop">
+          <div class="avatar" aria-hidden="true">D</div>
+          <small>Dana</small>
+        </div>
+        <div id="msgs" aria-live="polite">
+          <div class="spacer"></div>
+          <div class="msg in">Landing at 6. Dinner still on?</div>
+          <div class="msg out">Yes! Booked the table</div>
+          <div class="msg in">Perfect. Text me when you leave</div>
+        </div>
+        <div class="cbar">
+          <div class="field" id="field">Message</div>
+          <button id="send" type="button" aria-label="Send">↑</button>
+        </div>
+      </section>
+      <div id="rest"></div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const fmt = (ms) =>
+        ms == null
+          ? "—"
+          : ms >= 1000
+            ? (ms / 1000).toFixed(1) + " s"
+            : Math.round(ms) + " ms";
+      const dur = (min) =>
+        min >= 1440
+          ? `${Math.floor(min / 1440)} d ${((min % 1440) / 60).toFixed(1)} h`
+          : min >= 60
+            ? `${Math.floor(min / 60)} h ${Math.round(min % 60)} min`
+            : min >= 1
+              ? `${Math.floor(min)} min ${Math.round((min % 1) * 60)} s`
+              : `${(min * 60).toFixed(1)} s`;
+      async function post(path, data, headers = {}) {
+        const r = await fetch(path, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...headers },
+          body: data === undefined ? undefined : JSON.stringify(data),
+          credentials: "same-origin",
+        });
+        return {
+          ok: r.ok,
+          status: r.status,
+          body: await r.json().catch(() => ({})),
+        };
+      }
+      // One trace as a Gantt: phone spans in chart-2, server spans in chart-1, errors in red, the time
+      // nobody owns dashed. (Same function in screen.html and phone.html.)
+      function traceSvg(t, { w = 900, label = 190, row = 26, max } = {}) {
+        max = max || t.total || 1;
+        const rank = (s) => (s.gap ? 3 : s.depth === 0 ? 0 : s.side === "phone" ? 1 : s.depth === 1 ? 2 : 3);
+        const rows = [...t.spans.map((s, i) => ({ ...s, i })), ...t.gaps.map((g) => ({ ...g, gap: true, name: "no span", depth: 2 }))]
+          .sort((a, b) => rank(a) - rank(b) || a.start - b.start);
+        const bars = w - label - 76, x = (ms) => label + (Math.min(ms, max) / max) * bars, H = 14 + rows.length * row + 18;
+        const body = rows.map((s, k) => {
+          const y = 8 + k * row, wid = Math.max(2, x(s.start + s.dur) - x(s.start));
+          const fill = s.gap ? "none" : s.error ? "var(--bad)" : s.side === "phone" ? "var(--c2)" : "var(--c1)";
+          return `<g ${s.gap ? "" : `data-span="${s.i}"`} style="cursor:${s.gap ? "default" : "pointer"}"><text x="${4 + s.depth * 12}" y="${y + row / 2}" ${s.gap ? 'style="fill:var(--bad)"' : ""}>${esc(s.name)}</text>
+            <rect x="${x(s.start)}" y="${y + 3}" width="${wid}" height="${row - 9}" rx="4" fill="${fill}" ${s.gap ? 'stroke="var(--bad)" stroke-dasharray="5 3"' : ""}/>
+            <text x="${w - 4}" y="${y + row / 2}" text-anchor="end" ${s.gap ? 'style="fill:var(--bad)"' : ""}>${fmt(s.dur)}</text></g>`;
+        }).join("");
+        return `<svg viewBox="0 0 ${w} ${H}" role="img" aria-label="Trace with ${t.spans.length} spans over ${fmt(t.total)}">${body}
+          <line x1="${label}" x2="${label + bars}" y1="${H - 16}" y2="${H - 16}" stroke="var(--line)"/><text x="${label}" y="${H - 2}">0</text><text x="${label + bars}" y="${H - 2}" text-anchor="end">${fmt(max)}</text></svg>`;
+      }
+      // W3C Trace Context ids and the browser's own timing of each /api/send (Resource Timing)
+      const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+      performance.addEventListener?.("resourcetimingbufferfull", () => performance.clearResourceTimings()); // phones poll all session
+      function phasesFor(t0) {
+        const e = performance.getEntriesByType("resource").find((x) => x.name.endsWith("/api/send") && x.startTime >= t0 - 1);
+        if (!e) return undefined;
+        const r = (x) => Math.round(x * 10) / 10, ph = {};
+        const add = (k, a, b) => { if (a > 0 && b > a) ph[k] = [r(a - e.startTime), r(b - a)]; };
+        add("dns", e.domainLookupStart, e.domainLookupEnd);
+        add("connect", e.connectStart, e.connectEnd);
+        add("tls", e.secureConnectionStart, e.connectEnd);
+        add("request", e.requestStart, e.responseStart);
+        add("response", e.responseStart, e.responseEnd);
+        return Object.keys(ph).length ? ph : undefined;
+      }
+      let view = null,
+        local = {
+          nines: null,
+          slo: {},
+          sent: 0,
+          resent: 0,
+          requests: { ok: 0, err: 0, last: null },
+          load: { on: false, n: 0, last: null, pending: false, timer: null },
+          span: 0,
+        };
+
+      // ---- chat: one persistent conversation across scenes -------------------------------------------
+      const LINES = [
+        "Leaving now",
+        "Running 10 min late, order for me?",
+        "Parking, 2 min",
+        "Here!",
+        "Where are you sitting?",
+        "See you",
+      ];
+      let n = 0,
+        pending = 0;
+      $("field").textContent = LINES[0];
+      function receipt(text, err) {
+        $("msgs")
+          .querySelectorAll(".receipt")
+          .forEach((r) => r.remove());
+        const r = document.createElement("div");
+        r.className = "receipt" + (err ? " err" : "");
+        r.textContent = text;
+        $("msgs").append(r);
+      }
+      $("send").addEventListener("click", async () => {
+        const again = pending > 0,
+          text = LINES[(again ? n - 1 : n) % LINES.length];
+        const b = document.createElement("div");
+        b.className = "msg out pending" + (again ? " again" : "");
+        b.textContent = text;
+        $("msgs").append(b);
+        receipt("Sending…");
+        $("msgs").scrollTop = 1e9;
+        if (!again) {
+          n++;
+          $("field").textContent = LINES[n % LINES.length];
+        }
+        pending++;
+        local.sent++;
+        if (again) local.resent++;
+        const t0 = performance.now();
+        try {
+          const r = await post("/api/send", { again }, { traceparent: `00-${hex(16)}-${hex(8)}-01` });
+          if (r.status === 429) {
+            receipt("That's plenty for today", true);
+            return;
+          }
+          b.classList.remove("pending");
+          const ms = Math.round(performance.now() - t0);
+          if (r.body.spans) post("/api/rtt", { ms, trace: r.body.trace, spans: r.body.spans, phases: phasesFor(t0) });
+          else if (r.ok) post("/api/rtt", { ms });
+          if (r.ok) {
+            if (b === [...$("msgs").querySelectorAll(".msg.out")].at(-1))
+              receipt("Delivered");
+          } else {
+            b.classList.add("failed");
+            receipt("Not Delivered", true);
+          }
+        } catch {
+          b.classList.add("failed");
+          receipt("Not Delivered", true);
+        } finally {
+          pending--;
+          $("msgs").scrollTop = 1e9;
+        }
+      });
+
+      // ---- scene renderers -----------------------------------------------------------------------------
+      function answer(value) {
+        post("/api/answer", { value }).then((r) => {
+          if (r.ok) {
+            view.mine = value;
+            render();
+          }
+        });
+      }
+      function leadHtml(v) {
+        return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
+      }
+      const R = {
+        chat(v) {
+          return `<h1>${esc(v.phone || v.title)}</h1>${v.group != null ? `<p class="card">Your messages took <b>${fmt(v.group)}</b> each.</p>` : ""}`;
+        },
+        poll(v) {
+          const opts = v.options
+            .map((o, i) => {
+              const cls =
+                v.answer !== undefined
+                  ? i === v.answer
+                    ? "right"
+                    : "wrong"
+                  : "";
+              return `<button type="button" data-a="${i}" class="${cls}" aria-pressed="${v.mine === i}">${esc(o)}</button>`;
+            })
+            .join("");
+          const after =
+            v.answer !== undefined
+              ? `<p class="${v.mine === v.answer ? "ok" : "err"}"><b>${v.mine === undefined ? "Answer:" : v.mine === v.answer ? "You got it." : "Not quite."}</b> ${esc(v.options[v.answer])}</p>`
+              : v.mine !== undefined
+                ? `<p>Locked in. Watch the screen.</p>`
+                : "";
+          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${leadHtml(v)}${v.link ? `<a class="btn" href="${esc(v.link)}" target="_blank" rel="noopener">Open Relay's status page</a>` : ""}`;
+        },
+        gantt(v) {
+          return R.poll(v);
+        },
+        fork(v) {
+          if (v.chosen !== undefined)
+            return `<span class="label">Your call</span><h1>The room has chosen.</h1><p>Look up — that's where we're going next.</p>`;
+          return `<span class="label">Your call</span>` + R.poll(v);
+        },
+        show(v) {
+          return `<h1>${esc(v.title)}</h1>${leadHtml(v)}<p>${esc(v.phone)}</p>`;
+        },
+        trace(v) {
+          const t = v.trace, more = `<button type="button" class="primary" id="sendmore">Send Dana a message</button>`;
+          if (!t) return `<h1>${esc(v.title)}</h1><p class="card">Send Dana a message, then look here.</p>${more}`;
+          const s = t.spans[local.span] || t.spans[0], attrs = Object.entries(s.attrs || {});
+          return `<h1>${esc(v.title)}</h1><span class="label">Trace ${esc(t.traceId.slice(0, 8))}… · ${fmt(t.total)}${t.ok ? "" : " · failed"}</span>
+      <div class="card" id="tsvg">${traceSvg(t, { w: 380, label: 120, row: 24 })}</div>
+      <div class="card"><span class="label">Span</span><b>${esc(s.name)}</b><div class="row"><span>Duration</span><b>${fmt(s.dur)}</b></div><div class="row"><span>Starts at</span><b>${fmt(s.start)}</b></div>
+      <div class="row"><span>Parent</span><b>${esc(s.parent || "— (root)")}</b></div><div class="row"><span>Status</span><b class="${s.error ? "err" : ""}">${s.error ? "ERROR" : "OK"}</b></div>
+      ${attrs.map(([k, x]) => `<div class="row"><span>${esc(k)}</span><b>${esc(x)}</b></div>`).join("")}</div>${leadHtml(v)}<p>${esc(v.phone)}</p>${more}`;
+        },
+        stat(v) {
+          return `<h1>${esc(v.title)}</h1><div class="card"><div class="row"><span>Messages you sent</span><b>${local.sent}</b></div><div class="row"><span>Sent again while waiting</span><b>${local.resent}</b></div></div><p>${esc(v.phone)}</p>`;
+        },
+        journey(v) {
+          if (!v.last)
+            return `<h1>${esc(v.title)}</h1><p class="card">Send Dana one more message, then look here.</p>`;
+          const net = Math.max(0, v.last.rtt - v.last.server),
+            sw = (100 * v.last.server) / Math.max(1, v.last.rtt);
+          return `<h1>${esc(v.title)}</h1><div class="card"><span class="label">Response time — what you waited</span><span class="big">${fmt(v.last.rtt)}</span>
+      <div class="split" aria-hidden="true"><i class="s" style="width:${sw}%"></i><i class="n" style="width:${100 - sw}%"></i></div>
+      <div class="row"><span>Inside Relay (service time)</span><b>${fmt(v.last.server)}</b></div><div class="row"><span>Network, gateway, waiting</span><b>${fmt(net)}</b></div></div>${leadHtml(v)}`;
+        },
+        dots(v) {
+          return `<h1>${esc(v.title)}</h1>${v.worst != null ? `<div class="card"><span class="label">Your slowest message</span><span class="big">${fmt(v.worst)}</span><p>${v.faster}% of the room's messages were faster.</p></div>` : `<p class="card">Your messages will show up here once you've sent one.</p>`}${leadHtml(v)}`;
+        },
+        fanout(v) {
+          const j = v.job;
+          return `<h1>${esc(v.title)}</h1><button type="button" class="primary" id="job">Run a job · ${v.calls} calls</button>
+      ${j ? `<div class="card"><span class="label">Your last job</span><span class="big ${j.slow ? "err" : "ok"}">${j.slow ? "Slow" : "Fast"}</span><p>${j.slowCalls} of ${v.calls} calls were slow${j.slow ? ", so the whole job waited for it." : "."}</p></div>` : ""}${leadHtml(v)}`;
+        },
+        requests(v) {
+          const r = local.requests;
+          return `<h1>${esc(v.title)}</h1><button type="button" class="primary" id="req">Send a request</button>
+      <div class="card"><span class="label">Last response</span><span class="big ${r.last === 200 ? "ok" : r.last ? "err" : ""}">${r.last ?? "—"}</span>
+      <div class="row"><span>Worked</span><b>${r.ok}</b></div><div class="row"><span>Failed</span><b>${r.err}</b></div>
+      <div class="row"><span>Your uptime</span><b>${r.ok + r.err ? ((100 * r.ok) / (r.ok + r.err)).toFixed(1) + "%" : "—"}</b></div></div>${leadHtml(v)}`;
+        },
+        nines(v) {
+          const pick = local.nines ?? v.mine;
+          const chips = v.nines
+            .map(
+              (x) =>
+                `<button type="button" data-n="${x}" aria-pressed="${pick === x}">${x}%</button>`,
+            )
+            .join("");
+          const down =
+            pick == null
+              ? ""
+              : `<div class="card"><span class="label">${pick}% allows this much downtime</span>
+      <div class="row"><span>Per year</span><b>${dur(525600 * (1 - pick / 100))}</b></div><div class="row"><span>Per month</span><b>${dur(43200 * (1 - pick / 100))}</b></div><div class="row"><span>Per day</span><b>${dur(1440 * (1 - pick / 100))}</b></div></div>`;
+          return `<h1>${esc(v.title)}</h1><div class="chips">${chips}</div>${down}${leadHtml(v)}`;
+        },
+        slo(v) {
+          const m = local.slo,
+            chosen = v.slo.chosen;
+          const chip = (key, x, lbl) =>
+            `<button type="button" data-${key}="${x}" aria-pressed="${m[key] === x}">${lbl}</button>`;
+          return `<h1>${esc(v.title)}</h1><div class="card"><span class="label">Share of messages</span><div class="chips">${v.slo.pct.map((x) => chip("pct", x, x + "%")).join("")}</div>
+      <span class="label">Delivered within</span><div class="chips">${v.slo.ms.map((x) => chip("ms", x, fmt(x))).join("")}</div></div>
+      ${m.pct && m.ms ? `<p class="lead">"${m.pct}% of messages are delivered within ${fmt(m.ms)}, over 28 days."</p>` : ""}
+      ${chosen ? `<div class="card"><span class="label">The room chose</span><b>${chosen.pct}% within ${fmt(chosen.ms)}</b></div>` : ""}`;
+        },
+        load(v) {
+          const L = local.load;
+          const ctrl =
+            v.mode === "closed"
+              ? `<button type="button" class="primary" id="ld" ${L.pending ? "disabled" : ""}>${L.pending ? "Waiting for Relay…" : "Send"}</button>`
+              : `<label class="card switch"><span>Send every second</span><input type="checkbox" id="ldsw" ${L.on ? "checked" : ""}></label>`;
+          return `<h1>${esc(v.title)}</h1>${ctrl}<div class="card"><div class="row"><span>Requests you sent</span><b>${L.n}</b></div><div class="row"><span>Last answer took</span><b>${fmt(L.last)}</b></div></div>${leadHtml(v)}`;
+        },
+        intro(v) {
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}
+      <div class="card"><span class="label">The series</span>${(v.series || []).map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
+        },
+        next(v) {
+          return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
+        },
+        qa(v) {
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>`;
+        },
+        takeaway(v) {
+          let done = {};
+          try {
+            done = JSON.parse(localStorage.getItem("relay-done") || "{}");
+          } catch {}
+          return `<h1>${esc(v.title)}</h1><div class="card">${v.items.map((it, i) => `<label class="check"><input type="checkbox" data-i="${i}" ${done[i] ? "checked" : ""}><span>${esc(it)}</span></label>`).join("")}</div><p>${esc(v.phone)}</p>`;
+        },
+      };
+
+      function render() {
+        const v = view;
+        if (!v) return;
+        $("where").textContent = `Workshop ${v.workshopId} · ${v.act}`;
+        terms(v.terms);
+        $("chat").classList.toggle("on", v.type === "chat");
+        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v);
+        if (v.type === "chat") {
+          $("top").innerHTML = html;
+          $("rest").innerHTML = "";
+        } else {
+          $("top").innerHTML = "";
+          $("rest").innerHTML = html;
+        }
+        if (!NO_DEEPER.has(v.type))
+          $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
+        wire(v);
+      }
+      const NO_DEEPER = new Set(["intro", "qa", "fork", "next", "takeaway"]);
+      // Terms: every term taught so far, kept on this phone after the session (convenience only)
+      function terms(list) {
+        let kept = {};
+        try {
+          kept = JSON.parse(localStorage.getItem("relay-terms") || "{}");
+        } catch {}
+        for (const t of list || []) kept[t.term] ??= { def: t.def, example: t.example };
+        try {
+          localStorage.setItem("relay-terms", JSON.stringify(kept));
+        } catch {}
+        const names = Object.keys(kept);
+        $("tcount").textContent = names.length;
+        $("terms").innerHTML = `<span class="label">Terms so far</span><dl>${names.map((n) => `<div><dt>${esc(n)}</dt><dd>${esc(kept[n].def)}${kept[n].example ? ` <i>${esc(kept[n].example)}</i>` : ""}</dd></div>`).join("")}</dl>`;
+      }
+      $("termsBtn").onclick = () => {
+        const s = $("terms");
+        s.hidden = !s.hidden;
+        $("termsBtn").setAttribute("aria-expanded", String(!s.hidden));
+      };
+      function wire(v) {
+        const more = $("sendmore");
+        if (more) more.onclick = () => $("send").click(); // the chat is hidden here; its Send still works
+        document.querySelectorAll("#tsvg [data-span]").forEach((g) => (g.onclick = () => { local.span = +g.dataset.span; render(); }));
+        const deeper = $("deeper");
+        if (deeper)
+          deeper.onclick = async () => {
+            deeper.disabled = true;
+            const r = await post("/api/curious");
+            if (r.ok || r.status === 409) view.curiousMine = true;
+            render();
+          };
+        document
+          .querySelectorAll("[data-a]")
+          .forEach(
+            (b) =>
+              (b.onclick = () =>
+                v.answer === undefined && answer(+b.dataset.a)),
+          );
+        document.querySelectorAll("[data-n]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              local.nines = +b.dataset.n;
+              answer(local.nines);
+              render();
+            }),
+        );
+        document.querySelectorAll("[data-pct],[data-ms]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              if (b.dataset.pct) local.slo.pct = +b.dataset.pct;
+              else local.slo.ms = +b.dataset.ms;
+              if (local.slo.pct && local.slo.ms)
+                answer({ pct: local.slo.pct, ms: local.slo.ms });
+              render();
+            }),
+        );
+        const job = $("job");
+        if (job)
+          job.onclick = async () => {
+            job.disabled = true;
+            const r = await post("/api/job");
+            if (r.ok) view.job = r.body;
+            render();
+          };
+        const req = $("req");
+        if (req)
+          req.onclick = async () => {
+            const r = await post("/api/request");
+            local.requests.last = r.status;
+            r.ok ? local.requests.ok++ : local.requests.err++;
+            render();
+          };
+        const ld = $("ld");
+        if (ld) ld.onclick = () => loadOnce();
+        const sw = $("ldsw");
+        if (sw)
+          sw.onchange = () => {
+            local.load.on = sw.checked;
+            clearInterval(local.load.timer);
+            if (sw.checked) local.load.timer = setInterval(loadOnce, 1000);
+          };
+        document.querySelectorAll(".check input").forEach(
+          (c) =>
+            (c.onchange = () => {
+              let d = {};
+              try {
+                d = JSON.parse(localStorage.getItem("relay-done") || "{}");
+              } catch {}
+              d[c.dataset.i] = c.checked;
+              try {
+                localStorage.setItem("relay-done", JSON.stringify(d));
+              } catch {}
+            }),
+        );
+      }
+      async function loadOnce() {
+        const L = local.load;
+        L.pending = true;
+        if (view.mode === "closed") render();
+        const t0 = performance.now();
+        const r = await post("/api/load");
+        L.pending = false;
+        if (r.ok) {
+          L.n++;
+          L.last = Math.round(performance.now() - t0);
+        }
+        if (view.type === "load") render();
+      }
+
+      post("/api/join")
+        .then((r) => {
+          if (!r.ok) {
+            $("where").textContent = "Couldn't join";
+            return;
+          }
+          view = r.body;
+          render();
+          const apply = (next) => {
+            if (next.type !== "load") {
+              clearInterval(local.load.timer);
+              local.load.on = false;
+            }
+            if (view && next.id !== view.id) { window.scrollTo(0, 0); local.span = 0; }
+            view = next;
+            render();
+          };
+          const poll = async () => { // every phone checks in; 1.5 s keeps 60 phones at ~40 req/s
+            try {
+              const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" });
+              if (r.ok) apply(await r.json());
+            } catch {}
+            setTimeout(poll, 1500);
+          };
+          setTimeout(poll, 1500);
+        })
+        .catch(() => {
+          $("where").textContent = "Offline — reload";
+        });
+    </script>
+  </body>
+</html>
