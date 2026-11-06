@@ -1,4 +1,4 @@
--- Relay's Supabase schema (project relay-workshop, eu-central-1), mirrored from the live database
+-- Relay's Supabase schema (Supabase project relay-workshop; Vercel project workshop; eu-central-1), mirrored from the live database
 -- on 2026-10-26. Change the database with a migration, then update this file; test.mjs checks that
 -- every event kind the handler writes is allowed by relay_events_kind_check below.
 
