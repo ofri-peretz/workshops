@@ -22,7 +22,7 @@ them all; DNS is A records to Vercel at the registrar.
 
 | Address                                    | What it is                                        | Open           |
 | ------------------------------------------ | ------------------------------------------------- | -------------- |
-| `workshop.ofriperetz.dev`                  | The series and the presenter's links (planned)    | Always         |
+| `workshop.ofriperetz.dev`                  | The series and the presenter's links             | Always         |
 | `signals.workshop.ofriperetz.dev`          | Signals: the one QR, phones join here             | While live     |
 | `screen.signals.workshop.ofriperetz.dev`   | Signals: the big screen                           | Presenter only |
 | `metrics.signals.workshop.ofriperetz.dev`  | Signals: metrics                                  | While live     |
