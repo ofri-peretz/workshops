@@ -1,4 +1,4 @@
-// Run Relay locally: node server.mjs   (PORT, PRESENTER_TOKEN, CODE_SECRET; SUPABASE_URL + SUPABASE_KEY to use
+// Run Relay locally: node server.mjs   (PORT, PRESENTER_TOKEN, CODE_SECRET, JOIN_CODE; SUPABASE_URL + SUPABASE_KEY to use
 // the hosted database instead of memory). Same routes as vercel.json.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -33,7 +33,7 @@ export function createServer({ store = memoryStore(), token = randomBytes(6).toS
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 8080;
   const store = process.env.SUPABASE_URL ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_KEY }) : memoryStore();
-  const { server, token, code } = createServer({ store, token: process.env.PRESENTER_TOKEN || undefined, codeSecret: process.env.CODE_SECRET || undefined });
+  const { server, token, code } = createServer({ store, token: process.env.PRESENTER_TOKEN || undefined, codeSecret: process.env.CODE_SECRET || undefined, code: process.env.JOIN_CODE || undefined });
   server.listen(port, process.env.HOST || "127.0.0.1", () => {
     console.log(`Phones:     http://localhost:${port}/?c=${code}`);
     console.log(`Projector:  http://localhost:${port}/screen?t=${token}   (keep this link to yourself)`);

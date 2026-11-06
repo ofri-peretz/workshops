@@ -43,14 +43,13 @@ export default async function SignIn() {
           <p className="text-lg text-muted-foreground text-pretty">
             Open the workshop, hand the room its code, drive the big screen, and close it when you're done. Nobody reaches it without you.
           </p>
-          <Signals />
+          <Steps />
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <Badge data-testid="room-live" variant={live ? "default" : "secondary"}>
-            <span className={`mr-1.5 inline-block size-2 rounded-full ${live ? "animate-pulse bg-primary-foreground" : "bg-muted-foreground"}`} aria-hidden="true" />
+            <span className={`mr-1.5 inline-block size-2 rounded-full ${live ? "bg-primary-foreground" : "bg-muted-foreground"}`} aria-hidden="true" />
             {live === null ? "Room status unavailable" : live ? "Room is live" : "Room is closed"}
           </Badge>
-          <span>Signals · monitoring & performance series</span>
         </div>
       </section>
       <section className="grid place-items-center px-6 py-12 sm:px-12">
@@ -60,35 +59,22 @@ export default async function SignIn() {
   );
 }
 
-/** The three signals the series teaches, drawn as a quiet, looping preview (decorative). */
-function Signals() {
-  const bars = [18, 30, 22, 44, 28, 62, 36, 24, 52, 30, 20, 40];
+/** How every workshop runs, whichever one you open: three steps, drawn in as the page arrives. */
+function Steps() {
+  const steps = [
+    { n: "1", title: "Go live", detail: "Pick a workshop. The room opens for two hours." },
+    { n: "2", title: "Share the code", detail: "The room scans the QR. The code admits phones for 60 minutes." },
+    { n: "3", title: "Close", detail: "One press, and every phone is out." },
+  ];
   return (
-    <div aria-hidden="true" className="grid grid-cols-3 gap-4 pt-4">
-      <figure className="grid gap-2 rounded-xl border border-border bg-card p-4">
-        <figcaption className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">Metrics</figcaption>
-        <div className="flex h-16 items-end gap-1">
-          {bars.map((h, i) => (
-            <span key={i} className="signal-bar flex-1 rounded-sm bg-[var(--chart-1)]" style={{ height: `${h}%`, animationDelay: `${i * 120}ms` }} />
-          ))}
-        </div>
-      </figure>
-      <figure className="grid gap-2 rounded-xl border border-border bg-card p-4">
-        <figcaption className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">Logs</figcaption>
-        <div className="grid h-16 content-end gap-1.5 overflow-hidden">
-          {[72, 54, 88, 40, 66].map((w, i) => (
-            <span key={i} className="signal-log h-1.5 rounded-full bg-muted-foreground/40" style={{ width: `${w}%`, animationDelay: `${i * 400}ms` }} />
-          ))}
-        </div>
-      </figure>
-      <figure className="grid gap-2 rounded-xl border border-border bg-card p-4">
-        <figcaption className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">Traces</figcaption>
-        <div className="grid h-16 content-center gap-1.5">
-          {[[0, 100], [6, 22], [30, 58], [90, 10]].map(([l, w], i) => (
-            <span key={i} className="signal-span h-2 rounded-full bg-[var(--chart-2)]" style={{ marginLeft: `${l}%`, width: `${w}%`, animationDelay: `${i * 250}ms` }} />
-          ))}
-        </div>
-      </figure>
-    </div>
+    <ol className="grid gap-3 pt-4 sm:grid-cols-3">
+      {steps.map((s, i) => (
+        <li key={s.n} className="signal-step grid content-start gap-2 rounded-xl border border-border bg-card p-4" style={{ animationDelay: `${i * 140}ms` }}>
+          <span className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">Step {s.n}</span>
+          <span className="text-base font-semibold">{s.title}</span>
+          <span className="text-sm text-muted-foreground">{s.detail}</span>
+        </li>
+      ))}
+    </ol>
   );
 }

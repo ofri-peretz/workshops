@@ -14,11 +14,11 @@ import { Mark } from "./mark";
 export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
-  { id: "5", name: "Signals: metrics, logs and traces, live (60 min)" },
-  { id: "1", name: "Relay is slow: feel it, measure it" },
-  { id: "2", name: "Relay breaks: find it, prove it" },
-  { id: "3", name: "GraphQL measured" },
-  { id: "4", name: "Follow one request: traces and spans" },
+  { id: "5", title: "Signals", minutes: 60, summary: "Metrics, logs and traces on every phone, then a live outage the room solves." },
+  { id: "1", title: "Relay is slow", minutes: 30, summary: "Feel latency on your own phone, measure it, set a target you can defend." },
+  { id: "2", title: "Relay breaks", minutes: 30, summary: "Break Relay live, find it with status pages and signals, prove it with a load test." },
+  { id: "3", title: "GraphQL measured", minutes: 30, summary: "Per operation and per consumer, N+1 and cost, and load-testing the real mix." },
+  { id: "4", title: "Follow one request", minutes: 30, summary: "Your own message as a trace, the gap nobody owns, and which traces to keep." },
 ];
 
 /** The presenter's control room: open the workshop, share the code, run the big screen, close it. */
@@ -44,23 +44,33 @@ export default async function Console() {
       </header>
 
       {room.status === "closed" ? (
-        <Card data-testid="go-live-card">
-          <CardHeader>
-            <CardTitle>Open the room</CardTitle>
-            <CardDescription>Empties the room into the workshop you pick, opens it for 2 hours, and makes a join code that works for 60 minutes.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={goLiveAction} className="flex flex-wrap items-end gap-3">
-              <label className="grid gap-1 text-sm">
-                <span className="text-muted-foreground">Workshop</span>
-                <select id="workshop" name="workshop" className="h-9 rounded-md border border-border bg-background px-3">
-                  {WORKSHOPS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
-              </label>
-              <Button data-testid="go-live" type="submit">Go live</Button>
-            </form>
-          </CardContent>
-        </Card>
+        <section data-testid="workshops" aria-labelledby="pick" className="grid gap-4">
+          <div className="grid gap-1">
+            <h2 id="pick" className="text-lg font-semibold">Open a workshop</h2>
+            <p className="text-sm text-muted-foreground">Going live empties the room into that workshop, opens it for 2 hours, and makes a join code that works for 60 minutes.</p>
+          </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {WORKSHOPS.map((w) => (
+              <li key={w.id} className={w.id === "5" ? "sm:col-span-2" : undefined}>
+                <Card data-testid={`workshop-${w.id}`} className="h-full">
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle>{w.title}</CardTitle>
+                      <Badge data-testid={`workshop-${w.id}-minutes`} variant="secondary">{w.minutes} min</Badge>
+                    </div>
+                    <CardDescription>{w.summary}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    <form action={goLiveAction}>
+                      <input type="hidden" name="workshop" value={w.id} />
+                      <Button data-testid={`go-live-${w.id}`} type="submit" className="w-full" aria-label={`Go live with ${w.title}`}>Go live</Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : (
         <Card data-testid="live-card">
           <CardHeader>
