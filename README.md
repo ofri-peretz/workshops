@@ -13,6 +13,27 @@ the whole room's data together on the big screen.
 | 3   | **Web performance**     | Read what the browser felt: LCP, INP, CLS at p75                   |
 | 4   | **Before users notice** | Set SLOs, spend error budgets, alert on what users feel            |
 
+## Addresses
+
+Every address follows `[part].[workshop].workshop.ofriperetz.dev`. The workshop's slug is its
+series name (`signals` is workshop 1, named after OpenTelemetry's word for metrics, logs and
+traces). Parts are rooms inside one workshop. One Vercel project, `workshop` (in `relay/`), serves
+them all; DNS is A records to Vercel at the registrar.
+
+| Address                                    | What it is                                        | Open           |
+| ------------------------------------------ | ------------------------------------------------- | -------------- |
+| `workshop.ofriperetz.dev`                  | The series and the presenter's links (planned)    | Always         |
+| `signals.workshop.ofriperetz.dev`          | Signals: the one QR, phones join here             | While live     |
+| `screen.signals.workshop.ofriperetz.dev`   | Signals: the big screen                           | Presenter only |
+| `metrics.signals.workshop.ofriperetz.dev`  | Signals: metrics                                  | While live     |
+| `logs.signals.workshop.ofriperetz.dev`     | Signals: logs                                     | While live     |
+| `traces.signals.workshop.ofriperetz.dev`   | Signals: traces                                   | While live     |
+| `incident.signals.workshop.ofriperetz.dev` | Signals: the live outage                          | While live     |
+| `chat.`, `screen.`, `status.workshop.ofriperetz.dev` | Older Relay editions; retire when workshops 2–4 get their slugs | While live |
+
+"While live" means the presenter opened the room from the console; otherwise the address answers
+403. The console itself has no address: it runs on the presenter's laptop at `localhost:4180`.
+
 ## What's here
 
 - [`relay/`](relay/): Relay, the chat app every demo measures. Phones, big screen, status page.
