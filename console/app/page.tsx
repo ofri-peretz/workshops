@@ -16,11 +16,11 @@ import { Mark } from "./mark";
 export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
-  { id: "5", title: "Signals", minutes: 60, summary: "Metrics, logs, traces — on your phone. Then a live outage." },
-  { id: "1", title: "Relay is slow", minutes: 30, summary: "Feel latency. Measure it. Set a target." },
-  { id: "2", title: "Relay breaks", minutes: 30, summary: "Break it. Find why. Prove the fix." },
-  { id: "3", title: "GraphQL measured", minutes: 30, summary: "Slow queries, GraphQL, load tests." },
-  { id: "4", title: "Follow one request", minutes: 30, summary: "Your message as a trace. Find the gap." },
+  { id: "5", title: "Signals", minutes: 60, summary: "See what your users feel" },
+  { id: "1", title: "Relay is slow", minutes: 30, summary: "Turn a wait into a target" },
+  { id: "2", title: "Relay breaks", minutes: 30, summary: "Find the break, prove the fix" },
+  { id: "3", title: "GraphQL measured", minutes: 30, summary: "One endpoint hides every slow query" },
+  { id: "4", title: "Follow one request", minutes: 30, summary: "Follow one request end to end" },
 ];
 
 // Mirrors relay/scenes.mjs INTROS and AUDIENCES; the relay refuses anything else.

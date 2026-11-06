@@ -39,6 +39,7 @@ them all; DNS is A records to Vercel at the registrar.
 - [`relay/`](relay/): Relay, the chat app every demo measures. Phones, big screen, status page.
 - [`console/`](console/): the presenter's console (Next.js, Interlace DS), run on the presenter's laptop.
 - [`.sdlc/intents/`](.sdlc/intents/): what each change is for and how it was designed.
+- [`docs/storytelling.md`](docs/storytelling.md): how headlines and taglines are written (checked by the tests).
 
 ## Run a workshop
 

@@ -261,6 +261,28 @@ assert.equal((await fetch(base + "/metrics")).status, 403, "closed: /metrics is 
 assert.equal((await fetch(base + "/status")).status, 403, "closed: the status page API is 403 too");
 assert.equal((await screen()).total !== undefined, true, "the presenter's screen still works while closed");
 
+// Headlines follow docs/storytelling.md: a few words, the takeaway as a claim. Enforced on the Signals path.
+const words = (t = "") => t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+const within = (what, text, max) => assert.ok(words(text) <= max, `${what}: "${text}" is ${words(text)} words, max ${max}`);
+for (const [k, W] of Object.entries(WORKSHOPS)) { within(`workshop ${k} name`, W.title, 3); within(`workshop ${k} tagline`, W.promise, 8); assert.ok(!/\.$/.test(W.promise), `workshop ${k} tagline ends without a period`); }
+for (const x of SERIES) within(`series ${x.track}`, x.what, 8);
+for (const id of WORKSHOPS[5].spine.filter((id) => typeof id === "string" && !["intro", "qa"].includes(id))) {
+  const s = SCENE[id];
+  within(`${id} headline`, s.title, 10);
+  within(`${id} takeaway`, s.takeaway, 8);
+  within(`${id} subline`, s.lead, 12);
+  within(`${id} phone line`, s.phone, 12);
+  for (const it of s.items || []) within(`${id} item`, it, 8);
+  for (const h of [s.title, s.takeaway].filter(Boolean)) assert.ok(!/\.$/.test(h), `${id}: a headline has no closing period: "${h}"`);
+  if (s.type === "poll" && s.answer !== undefined) assert.ok(s.takeaway, `${id}: a question with an answer reveals a takeaway headline`);
+}
+
+await ctl("start", { w: 5 });
+await go("mean");
+assert.equal((await screen()).scene.title, SCENE.mean.title, "a poll opens on its question");
+await ctl("reveal");
+assert.equal((await screen()).scene.title, SCENE.mean.takeaway, "on reveal, the answer becomes the headline");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

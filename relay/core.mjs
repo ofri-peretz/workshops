@@ -295,7 +295,7 @@ const ALWAYS_LEAD = new Set(["intro", "next", "qa", "takeaway", "show"]); // not
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 export function phoneView(room, p) {
   const s = sceneAt(room), shown = room.shown.has(s.id), W = WORKSHOPS[room.workshop];
-  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: s.act, title: s.title, phone: s.phone, link: s.link,
+  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: s.act, title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
     shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined,
@@ -323,7 +323,7 @@ export function phoneView(room, p) {
 export function screenView(room, now) {
   const s = sceneAt(room), W = WORKSHOPS[room.workshop];
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
-  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, scene: s,
+  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, scene: room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
