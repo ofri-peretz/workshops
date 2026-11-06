@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>Workshops · Ofri Peretz</title>
-    <meta name="description" content="Hands-on workshops on monitoring and performance by Ofri Peretz: metrics, logs and traces, API and web performance, and alerting before users notice." />
+    <title>Ofri Peretz · Workshops</title>
+    <meta name="description" content="Ofri Peretz: hands-on workshops on monitoring and performance. LinkedIn, blog, GitHub and site." />
     <style>
-      /* The series' permanent home: open when every room is closed. Same tokens as the phone. */
+      /* Where the QR lands: one column of big links, read in a second. Same tokens as the phone. */
       :root {
         --bg: #faf7f4;
         --card: #fff;
@@ -36,84 +36,71 @@
         }
       }
       * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--fg);
-        font: 17px/1.55 var(--sans);
-      }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.5 var(--sans); }
       main {
         display: grid;
-        gap: 40px;
-        max-width: 760px;
+        gap: 28px;
+        justify-items: center;
+        max-width: 480px;
         margin: 0 auto;
-        padding-block: max(40px, env(safe-area-inset-top)) 64px;
+        padding-block: max(48px, env(safe-area-inset-top)) 48px;
         padding-left: max(16px, env(safe-area-inset-left));
         padding-right: max(16px, env(safe-area-inset-right));
+        text-align: center;
       }
-      .mark { display: flex; gap: 5px; align-items: end; height: 28px; }
-      .mark i { display: block; width: 7px; border-radius: 2px; }
-      .mark i:nth-child(1) { height: 60%; background: var(--mark-o); }
-      .mark i:nth-child(2) { height: 100%; background: var(--mark-g); }
-      .label { font: 600 12px/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-      h1 { font-size: clamp(40px, 9vw, 64px); line-height: 1.02; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
-      h2 { font-size: 22px; margin: 0; }
-      p { margin: 0; max-width: 62ch; }
-      .lead { font-size: 20px; color: var(--muted); text-wrap: pretty; }
-      header, section { display: grid; gap: 16px; }
-      .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-      .links a {
+      .mark { width: 72px; height: 72px; }
+      h1 { font-size: 30px; line-height: 1.1; margin: 8px 0 4px; letter-spacing: -0.01em; }
+      p { margin: 0; color: var(--muted); }
+      nav { display: grid; gap: 12px; width: 100%; }
+      nav a {
         display: grid;
-        gap: 2px;
-        padding: 14px 16px;
+        place-items: center;
+        min-height: 56px;
+        padding: 12px 16px;
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 999px;
         background: var(--card);
         color: var(--fg);
+        font-weight: 600;
         text-decoration: none;
-        min-height: 44px;
       }
-      .links a:hover, .links a:focus-visible { border-color: var(--primary); }
-      .links a b { font-size: 17px; }
-      .links a span { font: 13px/1.3 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-      ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-      li { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-      li .label { color: var(--primary); }
-      a { color: var(--primary); }
-      footer { color: var(--muted); font-size: 15px; }
+      nav a:first-child { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+      nav a:hover, nav a:focus-visible { border-color: var(--primary); }
+      section { display: grid; gap: 6px; width: 100%; border-top: 1px solid var(--line); }
+      .label { font: 600 12px/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding-top: 20px; }
+      ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+      li { color: var(--muted); font-size: 15px; }
+      li b { color: var(--fg); font-weight: 600; }
+      footer { font-size: 14px; }
+      footer a { color: var(--primary); }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <div class="mark" aria-hidden="true"><i></i><i></i></div>
-        <span class="label">Workshops · monitoring and performance</span>
+        <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg>
         <h1>Ofri Peretz</h1>
-        <p class="lead">Engineering leader. A decade of shipping production JavaScript at scale. I teach monitoring and performance by having the room run every demo on their own phones.</p>
+        <p>Monitoring &amp; performance workshops</p>
       </header>
 
-      <section aria-labelledby="find">
-        <h2 id="find">Keep in touch</h2>
-        <nav class="links" aria-label="Ofri Peretz elsewhere">
-          <a href="https://www.linkedin.com/in/ofri-peretz/" rel="me"><b>LinkedIn</b><span>in/ofri-peretz</span></a>
-          <a href="https://dev.to/ofri-peretz" rel="me"><b>Blog</b><span>dev.to/ofri-peretz</span></a>
-          <a href="https://github.com/ofri-peretz" rel="me"><b>GitHub</b><span>ofri-peretz</span></a>
-          <a href="https://ofriperetz.dev" rel="me"><b>Site</b><span>ofriperetz.dev</span></a>
-        </nav>
-      </section>
+      <nav aria-label="Ofri Peretz elsewhere">
+        <a href="https://www.linkedin.com/in/ofri-peretz/" rel="me">LinkedIn</a>
+        <a href="https://dev.to/ofri-peretz" rel="me">Blog</a>
+        <a href="https://github.com/ofri-peretz" rel="me">GitHub</a>
+        <a href="https://ofriperetz.dev" rel="me">Site</a>
+      </nav>
 
       <section aria-labelledby="series">
-        <h2 id="series">The series: four workshops</h2>
+        <span class="label" id="series">The series</span>
         <ol>
-          <li><span class="label">Workshop 1</span><b>Signals</b><p>Tell metrics, logs and traces apart, see how each one works, and use all three to find a live outage.</p></li>
-          <li><span class="label">Workshop 2</span><b>API performance</b><p>Latency the way users feel it, percentiles, N+1 and unselective queries, GraphQL, load tests.</p></li>
-          <li><span class="label">Workshop 3</span><b>Web performance</b><p>What the browser felt: LCP, INP and CLS at the room's p75.</p></li>
-          <li><span class="label">Workshop 4</span><b>Before users notice</b><p>SLOs and the nines, error budgets, alerts on what users feel, status pages.</p></li>
+          <li><b>1 · Signals</b> · metrics, logs, traces</li>
+          <li><b>2 · API performance</b> · latency, slow queries</li>
+          <li><b>3 · Web performance</b> · LCP, INP, CLS</li>
+          <li><b>4 · Before users notice</b> · SLOs, alerts</li>
         </ol>
-        <p>Each workshop's room opens only while it runs. The demos, the slides and every term are open source at <a href="https://github.com/ofri-peretz/workshops">github.com/ofri-peretz/workshops</a>.</p>
       </section>
 
-      <footer>Want a workshop for your team? Message me on <a href="https://www.linkedin.com/in/ofri-peretz/">LinkedIn</a>.</footer>
+      <footer><a href="https://github.com/ofri-peretz/workshops">Open source</a></footer>
     </main>
   </body>
 </html>

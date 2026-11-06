@@ -591,7 +591,7 @@
 
       // Intro and outro: one QR to the series' home, which outlives the room, and the links by name.
       const findMe = (v) =>
-        `<div class="findme"><div id="qrhome" aria-hidden="true"></div><div style="display:grid;gap:6px"><span class="label">Slides, terms and where to find me</span><b>${esc(v.presenter.home.replace(/^https:\/\//, ""))}</b><span class="muted">${v.presenter.links.map((l) => esc(l.label)).join(" · ")}</span></div></div>`;
+        `<div class="findme"><div id="qrhome" aria-hidden="true"></div><div style="display:grid;gap:6px"><span class="label">Find me</span><b>${esc(v.presenter.home.replace(/^https:\/\//, ""))}</b><span class="muted">${v.presenter.links.map((l) => esc(l.label)).join(" · ")}</span></div></div>`;
       const S = {
         chat(v, s, r) {
           if (s.breaks) {
@@ -749,8 +749,8 @@
           const head = v.intro === "returning"
             ? `<h1 style="font-size:clamp(44px,5.6vw,88px)">Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
             : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
-          return `<div class="grid2"><div style="display:grid;gap:18px"><span class="label">${esc(v.workshop)}</span>${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(22px,2vw,30px);font-weight:600">${esc(v.promise)}</span></div>
-      <div class="series"><span class="label">The series · four workshops</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
+          return `<div class="grid2"><div style="display:grid;gap:18px">${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(28px,2.6vw,40px);font-weight:600">${esc(v.promise)}</span></div>
+      <div class="series"><span class="label">The series</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;

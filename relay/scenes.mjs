@@ -7,14 +7,14 @@
 // version. Phones always get the tech version: the phone page is public, and military and personal
 // background stay off public pages (say them out loud, from the notes).
 const TECH = [
-  "Moved from Tel Aviv to the U.S. to build my company's first U.S. engineering team",
-  "Today I lead 8 engineers across 5 time zones — so what's measured, and written down, matters",
-  "Open source: 32 ESLint plugins and the burgee CLI framework — 750k+ npm downloads",
+  "Tel Aviv → U.S., building the first U.S. team",
+  "8 engineers, 5 time zones",
+  "32 ESLint plugins · 750k+ npm downloads",
 ];
 const UNIT =
-  "Mamram alumnus; five years as a software engineer in Unit 8200, Intelligence Corps (2015–2020)";
+  "Mamram · Unit 8200, 2015–2020";
 const AMICHAI =
-  "Before that, five years caring for adults with developmental and intellectual disabilities at Amichai, an Israeli nonprofit";
+  "5 years of care work at Amichai";
 // Who's talking and where to find them after the room closes: the intro and the outro show these,
 // and workshop.ofriperetz.dev keeps them (public/hub.html lists the same links; self-checked).
 export const PRESENTER = {
@@ -32,21 +32,21 @@ export const INTROS = ["first", "returning"];
 export const AUDIENCES = {
   tech: {
     label: "Tech event",
-    lead: "Engineering leader. A decade of shipping production JavaScript at scale.",
+    lead: "Engineering leader. JavaScript at scale.",
     items: TECH,
     notes:
       "Tech only. The story: why I relocated (to build the first U.S. team) and how 8 engineers in 5 time zones work — the overlap is scarce, so decisions and numbers live in writing.",
   },
   "israeli-tech": {
     label: "Jewish & Israeli tech community",
-    lead: "Engineering leader. A decade of shipping production JavaScript at scale.",
+    lead: "Engineering leader. JavaScript at scale.",
     items: [UNIT, ...TECH],
     notes:
       "Open with Mamram and 8200: where I learned that systems people depend on must be measured. Then the move to the U.S. and the team across 5 time zones.",
   },
   "jewish-community": {
     label: "Jewish community",
-    lead: "Engineering leader, open-source maintainer, community organizer.",
+    lead: "Engineering leader. Open source.",
     items: [AMICHAI, UNIT, TECH[0], TECH[1]],
     notes:
       "Open with Amichai: caring for people taught me that every user's wait is a person's wait. Then Mamram and 8200, the move, the team. Skip the open-source numbers.",
@@ -57,7 +57,7 @@ export const SCENES = [
   // ---- shared bookends -------------------------------------------------------------------------
   { id: "intro", act: "Welcome", min: 1, type: "intro", title: "Ofri Peretz", phone: "Today's slides, terms and my links stay at workshop.ofriperetz.dev.", concepts: [], terms: [],
     notes: "One minute, same in every workshop. Pick the audience on the projector before the event; its notes say what to tell. Then today's promise, and straight into Relay." },
-  { id: "qa", act: "Questions", min: 4, type: "qa", title: "Questions", phone: "Ask out loud. Afterwards, everything from today and where to reach me is at workshop.ofriperetz.dev.", concepts: [], terms: [],
+  { id: "qa", act: "Questions", min: 4, type: "qa", title: "Questions", phone: "Ask out loud.", concepts: [], terms: [],
     notes: "Four minutes inside the 30. The Library menu can answer a question with any scene, but it costs time." },
 
   // ---- feel it ---------------------------------------------------------------------------------

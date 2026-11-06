@@ -7,17 +7,17 @@ const fork = (id, detours, dflt = 0) => ({ fork: id, slot: 3, title: "What next?
 
 // Every intro shows the series: three tracks on performance you can see, the current one marked.
 export const SERIES = [
-  { track: "1 · Signals", what: "Metrics, logs and traces: what each one is, how it works, and how to use them in an outage", status: "Today", w: [5] },
-  { track: "2 · API performance", what: "Latency the way users feel it, percentiles, N+1 and unselective queries, GraphQL, load tests", status: "Next", w: [1, 3] },
-  { track: "3 · Web performance", what: "What the browser felt: LCP, INP and CLS at the room's p75", status: "Coming", w: [] },
-  { track: "4 · Before users notice", what: "SLOs and the nines, error budgets, alerts on what users feel, status pages", status: "Coming", w: [2] },
+  { track: "1 · Signals", what: "Metrics, logs, traces, a live outage", status: "Today", w: [5] },
+  { track: "2 · API performance", what: "Latency, slow queries, load tests", status: "Next", w: [1, 3] },
+  { track: "3 · Web performance", what: "LCP, INP, CLS: what users felt", status: "Coming", w: [] },
+  { track: "4 · Before users notice", what: "SLOs, error budgets, alerts", status: "Coming", w: [2] },
 ];
 
 export const WORKSHOPS = {
   5: {
     title: "Signals — metrics, logs and traces, live",
     minutes: 60,
-    promise: "In 60 minutes: run metrics, logs and traces on your own phone, then use all three to find a live outage.",
+    promise: "Metrics, logs, traces — on your phone. Then a live outage.",
     spine: ["intro", "join", "felt", "signals",
       "sig-metrics", "two", "dots", "mean", "histogram", "impact",
       "sig-logs",
@@ -27,7 +27,7 @@ export const WORKSHOPS = {
   },
   1: {
     title: "Relay is slow — feel it, measure it",
-    promise: "In 30 minutes: feel latency on your own phone, measure it the way SRE teams do, and set a target you can defend.",
+    promise: "Feel latency. Measure it. Set a target.",
     spine: ["intro", "join", "felt", "timeout", "journey", "two", "mean", "dots",
       fork("w1", [
         { title: "The tail reaches everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
@@ -38,7 +38,7 @@ export const WORKSHOPS = {
   },
   2: {
     title: "Relay breaks — find it, prove it",
-    promise: "In 30 minutes: break Relay live, find the failure with status pages, metrics and traces, and prove it with a load test from your phones.",
+    promise: "Break it. Find why. Prove the fix.",
     spine: ["intro", "join2", "two2", "outage", "first", "update", "spike", "signals", "gantt",
       fork("w2", [
         { title: "GraphQL: 200 OK with errors inside", scenes: ["graphql"], after: ["first", "update", "spike"] },
@@ -49,7 +49,7 @@ export const WORKSHOPS = {
   },
   3: {
     title: "GraphQL measured — per operation, per consumer",
-    promise: "In 30 minutes: see why one endpoint hides every slow query, measure GraphQL per operation and per consumer, and load-test the real mix.",
+    promise: "Slow queries, GraphQL, load tests.",
     spine: ["intro", "join", "two2", "blend", "operation", "graphql", "errors", "phases", "gantt",
       fork("w3", [
         { title: "Count the calls, measure the cost", scenes: ["n1", "cost"], after: ["gantt", "phases"] },
@@ -60,7 +60,7 @@ export const WORKSHOPS = {
   },
   4: {
     title: "Follow one request — traces and spans",
-    promise: "In 30 minutes: see your own message as a trace, read every span in it, find the time nobody owns and fix it live, and keep the traces that matter.",
+    promise: "Your message as a trace. Find the gap.",
     spine: ["intro", "join", "journey", "signals", "yourtrace", "spanparts", "propagate", "gap", "sampling", "exemplar",
       fork("w4", [
         { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gap", "yourtrace"] },

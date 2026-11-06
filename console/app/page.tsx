@@ -16,22 +16,22 @@ import { Mark } from "./mark";
 export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
-  { id: "5", title: "Signals", minutes: 60, summary: "Metrics, logs and traces on every phone, then a live outage the room solves." },
-  { id: "1", title: "Relay is slow", minutes: 30, summary: "Feel latency on your own phone, measure it, set a target you can defend." },
-  { id: "2", title: "Relay breaks", minutes: 30, summary: "Break Relay live, find it with status pages and signals, prove it with a load test." },
-  { id: "3", title: "GraphQL measured", minutes: 30, summary: "Per operation and per consumer, N+1 and cost, and load-testing the real mix." },
-  { id: "4", title: "Follow one request", minutes: 30, summary: "Your own message as a trace, the gap nobody owns, and which traces to keep." },
+  { id: "5", title: "Signals", minutes: 60, summary: "Metrics, logs, traces — on your phone. Then a live outage." },
+  { id: "1", title: "Relay is slow", minutes: 30, summary: "Feel latency. Measure it. Set a target." },
+  { id: "2", title: "Relay breaks", minutes: 30, summary: "Break it. Find why. Prove the fix." },
+  { id: "3", title: "GraphQL measured", minutes: 30, summary: "Slow queries, GraphQL, load tests." },
+  { id: "4", title: "Follow one request", minutes: 30, summary: "Your message as a trace. Find the gap." },
 ];
 
 // Mirrors relay/scenes.mjs INTROS and AUDIENCES; the relay refuses anything else.
 const INTROS = [
-  { id: "first", label: "First time with this group", detail: "Who I am, then the series. One minute." },
-  { id: "returning", label: "They know me", detail: "\u201cWelcome back\u201d, the series, straight in." },
+  { id: "first", label: "First time", detail: "Who I am" },
+  { id: "returning", label: "They know me", detail: "Welcome back" },
 ];
 const AUDIENCES = [
-  { id: "tech", label: "Tech", detail: "Career and open source." },
-  { id: "israeli-tech", label: "Israeli tech", detail: "Adds Mamram and 8200, on the big screen only." },
-  { id: "jewish-community", label: "Jewish community", detail: "Adds Amichai and 8200, on the big screen only." },
+  { id: "tech", label: "Tech", detail: "Career, open source" },
+  { id: "israeli-tech", label: "Israeli tech", detail: "+ 8200, big screen only" },
+  { id: "jewish-community", label: "Jewish community", detail: "+ Amichai, 8200" },
 ];
 
 /** The presenter's control room: open the workshop, share the code, run the big screen, close it. */
@@ -66,7 +66,7 @@ export default async function Console() {
           <Card data-testid="intro-settings">
             <CardHeader>
               <CardTitle>The intro</CardTitle>
-              <CardDescription>Every workshop opens with you and closes with Q&amp;A. Both show your links and a QR to workshop.ofriperetz.dev, which stays up after the room closes.</CardDescription>
+              <CardDescription>Opens and closes with your links.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 sm:grid-cols-2">
               <Choice legend="This group" name="intro" options={INTROS} />
