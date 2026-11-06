@@ -48,7 +48,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro });
         return json(200, screenView(room, Date.now()));
       }
       // Everything below is for phones, and only while the presenter has the room open.

@@ -81,6 +81,26 @@ test.describe("relay", () => {
     }
   });
 
+  test("home page: the links, open while every room is closed", async ({ page }) => {
+    await page.goto(`${RELAY}/hub`);
+    await expect(page.getByRole("heading", { name: "Ofri Peretz" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Ofri Peretz elsewhere" }).getByRole("link")).toHaveCount(4);
+    await expectFits(page, "home");
+  });
+
+  test("intro and outro carry the links", async ({ page }) => {
+    await control(page, { op: "start", w: 5, intro: "returning" });
+    await page.goto(`${RELAY}/?c=424242`);
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect(page.locator(".findme a")).toHaveCount(4);
+    const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;
+    await control(page, { op: "goto", i: n - 1 });
+    await page.reload();
+    await expect(page.locator("main h1:visible").first()).toHaveText("Questions");
+    await expect(page.locator(".findme a")).toHaveCount(4);
+    await expectFits(page, "outro");
+  });
+
   test("status page", async ({ page }) => {
     await page.goto(`${RELAY}/status`);
     await expect(page.locator("#banner")).not.toBeEmpty();

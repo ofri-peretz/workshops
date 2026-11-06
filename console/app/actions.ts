@@ -21,7 +21,7 @@ export async function requestLink(): Promise<{ sent?: boolean; error?: string }>
 }
 
 export async function goLiveAction(form: FormData) {
-  await goLive(await signedIn(), String(form.get("workshop") || "1"));
+  await goLive(await signedIn(), String(form.get("workshop") || "1"), { intro: String(form.get("intro") || "first"), audience: String(form.get("audience") || "tech") });
   revalidatePath("/");
 }
 

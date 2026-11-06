@@ -1,7 +1,7 @@
 // Relay's room, rebuilt from an event log. Every tap, answer and presenter control is an event;
 // reduce() folds them into the room in order, so any server (or serverless instance) that replays
 // the same log sees the same room. Randomness happens before an event is written, never here.
-import { SCENES, SCENE, POLL_TYPES, AUDIENCES } from "./scenes.mjs";
+import { SCENES, SCENE, POLL_TYPES, AUDIENCES, PRESENTER, INTROS } from "./scenes.mjs";
 import { WORKSHOPS, SERIES } from "./workshops.mjs";
 import { GLOSSARY } from "./concepts.mjs";
 
@@ -92,7 +92,7 @@ const minutes = (room, upto) => room.path.slice(0, upto).reduce((t, id, k) => {
 export function fresh(w = 1) {
   return {
     workshop: w, path: spineOf(w), pos: 0, choices: {}, forkOrder: {}, over: 0, curious: {}, instrumented: false,
-    groupsShown: false, broken: false, shown: new Set(), slo: null, audience: "tech",
+    groupsShown: false, broken: false, shown: new Set(), slo: null, audience: "tech", intro: "first",
     phones: new Map(), // id -> { id, group, sends, dups, answers, used, last, job }
     chat: [], reqs: [], jobs: { n: 0, slow: 0 }, load: [], incidents: [],
   };
@@ -136,10 +136,10 @@ export function reduce(room, ev) {
   }
 }
 
-function control(room, { op, i, w, a, id, t }) {
+function control(room, { op, i, w, a, id, t, intro }) {
   const s = sceneAt(room);
-  if (op === "reset") return { ...fresh(room.workshop), audience: room.audience }; // stay in this workshop
-  if (op === "start") return { ...fresh(w), audience: room.audience }; // switch workshops with an empty room
+  if (op === "reset") return { ...fresh(room.workshop), audience: room.audience, intro: room.intro }; // stay in this workshop
+  if (op === "start") return { ...fresh(w), audience: a ?? room.audience, intro: intro ?? "first" }; // switch workshops with an empty room
   if (op === "audience") { room.audience = a; return room; } // who's in the room decides the intro
   if (op === "next") {
     if (s.type === "fork") choose(room, s, forkOf(room.workshop, s.id).default); // no vote: stay on the default
@@ -171,10 +171,10 @@ function control(room, { op, i, w, a, id, t }) {
   return room;
 }
 
-export function validControl({ op, i, w, a, id }) {
+export function validControl({ op, i, w, a, id, intro }) {
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
   if (["next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
-  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w);
+  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
   return (op === "goto" || op === "choose") && Number.isInteger(i) && i >= 0 && i < 100;
 }
@@ -301,7 +301,8 @@ export function phoneView(room, p) {
     shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined,
     workshop: W.title, promise: W.promise, terms: termsSoFar(room), curiousMine: !!p?.curious.has(s.id), chosen: s.chosen,
     group: room.groupsShown ? p?.group : undefined, broken: room.broken };
-  if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES }); // phones: tech only
+  if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
+  if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
@@ -325,7 +326,7 @@ export function screenView(room, now) {
   return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, scene: s,
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
-    audience: room.audience, speaker: AUDIENCES[room.audience], series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
+    audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
     clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead };

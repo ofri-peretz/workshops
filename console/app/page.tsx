@@ -3,6 +3,8 @@ import QRCode from "qrcode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
 import { readRoom } from "@/lib/room";
 import { accessToken } from "@/lib/session";
@@ -19,6 +21,17 @@ const WORKSHOPS = [
   { id: "2", title: "Relay breaks", minutes: 30, summary: "Break Relay live, find it with status pages and signals, prove it with a load test." },
   { id: "3", title: "GraphQL measured", minutes: 30, summary: "Per operation and per consumer, N+1 and cost, and load-testing the real mix." },
   { id: "4", title: "Follow one request", minutes: 30, summary: "Your own message as a trace, the gap nobody owns, and which traces to keep." },
+];
+
+// Mirrors relay/scenes.mjs INTROS and AUDIENCES; the relay refuses anything else.
+const INTROS = [
+  { id: "first", label: "First time with this group", detail: "Who I am, then the series. One minute." },
+  { id: "returning", label: "They know me", detail: "\u201cWelcome back\u201d, the series, straight in." },
+];
+const AUDIENCES = [
+  { id: "tech", label: "Tech", detail: "Career and open source." },
+  { id: "israeli-tech", label: "Israeli tech", detail: "Adds Mamram and 8200, on the big screen only." },
+  { id: "jewish-community", label: "Jewish community", detail: "Adds Amichai and 8200, on the big screen only." },
 ];
 
 /** The presenter's control room: open the workshop, share the code, run the big screen, close it. */
@@ -49,6 +62,17 @@ export default async function Console() {
             <h2 id="pick" className="text-lg font-semibold">Open a workshop</h2>
             <p className="text-sm text-muted-foreground">Going live empties the room into that workshop, opens it for 2 hours, and makes a join code that works for 60 minutes.</p>
           </div>
+          <form action={goLiveAction} className="grid gap-4">
+          <Card data-testid="intro-settings">
+            <CardHeader>
+              <CardTitle>The intro</CardTitle>
+              <CardDescription>Every workshop opens with you and closes with Q&amp;A. Both show your links and a QR to workshop.ofriperetz.dev, which stays up after the room closes.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6 sm:grid-cols-2">
+              <Choice legend="This group" name="intro" options={INTROS} />
+              <Choice legend="Who's in the room" name="audience" options={AUDIENCES} />
+            </CardContent>
+          </Card>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {WORKSHOPS.map((w) => (
               <li key={w.id} className={w.id === "5" ? "sm:col-span-2" : undefined}>
@@ -61,15 +85,13 @@ export default async function Console() {
                     <CardDescription>{w.summary}</CardDescription>
                   </CardHeader>
                   <CardContent className="mt-auto">
-                    <form action={goLiveAction}>
-                      <input type="hidden" name="workshop" value={w.id} />
-                      <Button data-testid={`go-live-${w.id}`} type="submit" className="w-full" aria-label={`Go live with ${w.title}`}>Go live</Button>
-                    </form>
+                    <Button data-testid={`go-live-${w.id}`} type="submit" name="workshop" value={w.id} className="w-full" aria-label={`Go live with ${w.title}`}>Go live</Button>
                   </CardContent>
                 </Card>
               </li>
             ))}
           </ul>
+          </form>
         </section>
       ) : (
         <Card data-testid="live-card">
@@ -114,5 +136,25 @@ export default async function Console() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+/** One labelled set of radios; the first option is the default. */
+function Choice({ legend, name, options }: { legend: string; name: string; options: { id: string; label: string; detail: string }[] }) {
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="mb-3 text-sm font-medium text-muted-foreground">{legend}</legend>
+      <RadioGroup name={name} defaultValue={options[0].id} data-testid={`${name}-choice`} className="gap-3">
+        {options.map((o) => (
+          <Label key={o.id} className="flex items-start gap-3 font-normal">
+            <RadioGroupItem value={o.id} data-testid={`${name}-${o.id}`} className="mt-0.5" />
+            <span className="grid gap-0.5">
+              <span className="font-medium">{o.label}</span>
+              <span className="text-sm text-muted-foreground">{o.detail}</span>
+            </span>
+          </Label>
+        ))}
+      </RadioGroup>
+    </fieldset>
   );
 }

@@ -2,9 +2,9 @@
 // Runs the same handler the Vercel function uses, on the in-memory store.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SCENES, SCENE, POLL_TYPES } from "./scenes.mjs";
+import { SCENES, SCENE, POLL_TYPES, PRESENTER } from "./scenes.mjs";
 import { CONCEPTS, GLOSSARY } from "./concepts.mjs";
-import { WORKSHOPS } from "./workshops.mjs";
+import { WORKSHOPS, SERIES } from "./workshops.mjs";
 import { GROUPS, fresh, reduce, sceneAt, checkTrace, buildTrace, SPAN_NAMES } from "./core.mjs";
 import { createServer } from "./server.mjs";
 
@@ -85,6 +85,7 @@ assert.ok(screenIntro.speaker.items.some((x) => x.includes("Amichai")) && screen
 const phoneIntro = await (await phones[0]("/join")).json();
 assert.ok(phoneIntro.items.length && !phoneIntro.items.some((x) => /8200|Amichai/.test(x)), "phones never show military or personal background");
 assert.equal(phoneIntro.promise, WORKSHOPS[1].promise);
+assert.deepEqual(phoneIntro.presenter.links.map((l) => l.label), ["LinkedIn", "Blog", "GitHub", "Site"], "the intro carries the presenter's links");
 
 // An impatient second tap counts as a resend; the phone's measured time attaches to its message.
 const slowest = phones[times.indexOf(Math.max(...times))];
@@ -190,6 +191,12 @@ await go("qa");
 await ctl("next");
 assert.equal(here(), "qa", "Next stops at the end of the workshop");
 assert.equal((await ctl("start", { w: 9 })).status, 400, "an unknown workshop is refused");
+assert.equal((await ctl("start", { w: 2, intro: "maybe" })).status, 400, "an unknown intro is refused");
+assert.equal((await ctl("start", { w: 2, a: "nobody" })).status, 400, "an unknown audience is refused");
+await ctl("start", { w: 2, a: "tech", intro: "returning" });
+assert.deepEqual([room().intro, room().audience], ["returning", "tech"], "the console sets the intro and audience as it opens the room");
+await ctl("reset");
+assert.equal(room().intro, "returning", "a reset keeps the intro");
 await ctl("start", { w: 2 });
 assert.equal(here(), "intro");
 await ctl("prev");
@@ -253,6 +260,11 @@ for (const path of ["/view", "/send", "/status"]) assert.equal((await insider(pa
 assert.equal((await fetch(base + "/metrics")).status, 403, "closed: /metrics is 403 too");
 assert.equal((await fetch(base + "/status")).status, 403, "closed: the status page API is 403 too");
 assert.equal((await screen()).total !== undefined, true, "the presenter's screen still works while closed");
+
+// The home page outlives every room: it must list the same links and the same series.
+const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
+for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);
+for (const x of SERIES) assert.ok(hub.includes(x.track.replace(/^\d+ · /, "")), `hub.html lists ${x.track}`);
 
 server.close(); server.closeAllConnections?.();
 console.log("relay self-check: ok");

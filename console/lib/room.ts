@@ -51,8 +51,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string) {
-  await relayControl({ op: "start", w: Number(workshop) || workshop });
+export async function goLive(jwt: string, workshop: string, { intro, audience }: { intro: string; audience: string }) {
+  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience });
   const code = newCode(), now = Date.now();
   const row = await update(jwt, {
     opened_at: new Date(now).toISOString(),

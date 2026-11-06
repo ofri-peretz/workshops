@@ -8,6 +8,7 @@
     { "source": "/", "has": [{ "type": "host", "value": "status.workshop.ofriperetz.dev" }], "destination": "/status.html" },
     { "source": "/", "has": [{ "type": "host", "value": "screen.workshop.ofriperetz.dev" }], "destination": "/screen.html" },
     { "source": "/", "has": [{ "type": "host", "value": "screen.signals.workshop.ofriperetz.dev" }], "destination": "/screen.html" },
+    { "source": "/", "has": [{ "type": "host", "value": "workshop.ofriperetz.dev" }], "destination": "/hub.html" },
     { "source": "/", "destination": "/phone.html" },
     { "source": "/status", "destination": "/status.html" },
     { "source": "/screen", "destination": "/screen.html" }

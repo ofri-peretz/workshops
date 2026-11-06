@@ -15,6 +15,20 @@ const UNIT =
   "Mamram alumnus; five years as a software engineer in Unit 8200, Intelligence Corps (2015–2020)";
 const AMICHAI =
   "Before that, five years caring for adults with developmental and intellectual disabilities at Amichai, an Israeli nonprofit";
+// Who's talking and where to find them after the room closes: the intro and the outro show these,
+// and workshop.ofriperetz.dev keeps them (public/hub.html lists the same links; self-checked).
+export const PRESENTER = {
+  name: "Ofri Peretz",
+  home: "https://workshop.ofriperetz.dev",
+  links: [
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/ofri-peretz/" },
+    { label: "Blog", href: "https://dev.to/ofri-peretz" },
+    { label: "GitHub", href: "https://github.com/ofri-peretz" },
+    { label: "Site", href: "https://ofriperetz.dev" },
+  ],
+};
+// First time: the full who-I-am. Returning: the group knows me, so one line and straight in.
+export const INTROS = ["first", "returning"];
 export const AUDIENCES = {
   tech: {
     label: "Tech event",
@@ -41,9 +55,9 @@ export const AUDIENCES = {
 
 export const SCENES = [
   // ---- shared bookends -------------------------------------------------------------------------
-  { id: "intro", act: "Welcome", min: 1, type: "intro", title: "Ofri Peretz", phone: "ofriperetz.dev · github.com/ofri-peretz", concepts: [], terms: [],
+  { id: "intro", act: "Welcome", min: 1, type: "intro", title: "Ofri Peretz", phone: "Today's slides, terms and my links stay at workshop.ofriperetz.dev.", concepts: [], terms: [],
     notes: "One minute, same in every workshop. Pick the audience on the projector before the event; its notes say what to tell. Then today's promise, and straight into Relay." },
-  { id: "qa", act: "Questions", min: 4, type: "qa", title: "Questions", phone: "Ask out loud — or keep the list from the last scene.", concepts: [], terms: [],
+  { id: "qa", act: "Questions", min: 4, type: "qa", title: "Questions", phone: "Ask out loud. Afterwards, everything from today and where to reach me is at workshop.ofriperetz.dev.", concepts: [], terms: [],
     notes: "Four minutes inside the 30. The Library menu can answer a question with any scene, but it costs time." },
 
   // ---- feel it ---------------------------------------------------------------------------------

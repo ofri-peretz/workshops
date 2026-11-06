@@ -336,6 +336,18 @@
         content: "□  ";
         color: var(--c1);
       }
+      .findme {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 18px;
+        align-items: center;
+      }
+      .findme #qrhome {
+        padding: 8px;
+        background: #fff;
+        border-radius: 8px;
+        line-height: 0;
+      }
       .checks.intro {
         font-size: clamp(18px, 1.5vw, 22px);
         gap: 10px;
@@ -438,7 +450,7 @@
   <body>
     <div class="top">
       <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg
-      ><span class="brand">interlace</span><b>Relay</b><span class="where" id="where"></span
+      ><span class="brand">interlace</span><b>Workshops</b><span class="where" id="where"></span
       ><span class="spacer"></span>
       <span class="join"
         ><span id="joinurl"></span><span id="qrs" aria-hidden="true"></span
@@ -502,10 +514,10 @@
       const gname = (ms, shown, i) =>
         shown ? (ms < 1000 ? "0.1 s" : ms / 1000 + " s") : "Group " + "ABCD"[i];
       $("joinurl").textContent = JOIN.replace(/^https?:\/\//, "") + (CODE ? "  ·  code " + CODE : "");
-      const qr = (el, size) => {
+      const qr = (el, size, text = JOIN_QR) => {
         try {
           new QRCode(el, {
-            text: JOIN_QR,
+            text,
             width: size,
             height: size,
             correctLevel: QRCode.CorrectLevel.M,
@@ -577,6 +589,9 @@
     <text x="${L}" y="${H - 4}">${esc(label)} · last 60 s</text></svg>`;
       }
 
+      // Intro and outro: one QR to the series' home, which outlives the room, and the links by name.
+      const findMe = (v) =>
+        `<div class="findme"><div id="qrhome" aria-hidden="true"></div><div style="display:grid;gap:6px"><span class="label">Slides, terms and where to find me</span><b>${esc(v.presenter.home.replace(/^https:\/\//, ""))}</b><span class="muted">${v.presenter.links.map((l) => esc(l.label)).join(" · ")}</span></div></div>`;
       const S = {
         chat(v, s, r) {
           if (s.breaks) {
@@ -730,15 +745,18 @@
       <div class="g"><span class="label">Little's Law</span><b>in flight = rate × latency</b><span class="muted">${r.rate.toFixed(0)}/s × ${fmt(r.p50)} ≈ ${r.p50 == null ? "—" : Math.round((r.rate * r.p50) / 1000)}</span></div></div></div><p class="lead">${esc(s.lead)}</p>`;
         },
         intro(v, s) {
-          const who = v.speaker; // the version for this audience, picked in the presenter bar
-          return `<div class="grid2"><div style="display:grid;gap:18px"><span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div><p class="muted">${esc(s.phone)}</p></div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(22px,2vw,30px);font-weight:600">${esc(v.promise)}</span></div>
+          const who = v.speaker; // the version for this audience, picked in the console
+          const head = v.intro === "returning"
+            ? `<h1 style="font-size:clamp(44px,5.6vw,88px)">Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
+            : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
+          return `<div class="grid2"><div style="display:grid;gap:18px"><span class="label">${esc(v.workshop)}</span>${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(22px,2vw,30px);font-weight:600">${esc(v.promise)}</span></div>
       <div class="series"><span class="label">The series · four workshops</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
         },
         qa(v, s) {
-          return `<span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1><p class="lead">${esc(s.phone)}</p>`;
+          return `<span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1>${findMe(v)}`;
         },
         takeaway(v, s) {
           return `<h1>${esc(s.title)}</h1><div class="checks">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
@@ -770,6 +788,8 @@
         )(v, s, v.results);
         const big = $("qrbig");
         if (big) qr(big, 240);
+        const home = $("qrhome");
+        if (home) qr(home, 132, v.presenter.home);
       }
 
       const control = (op, extra = {}) =>

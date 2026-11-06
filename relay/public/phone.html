@@ -66,6 +66,22 @@
       * {
         box-sizing: border-box;
       }
+      .findme {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .findme a {
+        display: grid;
+        place-items: center;
+        min-height: 48px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        color: var(--fg);
+        font-weight: 600;
+        text-decoration: none;
+      }
       html,
       body {
         height: 100%;
@@ -435,7 +451,7 @@
     <header>
       <div class="brandrow">
         <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg>
-        <b>Relay</b>
+        <b>Workshops</b>
       </div>
       <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
       <span id="where">Joining…</span>
@@ -449,6 +465,7 @@
           <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required />
           <button type="submit">Join</button>
         </form>
+        <p id="gateHome" hidden>Slides, terms and my links stay at <a href="https://workshop.ofriperetz.dev">workshop.ofriperetz.dev</a>.</p>
       </section>
       <section id="terms" class="card" hidden aria-label="Terms so far"></section>
       <div id="top"></div>
@@ -756,14 +773,17 @@
           return `<h1>${esc(v.title)}</h1>${ctrl}<div class="card"><div class="row"><span>Requests you sent</span><b>${L.n}</b></div><div class="row"><span>Last answer took</span><b>${fmt(L.last)}</b></div></div>${leadHtml(v)}`;
         },
         intro(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}
-      <div class="card"><span class="label">The series</span>${(v.series || []).map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
+          const who = v.intro === "returning"
+            ? `<h1>Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
+            : `<h1>${esc(v.title)}</h1><p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>`;
+          return `<span class="label">${esc(v.workshop)}</span>${who}${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}${findMe(v)}
+      <div class="card"><span class="label">The series</span>${(v.series || []).map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div>`;
         },
         next(v) {
           return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
         },
         qa(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>`;
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${findMe(v)}`;
         },
         takeaway(v) {
           let done = {};
@@ -792,6 +812,8 @@
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
         wire(v);
       }
+      const findMe = (v) =>
+        `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</nav>`;
       const NO_DEEPER = new Set(["intro", "qa", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
@@ -909,6 +931,7 @@
       const gate = (msg, askCode) => {
         $("gate").hidden = false;
         $("gateForm").hidden = !askCode;
+        $("gateHome").hidden = askCode;
         $("gateTitle").textContent = askCode ? "Join the workshop" : "Not running right now";
         $("gateMsg").textContent = msg;
         $("chat").hidden = true;
