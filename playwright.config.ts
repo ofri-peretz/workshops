@@ -4,6 +4,7 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
+  workers: 1, // every viewport drives the same relay room: in parallel, one test moves another's scene
   reporter: process.env.CI ? "github" : "list",
   use: { channel: "chrome", trace: "retain-on-failure" },
   projects: [
