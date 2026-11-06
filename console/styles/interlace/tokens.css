@@ -1,0 +1,244 @@
+@theme inline {
+  /* MagicUI: shimmer-button */
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite
+    alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+
+  /* MagicUI: animated-gradient-text */
+  --animate-gradient: gradient 8s linear infinite;
+
+  /* MagicUI: marquee */
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+
+  /* Aceternity: background-gradient-animation */
+  --animate-first: moveVertical 30s ease infinite;
+  --animate-second: moveInCircle 20s reverse infinite;
+  --animate-third: moveInCircle 40s linear infinite;
+  --animate-fourth: moveHorizontal 40s ease infinite;
+  --animate-fifth: moveInCircle 20s ease infinite;
+
+  /* Primitives: accordion */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  /* Interlace: the draw verb (BRAND_PHILOSOPHY §2) — a strand drawn,
+   * never faded. Paths normalize with pathLength=100 so one keyframe
+   * serves every geometry; 600ms is the doctrine's motion ceiling.
+   * Pure CSS on purpose: it runs with zero client JS and the preflight
+   * reduced-motion clamp reaches it (instantly-drawn end state). */
+  --animate-strand-draw: strand-draw 600ms ease-out forwards;
+
+  /* The draw verb's second mechanism, for a chart whose dash pattern IS
+   * series identity (TimeSeries): stroke-dashoffset would overwrite the
+   * dashes, so the true paths are progressively REVEALED by a clip rect
+   * that scales open left→right — the shuttle pass. The transform moves
+   * a CLIP EDGE, never content (the motion lock verifies the utility
+   * only ever lands on a clipPath child). From-only keyframe on
+   * purpose: the rect RESTS fully open, so with no animation at all
+   * (reduced motion, jsdom, an engine that cannot animate clip
+   * contents) nothing is ever hidden. Same 600ms draw ceiling.
+   *
+   * Declared ABOVE the keyframes bodies: the motion lock's segmenter
+   * runs each @keyframes to the next header, and a declaration sitting
+   * between two bodies would be over-captured into the first one. */
+  --animate-weave-reveal: weave-reveal 600ms ease-out;
+
+  @keyframes strand-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes weave-reveal {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @keyframes shimmer-slide {
+    to {
+      transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+    0% {
+      transform: translateZ(0) rotate(0);
+    }
+    15%,
+    35% {
+      transform: translateZ(0) rotate(90deg);
+    }
+    65%,
+    85% {
+      transform: translateZ(0) rotate(270deg);
+    }
+    100% {
+      transform: translateZ(0) rotate(360deg);
+    }
+  }
+  @keyframes gradient {
+    to {
+      background-position: var(--bg-size, 300%) 0;
+    }
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes moveHorizontal {
+    0% {
+      transform: translateX(-50%) translateY(-10%);
+    }
+    50% {
+      transform: translateX(50%) translateY(10%);
+    }
+    100% {
+      transform: translateX(-50%) translateY(-10%);
+    }
+  }
+  @keyframes moveInCircle {
+    0% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(180deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes moveVertical {
+    0% {
+      transform: translateY(-50%);
+    }
+    50% {
+      transform: translateY(50%);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* Border Beam — pure CSS animation, used by @interlace/ui/magicui/border-beam.
+ * Wrapped in `@layer interlace.primitives` so the cascade is deterministic.
+ * `@keyframes` declarations can live outside a layer (they have a global
+ * scope per spec), but the consuming utility class .animate-border-beam goes
+ * in the layer for override-friendliness. */
+@keyframes border-beam {
+  0% {
+    offset-distance: var(--border-beam-initial, 0%);
+  }
+  100% {
+    offset-distance: calc(100% + var(--border-beam-initial, 0%));
+  }
+}
+
+@layer interlace.primitives {
+.animate-border-beam {
+  animation: border-beam var(--border-beam-duration, 6s) linear infinite;
+  animation-direction: var(--border-beam-direction, normal);
+}
+
+/*
+ * Accessibility — respect prefers-reduced-motion.
+ * Industry-canon practice (MUI, Vercel, Linear, Stripe, GitHub all do this).
+ * Disables every CSS-driven animation registered above when the user has
+ * motion-sensitivity preferences. JS-driven motion (motion/react, canvas)
+ * is gated per-component via the useReducedMotion hook.
+ *
+ * ⚠️ THIS LIST IS THE SECOND LAYER, NOT THE FIRST.
+ *
+ * The primary reduced-motion guarantee is the wildcard in `preflight.css`
+ * (`*, *::before, *::after { animation-duration: 0.01ms !important; … }`),
+ * and it is the only thing that reaches the animations no selector here can
+ * name: Tailwind's own `animate-pulse` / `animate-bounce`, and the
+ * `data-[open]:animate-in` / `data-[closed]:animate-out` variants that every
+ * Dialog, Sheet, Popover, Tooltip, DropdownMenu and ContextMenu emits (those
+ * compile to `.data-\[open\]\:animate-in`, which `.animate-in` does not
+ * match). Delete the preflight wildcard and most of the DS starts animating
+ * under `reduce` with nothing here to catch it — `motion-contract-lock`
+ * fails if anyone tries.
+ *
+ * What this list buys on top of the wildcard is worth having, which is why
+ * both exist:
+ *   1. `animation: none` instead of a 0.01ms clamp — the animation never
+ *      runs at all, rather than running one imperceptible cycle.
+ *   2. cover for the à-la-carte import path. Every stylesheet here is a
+ *      separate `exports` entry, so a consumer can import tokens.css +
+ *      theme.css and skip preflight.css; then this list is the ONLY defence.
+ *
+ * Rule for adding to it: every bare `animate-*` utility that `packages/ui/src`
+ * puts on an element belongs here. `.animate-pulse` did not, for the whole of
+ * Skeleton's life, and the à-la-carte path pulsed for reduce users.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer-slide,
+  .animate-spin-around,
+  .animate-gradient,
+  .animate-marquee,
+  .animate-marquee-vertical,
+  .animate-first,
+  .animate-second,
+  .animate-third,
+  .animate-fourth,
+  .animate-fifth,
+  .animate-border-beam,
+  .animate-accordion-down,
+  .animate-accordion-up,
+  .animate-fade-in-up,
+  .animate-slide-in-left,
+  .animate-scale-in,
+  .animate-pulse,
+  .animate-meteor,
+  .animate-meteor-effect,
+  /* weave-reveal belongs in THIS list, unlike strand-draw below: its
+   * keyframe is from-only, so `animation: none` rests at the fully
+   * revealed end state — nothing to clamp, nothing hidden. */
+  .animate-weave-reveal {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* The draw gesture (MOTION_PHILOSOPHY's draw-gesture exception)
+   * completes instantly instead of vanishing: `animation: none` would
+   * hold stroke-dashoffset at 100 — the strand invisible forever —
+   * removing information, not motion. 0.01ms + the shorthand's
+   * `forwards` fill lands the honest drawn end state. */
+  .animate-strand-draw {
+    animation-duration: 0.01ms !important;
+  }
+}
+} /* end @layer interlace.primitives */

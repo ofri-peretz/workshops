@@ -16,10 +16,21 @@ the whole room's data together on the big screen.
 ## What's here
 
 - [`relay/`](relay/): Relay, the chat app every demo measures. Phones, big screen, status page.
-- `console/`: the presenter's console, run on the presenter's laptop (coming with Signals).
+- [`console/`](console/): the presenter's console (Next.js, Interlace DS), run on the presenter's laptop.
 - [`.sdlc/intents/`](.sdlc/intents/): what each change is for and how it was designed.
 
-## Run it locally
+## Run a workshop
+
+1. `cd console && cp .env.example .env.local`, fill it in, then `npm install && npm run dev`.
+2. Open http://localhost:4180, email yourself a sign-in link, open it on the same computer.
+3. **Go live**: the room opens for 2 hours with a join code good for 60 minutes. Open the big
+   screen (HDMI); the room scans the QR.
+4. **Close the room** when you're done. Every phone is out at once.
+
+The hosted room is closed unless the console opened it. Phones need the code; 5 wrong tries per
+network or 30 across the room stop guessing.
+
+## Run Relay alone, locally
 
 ```bash
 npm run relay        # http://localhost:8080 — phones at /, big screen at /screen

@@ -466,8 +466,12 @@
 
     <script>
       const T = new URLSearchParams(location.search).get("t");
-      // Phones join on the chat host; the projector may be on its own (screen.) host.
-      const JOIN = location.origin.replace("//screen.", "//chat.") + "/";
+      // Phones join on the chat host; the projector may be on its own (screen.) host. The presenter's
+      // console passes the public address and the join code (?join=…&c=…); the QR carries both.
+      const Q = new URLSearchParams(location.search);
+      const JOIN = Q.get("join") || location.origin.replace("//screen.", "//chat.") + "/";
+      const CODE = /^\d{6}$/.test(Q.get("c") || "") ? Q.get("c") : "";
+      const JOIN_QR = CODE ? JOIN + "?c=" + CODE : JOIN;
       const $ = (id) => document.getElementById(id);
       const esc = (s) =>
         String(s ?? "").replace(
@@ -489,11 +493,11 @@
             : Math.round(ms) + " ms";
       const gname = (ms, shown, i) =>
         shown ? (ms < 1000 ? "0.1 s" : ms / 1000 + " s") : "Group " + "ABCD"[i];
-      $("joinurl").textContent = JOIN.replace(/^https?:\/\//, "");
+      $("joinurl").textContent = JOIN.replace(/^https?:\/\//, "") + (CODE ? "  ·  code " + CODE : "");
       const qr = (el, size) => {
         try {
           new QRCode(el, {
-            text: JOIN,
+            text: JOIN_QR,
             width: size,
             height: size,
             correctLevel: QRCode.CorrectLevel.M,
@@ -573,7 +577,7 @@
             return `<h1>${esc(s.title)}</h1><div class="grid2"><div>${v.broken ? `<span class="pill bad">Relay is broken</span>` : `<span class="pill good">Relay is healthy</span>`}
         <p class="lead" style="margin-top:16px">${esc(s.lead)}</p></div><div class="g"><span class="label">Last 5 minutes · failed messages</span>${last.map((m) => `<div class="row"><span>${m.total} sent</span><b>${m.errors} failed</b></div>`).join("")}</div></div>`;
           }
-          return `<div class="grid2"><div style="display:grid;gap:22px"><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div></div><div class="qrbig" id="qrbig"></div></div>
+          return `<div class="grid2"><div style="display:grid;gap:22px"><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}</div><div class="qrbig" id="qrbig"></div></div>
       <div class="groups">${r.groups.map((g, i) => `<div class="g"><h3>${gname(g.ms, v.groupsShown, i)}</h3><div class="row"><span>Phones</span><b>${g.people}</b></div><div class="row"><span>Messages</span><b>${g.sends}</b></div></div>`).join("")}</div>`;
         },
         poll(v, s, r) {
