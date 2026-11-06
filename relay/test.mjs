@@ -53,7 +53,7 @@ assert.deepEqual([...r1.phones.values()].map((p) => p.group), [...r2.phones.valu
 assert.equal(r1.pos, 1);
 
 let coin = 0; // deterministic randomness: alternate 0 and 0.99
-const { server, store } = createServer({ scale: 0.01, token: "t", random: () => (coin++ % 2 ? 0.99 : 0) });
+const { server, store, code: CODE } = createServer({ scale: 0.01, token: "t", random: () => (coin++ % 2 ? 0.99 : 0) });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/api`;
 const room = () => store.room();
@@ -62,7 +62,7 @@ const ctl = (op, extra = {}) => fetch(base + "/control?t=t", { method: "POST", b
 const go = (id) => ctl("goto", { i: room().path.indexOf(id) });
 const screen = async () => (await fetch(base + "/screen?t=t")).json();
 async function phone() {
-  const r = await fetch(base + "/join", { method: "POST" });
+  const r = await fetch(base + "/join", { method: "POST", body: JSON.stringify({ code: CODE }) });
   const cookie = r.headers.get("set-cookie").split(";")[0];
   return (path, body, headers = {}) => fetch(base + path, { method: "POST", headers: { cookie, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
 }
@@ -207,6 +207,26 @@ await ctl("next");
 assert.equal(here(), "graphql", "Next without a vote takes the default detour");
 await ctl("start", { w: 3 });
 assert.equal((await screen()).total, 30);
+
+// ---- the room is closed unless the presenter opened it; the join code is guarded -----------------
+const join = (code, ip = "198.51.100.1") => fetch(base + "/join", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify({ code }) });
+const wrong = CODE === "000000" ? "000001" : "000000";
+const insider = await phone();
+assert.equal((await join("12")).status, 401, "a malformed code is refused");
+for (let i = 1; i <= 5; i++) assert.equal((await join(wrong)).status, 401, `wrong try ${i} is 401`);
+assert.equal((await join(CODE)).status, 429, "the 6th try from one network is rate-limited, even with the right code");
+assert.equal((await join(CODE, "198.51.100.2")).status, 200, "another network still joins");
+store.setAccess({ joinUntil: Date.now() - 1 });
+assert.equal((await join(CODE, "198.51.100.3")).status, 401, "an expired code admits nobody new");
+assert.equal((await insider("/curious")).status !== 403, true, "phones already in keep working after the code expires");
+store.setAccess({ joinUntil: Infinity, openedAt: Date.now() });
+for (let i = 0; i < 29; i++) await join(wrong, `203.0.113.${i}`);
+assert.equal((await join(wrong, "203.0.113.200")).status, 429, "30 wrong tries across the room lock joining");
+assert.equal((await join(CODE, "203.0.113.201")).status, 429, "locked means locked, even with the right code");
+store.setAccess({ liveUntil: Date.now() - 1 });
+for (const path of ["/view", "/send", "/status"]) assert.equal((await insider(path)).status, 403, `closed: ${path} is 403`);
+assert.equal((await fetch(base + "/status")).status, 403, "closed: the status page API is 403 too");
+assert.equal((await screen()).total !== undefined, true, "the presenter's screen still works while closed");
 
 server.close(); server.closeAllConnections?.();
 console.log("relay self-check: ok");

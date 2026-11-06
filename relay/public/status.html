@@ -203,9 +203,13 @@
         });
       async function load() {
         try {
-          const s = await (
-            await fetch("/api/status", { cache: "no-store" })
-          ).json();
+          const res = await fetch("/api/status", { cache: "no-store" });
+          if (res.status === 403) {
+            $("banner").className = "banner";
+            $("banner").textContent = "This workshop isn't running right now.";
+            return;
+          }
+          const s = await res.json();
           $("banner").className = "banner " + tone(s.overall);
           $("banner").textContent = s.overall;
           $("comps").innerHTML = s.components

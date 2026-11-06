@@ -3,11 +3,32 @@
 //   room()      the current room (core.mjs shape)
 //   append(ev)  write one event and fold it in
 //   bump(d)     atomically change the load scene's in-flight counter, returning the new value
+//   gate()      is the room live, and does the join code still admit phones?
+//   tryJoin(hmac, ip)  one join attempt: ok | wrong | rate_limited | locked | expired | closed
 import { fresh, reduce } from "./core.mjs";
 
-export function memoryStore() { // local runs and the self-check
+// Local runs and the self-check. Mirrors relay_gate() and relay_try_join() in migrations/.
+export function memoryStore() {
   let room = fresh(), id = 0, inflight = 0;
+  let access = { liveUntil: Infinity, joinUntil: Infinity, codeHmac: null, locked: false, openedAt: 0 }, fails = [];
+  const recent = (ip) => fails.filter((f) => f.at >= Math.max(Date.now() - 600_000, access.openedAt) && (ip === undefined || f.ip === ip)).length;
   return {
+    setAccess(a) { access = { ...access, ...a }; if (a.openedAt !== undefined) fails = []; },
+    async gate() {
+      const t = Date.now(), live = access.liveUntil > t;
+      return { live, joinable: live && access.joinUntil > t && !access.locked, locked: access.locked };
+    },
+    async tryJoin(hmac, ip) {
+      const t = Date.now();
+      if (!(access.liveUntil > t)) return "closed";
+      if (access.locked) return "locked";
+      if (!(access.joinUntil > t)) return "expired";
+      if (recent(ip) >= 5) return "rate_limited";
+      if (access.codeHmac && access.codeHmac === hmac) return "ok";
+      fails.push({ at: t, ip });
+      if (recent() >= 30) { access.locked = true; return "locked"; }
+      return "wrong";
+    },
     async sync() {},
     room: () => room,
     async append(ev) { ev.id = ++id; room = reduce(room, ev); return ev; },
@@ -25,7 +46,7 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
     if (!r.ok) throw new Error(`supabase ${r.status}: ${(await r.text()).slice(0, 200)}`);
     return r.status === 204 ? null : r.json();
   };
-  let room = fresh(), lastId = null, lastSync = 0, inflightSync = null;
+  let room = fresh(), lastId = null, lastSync = 0, inflightSync = null, gateAt = 0, gateCache = null;
 
   async function pull() {
     if (lastId === null) { // cold start: replay from the latest reset
@@ -55,5 +76,12 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
       return row;
     },
     async bump(d) { return rest("rpc/relay_bump", { method: "POST", body: JSON.stringify({ d }) }); },
+    async gate() { // cached briefly: every request asks, Close must still land within seconds
+      if (Date.now() - gateAt < 2000) return gateCache;
+      const [g] = await rest("rpc/relay_gate", { method: "POST", body: "{}" });
+      gateAt = Date.now(); gateCache = g ?? { live: false, joinable: false, locked: false };
+      return gateCache;
+    },
+    async tryJoin(hmac, ip) { gateAt = 0; return rest("rpc/relay_try_join", { method: "POST", body: JSON.stringify({ p_hmac: hmac, p_ip: ip }) }); },
   };
 }

@@ -183,6 +183,8 @@
         font-variant-numeric: tabular-nums;
         color: var(--fg);
       }
+      #gateForm { display: grid; gap: 10px; margin-top: 12px; }
+      #code { font: 600 28px/1.2 var(--mono); letter-spacing: 0.3em; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; box-sizing: border-box; }
       .label {
         font: 500 11px var(--mono);
         letter-spacing: 0.06em;
@@ -434,6 +436,15 @@
       <span id="where">Joining…</span>
     </header>
     <main>
+      <section id="gate" class="card" hidden aria-labelledby="gateTitle">
+        <h1 id="gateTitle">Join the workshop</h1>
+        <p id="gateMsg" role="status">Enter the 6-digit code from the big screen.</p>
+        <form id="gateForm">
+          <label for="code" class="label">Code</label>
+          <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required />
+          <button type="submit">Join</button>
+        </form>
+      </section>
       <section id="terms" class="card" hidden aria-label="Terms so far"></section>
       <div id="top"></div>
       <section id="chat" aria-label="Chat with Dana">
@@ -868,12 +879,37 @@
         if (view.type === "load") render();
       }
 
-      post("/api/join")
-        .then((r) => {
-          if (!r.ok) {
-            $("where").textContent = "Couldn't join";
-            return;
+      // The room is closed unless the presenter opened it. The QR carries the code (?c=); typing the
+      // address asks for it.
+      const gate = (msg, askCode) => {
+        $("gate").hidden = false;
+        $("gateForm").hidden = !askCode;
+        $("gateTitle").textContent = askCode ? "Join the workshop" : "Not running right now";
+        $("gateMsg").textContent = msg;
+        $("chat").hidden = true;
+        $("where").textContent = askCode ? "Code needed" : "Closed";
+      };
+      const join = (code) =>
+        post("/api/join", code ? { code } : {}).then((r) => {
+          if (r.ok) {
+            $("gate").hidden = true;
+            $("chat").hidden = false;
+            if (location.search) history.replaceState(null, "", location.pathname);
+            return enter(r);
           }
+          gate(r.body.error || "Couldn't join. Reload to try again.", r.body.needCode === true);
+          if (r.body.needCode) $("code").focus();
+        });
+      $("gateForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        join($("code").value.trim());
+      });
+      join(new URLSearchParams(location.search).get("c"))
+        .catch(() => {
+          $("where").textContent = "Offline — reload";
+        });
+      function enter(r) {
+        {
           view = r.body;
           render();
           const apply = (next) => {
@@ -888,15 +924,14 @@
           const poll = async () => { // every phone checks in; 1.5 s keeps 60 phones at ~40 req/s
             try {
               const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" });
+              if (r.status === 403) return gate("The presenter closed the workshop. Thanks for joining.", false);
               if (r.ok) apply(await r.json());
             } catch {}
             setTimeout(poll, 1500);
           };
           setTimeout(poll, 1500);
-        })
-        .catch(() => {
-          $("where").textContent = "Offline — reload";
-        });
+        }
+      }
     </script>
   </body>
 </html>

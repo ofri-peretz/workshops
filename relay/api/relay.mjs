@@ -6,6 +6,7 @@ import { supabaseStore } from "../store.mjs";
 const handle = createHandler({
   store: supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_KEY }),
   token: process.env.PRESENTER_TOKEN,
+  codeSecret: process.env.CODE_SECRET,
 });
 export const GET = handle;
 export const POST = handle;
