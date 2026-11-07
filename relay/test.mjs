@@ -164,7 +164,7 @@ assert.equal(sent.trace, TID, "the server continues the phone's trace");
 assert.deepEqual(checkTrace(sent.spans), [], "spans sit inside their parent and the required ones are there");
 assert.deepEqual(checkTrace(sent.spans.filter((x) => x.n !== "relay.deliver")), ["missing relay.deliver"], "mutation: a dropped span fails");
 const deliver = sent.spans.find((x) => x.n === "relay.deliver");
-const g3 = [...room().phones.values()][3].group;
+const g3 = room().phones.get(phones[3].cookie.split("=")[1]).group; // joins race, so look the phone up by its id
 assert.ok(deliver.d >= g3 * 0.01 * 0.8, "relay.deliver is the group's wait");
 assert.ok(!sent.spans.some((x) => x.n === "db.pool.acquire"), "no span on the pool wait before Add span");
 assert.equal((await phones[3]("/rtt", { ms: 500, trace: TID, spans: sent.spans, phases: { request: [5, 400], response: [405, 3] } })).status, 200);
