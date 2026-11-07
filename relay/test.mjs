@@ -37,7 +37,8 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
   // The arc every workshop follows: who I am, why it matters, what we'll cover; hands-on chapters;
   // then the case studies the room picks, the one thing for Monday, questions, and the outro.
-  assert.deepEqual(ids.slice(0, 2), ["today", "why"], `workshop ${w} opens on what we'll cover, then why (the host is on the waiting screen)`);
+  assert.equal(ids[0], "today", `workshop ${w} opens on what we'll cover (the host is on the waiting screen)`);
+  assert.ok(ids.indexOf("why") > 1 && ids.indexOf("why") < 5, `workshop ${w}: why it matters comes right after the room's first hands-on moment`);
   assert.deepEqual([ids.at(-4), ids.at(-2), ids.at(-1)], ["cases", "qa", "outro"], `workshop ${w} closes: case studies, Monday, questions, outro`);
   assert.ok(W.why?.title && W.why.lead && W.why.abt && CASES[W.why.case]?.source, `workshop ${w}: a why with a real case`);
   assert.ok(W.studies.length >= 3 && W.studies.every((c) => CASES[c]?.source), `workshop ${w}: at least 3 real case studies for the room to pick from`);
@@ -378,7 +379,7 @@ assert.equal((await closer.view()).timer.total, tm.total, "phones see the same c
 await go("today");
 assert.equal((await screen()).timer, undefined, "talk-only steps have no countdown");
 await go("why");
-assert.equal((await screen()).why.case.who, CASES[WORKSHOPS[5].why.case].who, "why it matters opens on a real case");
+assert.equal((await screen()).why.title, WORKSHOPS[5].why.title, "why it matters names the problem the room just felt");
 await go("cases");
 assert.deepEqual((await closer.view()).options, WORKSHOPS[5].studies.map((c) => CASES[c].who), "the room votes among the workshop's case studies");
 await closer("/answer", { value: 2 }); await other("/answer", { value: 2 });

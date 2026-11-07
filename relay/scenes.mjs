@@ -67,7 +67,7 @@ export const SCENES = [
     notes: "Two minutes. The Library menu can answer a question with any scene, but it costs time." },
 
   { id: "why", act: "Welcome", min: 1, type: "why", title: "Why this matters", phone: "Why today matters.", concepts: [], terms: [],
-    notes: "Say the workshop's And, But, Therefore: what's true, the problem, so what we'll do. One number, then move on." },
+    notes: "Right after the room felt it. Say the workshop's And, But, Therefore: what's true, the problem, so what we'll do. The case in why.case is yours to tell if it helps; it isn't on the slide." },
   { id: "cases", act: "Business use cases", min: 3, type: "cases", title: "Which one do we take apart?", phone: "Pick the case we take apart.", concepts: [], terms: [],
     notes: "The room votes among real cases with different root causes. Reveal shows the winner in three beats: what happened, why, the lesson. Tell it from the notes; offer the others in the recap." },
   { id: "outro", act: "What's next", min: 1, type: "outro", title: "This was one of four", phone: "Follow along: the next one, your recap, my links.", concepts: [], terms: [],

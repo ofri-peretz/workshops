@@ -498,6 +498,13 @@
       .clean { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: clamp(22px, 1.9vw, 34px); }
       ol.clean { counter-reset: c; } ol.clean li { counter-increment: c; } ol.clean li::before { content: counter(c); color: var(--primary); font-weight: 700; display: inline-block; min-width: 1.4em; }
       .asks li { color: var(--fg); } .asks li::before { content: "→ "; color: var(--primary); }
+      .path { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; counter-reset: s; }
+      .path li { counter-increment: s; display: grid; gap: 14px; align-content: start; padding-top: 18px; border-top: 3px solid var(--line); }
+      .path li:first-child { border-top-color: var(--primary); }
+      .path li::before { content: counter(s); font: 700 clamp(20px, 1.6vw, 28px)/1 var(--mono); color: var(--primary); }
+      .path li b { font-size: clamp(30px, 2.6vw, 46px); }
+      .path .chips span { font-size: clamp(16px, 1.2vw, 22px); }
+      .asks.big { font-size: clamp(30px, 2.8vw, 50px); gap: 24px; }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -826,7 +833,7 @@
         },
         why(v) {
           const w = v.why;
-          return `<span class="label">Why this matters</span><h1 style="font-size:clamp(48px,6vw,96px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p><p class="case"><span class="label">Case</span> <b>${esc(w.case.who)}</b> · ${esc(w.case.what)}</p>`;
+          return `<span class="label">Why this matters</span><h1 style="font-size:clamp(48px,6vw,96px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p>`;
         },
         cases(v, s, r) {
           if (!v.study) {
@@ -843,18 +850,14 @@
       <p class="muted">Source: ${esc(new URL(c.source).hostname)}</p>`;
         },
         outro(v) {
-          return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">Next · ${esc(v.next.track)}</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(v.next.what)}</h1>
-      <div class="series">${v.series.map((x) => `<div class="g ${x.status === "Today" ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div>
-      <div style="display:grid;gap:14px;align-content:start"><div class="g"><span class="label">Follow · track · review</span><span style="font-size:clamp(24px,2.2vw,34px);font-weight:600">Scan: the series, your recap, my links</span></div>${findMe(v)}</div></div>`;
+          return `<div class="grid2" style="align-items:center"><div style="display:grid;gap:22px"><span class="label">Now you can answer</span>
+      <ul class="clean asks big">${(v.answers || []).map((q) => `<li>${esc(q)}</li>`).join("")}</ul></div>
+      <div style="display:grid;gap:18px;justify-items:start"><span class="label">Next · ${esc(v.next.track)}</span><b style="font-size:clamp(28px,2.6vw,44px)">${esc(v.next.what)}</b>${findMe(v)}</div></div>`;
         },
         today(v) {
           const t = v.today;
           return `<div class="focus"><span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
-      <div class="cover3">
-        <section><span class="label">Concepts</span><ol class="clean">${t.parts.map((x) => `<li>${esc(x.concept)}</li>`).join("")}</ol></section>
-        <section><span class="label">Terms</span><div class="chips">${t.terms.map((x) => `<span>${esc(x.term)}</span>`).join("")}</div></section>
-        <section><span class="label">By the end, you'll answer</span><ul class="clean asks">${t.parts.map((x) => `<li>${esc(x.asks)}</li>`).join("")}</ul></section>
-      </div></div>`;
+      <ol class="path">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><div class="chips">${x.terms.map((term) => `<span>${esc(term)}</span>`).join("")}</div></li>`).join("")}</ol></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;

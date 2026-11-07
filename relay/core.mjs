@@ -350,7 +350,11 @@ const storyOf = (c) => c && { who: c.who, what: c.what, happened: c.happened, wh
 // Why it matters: the workshop's own hook (a composed program uses its first workshop's).
 const whyOf = (room) => { const w = WORKSHOPS[room.workshop].why; const c = CASES[w.case]; return { title: w.title, lead: w.lead, case: { who: c.who, what: c.what } }; };
 // The outro: tease the next workshop, and the three ways to stay with the series.
-const outroOf = (room) => ({ next: nextTrack(), series: SERIES, presenter: PRESENTER });
+const outroOf = (room) => {
+  const W = WORKSHOPS[room.workshop], parts = room.chapters.filter((c) => CHAPTERS[c].q);
+  const pick = (W.answers ?? parts).filter((c) => room.chapters.includes(c)).slice(0, 3);
+  return { next: nextTrack(), series: SERIES, presenter: PRESENTER, answers: pick.map((c) => CHAPTERS[c].asks) };
+};
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);

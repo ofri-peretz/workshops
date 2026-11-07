@@ -102,6 +102,10 @@
       .casecard { display: grid; gap: 4px; text-align: left; padding: 16px; }
       .casecard span { color: var(--muted); font-weight: 400; }
       @media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
+      .steps { list-style: none; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+      .steps li { counter-increment: s; display: grid; grid-template-columns: 24px 1fr; gap: 2px 8px; }
+      .steps li::before { content: counter(s); grid-row: span 2; font-weight: 700; color: var(--primary, var(--fg)); }
+      .steps li span { color: var(--muted); font-size: 14px; }
       .findme {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -691,7 +695,7 @@
       }
       const R = {
         why(v) {
-          return `<span class="label">Why this matters</span><h1>${esc(v.why.title)}</h1><p class="lead">${esc(v.why.lead)}</p><p class="card"><span class="label">Case</span> <b>${esc(v.why.case.who)}</b> · ${esc(v.why.case.what)}</p>`;
+          return `<span class="label">Why this matters</span><h1>${esc(v.why.title)}</h1><p class="lead">${esc(v.why.lead)}</p>`;
         },
         cases(v) {
           if (!v.study) return `<span class="label">Business use cases · you choose</span><h1>${esc(v.title)}</h1><div class="opts">${(v.cards || v.options.map((o) => ({ who: o, what: "" }))).map((c, i) => `<button type="button" class="casecard" data-a="${i}" aria-pressed="${v.mine === i}"><b>${esc(c.who)}</b><span>${esc(c.what)}</span></button>`).join("")}</div>${lockedIn(v)}`;
@@ -700,16 +704,14 @@
         },
         outro(v) {
           const li = v.presenter.links.find((l) => l.label === "LinkedIn");
-          return `<span class="label">Next · ${esc(v.next.track)}</span><h1>${esc(v.next.what)}</h1>
-      <nav class="findme" aria-label="Stay with the series"><a href="${esc(li.href)}">Follow on LinkedIn</a><a href="${esc(v.presenter.home)}">Track the series</a>${v.recap ? `<a data-testid="recap-link" href="${esc(v.recap)}">Your recap</a>` : ""}</nav>
-      <div class="card"><span class="label">The series</span>${v.series.map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div>`;
+          return `<span class="label">Now you can answer</span><div class="card">${(v.answers || []).map((q) => `<p>→ ${esc(q)}</p>`).join("")}</div>
+      <span class="label">Next · ${esc(v.next.track)}</span><h1>${esc(v.next.what)}</h1>
+      <nav class="findme" aria-label="Stay with the series"><a href="${esc(li.href)}">Follow on LinkedIn</a><a href="${esc(v.presenter.home)}">Track the series</a>${v.recap ? `<a data-testid="recap-link" href="${esc(v.recap)}">Your recap</a>` : ""}</nav>`;
         },
         today(v) {
           const t = v.today;
           return `<span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
-      <div class="card"><span class="label">Concepts</span>${t.parts.map((x, i) => `<p><b>${i + 1}.</b> ${esc(x.concept)}</p>`).join("")}</div>
-      <div class="card"><span class="label">Terms</span><p>${t.terms.map((x) => esc(x.term)).join(" · ")}</p></div>
-      <div class="card"><span class="label">By the end, you'll answer</span>${t.parts.map((x) => `<p>→ ${esc(x.asks)}</p>`).join("")}</div>`;
+      <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span>${x.terms.map(esc).join(" · ")}</span></li>`).join("")}</ol>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
