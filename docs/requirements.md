@@ -15,7 +15,7 @@ built (✅), partly built (◐) or still open (☐). Change this file when a req
 - ✅ The presenter can end any vote at any time (R); the majority wins. Every choice shows
   "N of M chose", so the presenter sees who hasn't chosen.
 - ✅ Keyboard shortcuts on the big screen (`?` lists them). The control bar hides when the mouse rests.
-- ✅ Every step has a deep link (`/screen?t=…#<step>`).
+- ✅ Every step has a deep link: the address shows it (`#<step>`); `/screen?t=…&go=<step>` jumps there. A stale tab never moves the room.
 - ✅ Environments: on localhost the screen shows localhost; through `npm run tunnel` (practice with
   real phones over a Cloudflare tunnel) the tunnel; anywhere else the real domain. Recap and
   follow-up links use the address the phone came in on.

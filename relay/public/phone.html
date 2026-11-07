@@ -536,6 +536,7 @@
       #nameform input { font: 600 20px var(--sans); padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
       a.cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font-weight: 600; text-decoration: none; }
       a.cta.primary-cta { min-height: 64px; font-size: 18px; background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+      .me { display: flex; gap: 16px; align-items: center; } .me img { border-radius: 50%; flex: none; }
       @media (prefers-reduced-motion: reduce) { body.enter #rest > *, body.enter #top > * { animation: none; } button, .findme a { transition: none; } }
     </style>
   </head>
@@ -928,11 +929,8 @@
           return `<h1>${esc(v.title)}</h1>${ctrl}<div class="card"><div class="row"><span>Requests you sent</span><b>${L.n}</b></div><div class="row"><span>Last answer took</span><b>${fmt(L.last)}</b></div></div>${leadHtml(v)}`;
         },
         intro(v) {
-          const who = v.intro === "returning"
-            ? `<h1>Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
-            : `<h1>${esc(v.title)}</h1><p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>`;
-          return `<span class="label">${esc(v.workshop)}</span><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="96" height="96" style="border-radius:50%" />${who}${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}${findMe(v)}
-      <div class="card"><span class="label">The series</span>${(v.series || []).map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div>`;
+          const who = v.intro === "returning" ? `<p class="lead">Welcome back</p>` : `<p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>`;
+          return `<div class="me"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="88" height="88" /><div><span class="label">Your host</span><h1>${esc(v.presenter.name)}</h1></div></div>${who}${findMe(v)}`;
         },
         next(v) {
           return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
@@ -967,6 +965,7 @@
         if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()} · #${v.rank}`;
         document.body.classList.toggle("eyes", !!v.eyes);
         terms(v.terms);
+        if (v.needName && document.getElementById("nameform")) return; // don't redraw under someone typing their name
         $("chat").classList.toggle("on", v.type === "chat");
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
@@ -979,7 +978,7 @@
           $("top").innerHTML = "";
           $("rest").innerHTML = html;
         }
-        if (!NO_DEEPER.has(v.type))
+        if (!NO_DEEPER.has(v.type) && !v.needName)
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
         const nf = $("nameform");
         if (nf) nf.onsubmit = async (e) => {

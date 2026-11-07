@@ -101,7 +101,8 @@ test.describe("relay", () => {
     await control(page, { op: "begin" });
     await page.reload();
     await expect(page.locator("#where")).toHaveText("Welcome"); // Begin opens on who I am (returning group)
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ofri Peretz" })).toBeVisible();
+    await expect(page.getByText("Welcome back")).toBeVisible();
     const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;
     await control(page, { op: "goto", i: n - 1 });
     await page.reload();

@@ -250,7 +250,7 @@
         position: relative;
       }
       .bar.right .t i {
-        background: var(--good-bg);
+        background: color-mix(in oklab, var(--good) 30%, transparent); /* visible in both themes */
         border-color: var(--good);
       }
       .bar.right .t span::before {
@@ -529,7 +529,10 @@
       .scard em { position: absolute; top: 20px; right: 20px; font: 700 14px/1 var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary-fg); background: var(--primary); padding: 8px 12px; border-radius: 999px; }
       @keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
       @media (prefers-reduced-motion: reduce) { .scard { animation: none; } }
-      .board { position: fixed; right: 36px; top: 120px; width: min(420px, 32vw); display: grid; gap: 10px; padding: 24px; border-radius: 24px; background: color-mix(in oklab, var(--card) 92%, transparent); border: 1px solid var(--primary); box-shadow: 0 30px 80px -40px var(--primary); animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      .withboard { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); gap: 36px; align-items: start; }
+      .withboard .main { display: grid; gap: 22px; min-width: 0; }
+      .who-voted .label { display: block; margin-bottom: 4px; }
+      .board { display: grid; gap: 10px; padding: 24px; border-radius: 24px; background: color-mix(in oklab, var(--card) 92%, transparent); border: 1px solid var(--primary); box-shadow: 0 30px 80px -40px var(--primary); animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
       .board .row { display: flex; justify-content: space-between; font-size: clamp(20px, 1.6vw, 28px); }
       .board .row b { color: var(--primary); margin-right: 10px; }
       .board em { font: 700 1em/1 var(--mono); font-style: normal; }
@@ -982,10 +985,10 @@
         const key = `${v.begun}:${s.id}:${v.shown}:${v.study ? v.study.who : ""}`, changed = key !== lastKey;
         lastKey = key;
         $("stage").classList.toggle("enter", changed);
-        // Deep link: the address names the step (#mean); opening it jumps the room there once.
+        // Deep link: the address shows the step (#mean); /screen?…&go=mean jumps the room there once.
         if (!deepLinked) {
           deepLinked = true;
-          const want = decodeURIComponent(location.hash.slice(1)), k = v.path.indexOf(want);
+          const want = Q.get("go") || "", k = v.path.indexOf(want); // only an explicit ?go= jumps; a stale #step never moves the room
           if (want && k >= 0 && k !== v.i) return control("goto", { i: k });
         }
         if (v.begun && v.path[v.i] && location.hash.slice(1) !== v.path[v.i]) history.replaceState(null, "", "#" + v.path[v.i]);
@@ -994,7 +997,8 @@
         document.body.classList.toggle("eyes", !!v.eyes);
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who + board;
+        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
+        if (board) $("stage").innerHTML = `<div class="withboard"><div class="main">${$("stage").innerHTML}</div>${board}</div>`; // the board gets its own column
         const big = $("qrbig");
         if (big) qr(big, 240);
       }
