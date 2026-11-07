@@ -549,7 +549,7 @@
       .tile span { color: var(--muted); font-size: clamp(16px, 1.2vw, 20px); }
       .tile b { font: 700 clamp(30px, 2.6vw, 46px)/1 var(--mono); }
       .tile i { position: absolute; top: 16px; right: 18px; color: var(--good); font-style: normal; font-size: 22px; }
-      .phonemock { justify-self: center; width: min(300px, 100%); aspect-ratio: 9 / 16; border-radius: 36px; border: 10px solid #2a2622; background: var(--bg); display: grid; align-content: end; gap: 10px; padding: 18px; }
+      .phonemock { justify-self: center; width: min(280px, 100%); height: min(34vh, 320px); border-radius: 36px; border: 10px solid #2a2622; background: var(--bg); display: grid; align-content: end; gap: 10px; padding: 18px; }
       .bubble { justify-self: end; max-width: 85%; padding: 12px 14px; border-radius: 18px 18px 4px 18px; background: var(--primary); color: var(--primary-fg); font-size: 16px; opacity: 0.6; }
       .sending { justify-self: end; color: var(--muted); font-size: 15px; } .sending b { color: var(--bad); }
       .beats { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 12px; }
@@ -847,7 +847,7 @@
           return `<div class="hist">${rows.map(([k, n], i) => `<div style="--i:${i}"><code>${k}</code><span class="hbar"><i style="width:${(100 * n) / max}%"></i></span><b>${n}</b></div>`).join("")}</div>
             <p class="muted">p95 from the buckets: <b>${fmt(r.p95FromBuckets)}</b> · exact p95: <b>${fmt(r.p95)}</b> · ${r.count} messages</p>`;
         }
-        if (st.live === "counter") return `<div class="anat"><div><code>Counter</code><b>${r.lines ?? 0}</b><span>messages the room has sent so far</span></div><div><code>Gauge</code><b>${r.people ?? 0}</b><span>people connected right now</span></div></div>`;
+        if (st.live === "counter") return `<div class="anat"><div><code>Counter</code><b>${r.lines ?? 0} messages</b><span>only goes up, like an odometer</span></div><div><code>Gauge</code><b>${r.people ?? 0} people online</b><span>up and down, like a fuel gauge</span></div><div><code>Histogram</code><b>${r.lines ?? 0} waits</b><span>each one counted in a range: next</span></div></div>`;
         if (st.live === "slo") {
           const n = r.lines || 0, bad = n - (r.good || 0), failed = r.by?.ERROR || 0, pc = (x) => (n ? ((100 * x) / n).toFixed(1) : "0") + "%";
           return `<div class="anat"><div><code>Promise kept</code><b>${pc(r.good || 0)}</b><span>of ${n} messages: delivered within 1 s</span></div>
@@ -860,7 +860,8 @@
           const per = r.lines ? r.bytes / r.lines : 220, day = (per * 1000 * 86400) / 1e9;
           return `<div class="anat"><div><code>This room</code><b>${r.lines || 0} lines</b><span>${((r.bytes || 0) / 1024).toFixed(1)} KB so far, ~${Math.round(per)} bytes a line</span></div>
             <div><code>At 1,000 requests a second</code><b>${day.toFixed(0)} GB a day</b><span>about ${(day * 30 / 1000).toFixed(1)} TB a month</span></div>
-            <div><code>CloudWatch Logs</code><b>~$${Math.round(day * 30 * 0.5).toLocaleString()} a month</b><span>to send it in, at $0.50 per GB, before storage</span></div></div>`;
+            <div><code>CloudWatch Logs</code><b>~$${Math.round(day * 30 * 0.5).toLocaleString()} a month</b><span>to send it in, at $0.50 per GB, before storage</span></div>
+            <div><code>Datadog, every line indexed</code><b>~$${Math.round(((1000 * 86400 * 30) / 1e6) * 1.7).toLocaleString()} a month</b><span>2.6 billion lines at $1.70 per million</span></div></div>`;
         }
         return "";
       }
@@ -1034,9 +1035,9 @@
         why(v, s, r = {}) {
           const w = v.why, n = r.total || 0;
           const tiles = [["Messages delivered", n ? `${Math.round((100 * (n - r.failed)) / n)}%` : "100%"], ["Errors", String(r.failed || 0)], ["Servers", "up"], ["CPU", "40%"]];
-          return `<div class="hook"><div class="dash">${tiles.map(([k, x]) => `<div class="tile"><span>${k}</span><b>${x}</b><i>✓</i></div>`).join("")}</div>
-      <div class="phonemock"><div class="bubble">Running late, start without me</div><div class="sending">${r.slowest ? "Your slowest message took" : "Sending…"} <b>${r.slowest ? fmt(r.slowest) : "7 s"}</b></div></div></div>
-      <h1 style="font-size:clamp(44px,5vw,84px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p>`;
+          return `<h1 style="font-size:clamp(40px,4.4vw,76px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p><div class="hook"><div class="dash">${tiles.map(([k, x]) => `<div class="tile"><span>${k}</span><b>${x}</b><i>✓</i></div>`).join("")}</div>
+      <div class="phonemock"><div class="bubble">Running late, start without me</div><div class="sending">${r.slowest ? "The room's slowest message took" : "Sending…"} <b>${r.slowest ? fmt(r.slowest) : "7 s"}</b></div></div></div>
+`;
         },
         cases(v, s, r) {
           if (!v.study) {

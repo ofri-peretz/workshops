@@ -886,7 +886,7 @@
           return `<div class="hist">${rows.map(([k, n], i) => `<div style="--i:${i}"><code>${k}</code><span class="hbar"><i style="width:${(100 * n) / max}%"></i></span><b>${n}</b></div>`).join("")}</div>
             <p class="muted">p95 from the buckets: <b>${fmt(r.p95FromBuckets)}</b> · exact p95: <b>${fmt(r.p95)}</b> · ${r.count} messages</p>`;
         }
-        if (st.live === "counter") return `<div class="anat"><div><code>Counter</code><b>${r.lines ?? 0}</b><span>messages the room has sent so far</span></div><div><code>Gauge</code><b>${r.people ?? 0}</b><span>people connected right now</span></div></div>`;
+        if (st.live === "counter") return `<div class="anat"><div><code>Counter</code><b>${r.lines ?? 0} messages</b><span>only goes up, like an odometer</span></div><div><code>Gauge</code><b>${r.people ?? 0} people online</b><span>up and down, like a fuel gauge</span></div><div><code>Histogram</code><b>${r.lines ?? 0} waits</b><span>each one counted in a range: next</span></div></div>`;
         if (st.live === "slo") {
           const n = r.lines || 0, bad = n - (r.good || 0), failed = r.by?.ERROR || 0, pc = (x) => (n ? ((100 * x) / n).toFixed(1) : "0") + "%";
           return `<div class="anat"><div><code>Promise kept</code><b>${pc(r.good || 0)}</b><span>of ${n} messages: delivered within 1 s</span></div>
@@ -899,7 +899,8 @@
           const per = r.lines ? r.bytes / r.lines : 220, day = (per * 1000 * 86400) / 1e9;
           return `<div class="anat"><div><code>This room</code><b>${r.lines || 0} lines</b><span>${((r.bytes || 0) / 1024).toFixed(1)} KB so far, ~${Math.round(per)} bytes a line</span></div>
             <div><code>At 1,000 requests a second</code><b>${day.toFixed(0)} GB a day</b><span>about ${(day * 30 / 1000).toFixed(1)} TB a month</span></div>
-            <div><code>CloudWatch Logs</code><b>~$${Math.round(day * 30 * 0.5).toLocaleString()} a month</b><span>to send it in, at $0.50 per GB, before storage</span></div></div>`;
+            <div><code>CloudWatch Logs</code><b>~$${Math.round(day * 30 * 0.5).toLocaleString()} a month</b><span>to send it in, at $0.50 per GB, before storage</span></div>
+            <div><code>Datadog, every line indexed</code><b>~$${Math.round(((1000 * 86400 * 30) / 1e6) * 1.7).toLocaleString()} a month</b><span>2.6 billion lines at $1.70 per million</span></div></div>`;
         }
         return "";
       }
