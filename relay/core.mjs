@@ -6,7 +6,7 @@ import { WORKSHOPS, SERIES, CHAPTERS, spineOf, partsOf, termsOf } from "./worksh
 import { GLOSSARY } from "./concepts.mjs";
 import { CASES } from "./cases.mjs";
 
-export const GROUPS = [100, 1000, 3000, 7000]; // ms per chat message, hidden until revealed
+export const GROUPS = [100, 300, 500, 1000, 3000, 7000]; // ms per chat message, hidden until revealed
 export const NINES = [99, 99.9, 99.95, 99.99, 99.999];
 export const SLO_MS = [100, 300, 1000];
 export const SLO_PCT = [99, 99.9, 99.99];
@@ -251,6 +251,9 @@ export function results(room, s, now) {
       }),
       outage: outage(room, now),
     };
+    case "step": { // the live example under an explainer: the latest line, the room's lines by level, their size
+      const lines = room.chat.map(logLine), bytes = lines.reduce((a, l) => a + JSON.stringify(l).length + 1, 0);
+      return { line: lines.at(-1) ?? null, lines: lines.length, bytes, by: Object.fromEntries(LEVELS.map(([k]) => [k, lines.filter((l) => l.level === k.toLowerCase()).length])) }; }
     case "basics": { const ms = room.chat.filter((c) => c.ok).map(waited).filter((x) => x != null);
       return { min: ms.length ? Math.round(Math.min(...ms)) : null, max: ms.length ? Math.round(Math.max(...ms)) : null, failed: room.chat.filter((c) => !c.ok).length, total: room.chat.length }; }
     case "spread": { // every message the room sent, and where the average and the percentiles land
@@ -390,7 +393,7 @@ export function phoneView(room, p) {
   if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, part: partOf(room), people: room.phones.size, presenter: PRESENTER, terms: [],
     minutes: minutes(room, room.path.length), parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), host: { name: PRESENTER.name, photo: PRESENTER.photo, lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items } }; } // phones: tech only
   const s = sceneAt(room), shown = room.shown.has(s.id), W = titled(room);
-  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, how: s.how, items: s.type === "show" ? s.items : undefined, phone: s.phone, link: s.link,
+  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, how: s.how, step: s.type === "step" ? { flow: s.flow, viz: s.viz, example: s.example, live: s.live, parts: s.parts } : undefined, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
     shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined,
@@ -402,7 +405,8 @@ export function phoneView(room, p) {
   if (s.type === "series") Object.assign(v, { series: SERIES, part: partOf(room) });
   if (s.type === "scan") v.people = room.phones.size;
   if (s.type === "road") v.road = roadOf(room, s, p, Date.now());
-  if ((s.type === "spread" || s.type === "basics") ) v.results = results(room, s, Date.now());
+  if (s.type === "spread" || s.type === "basics" || (s.type === "step" && s.live)) v.results = results(room, s, Date.now());
+  if (s.type === "step" && s.live && p) { const m = room.chat.findLast((c) => c.id === p.id); v.myLine = m ? logLine(m) : null; }
   if (s.type === "spread" && p) v.mineMs = pct(room.chat.filter((c) => c.id === p.id && c.ok).map(waited).filter((x) => x != null), 0.5);
   v.timer = timerOf(room, s);
   if (p) v.score = scoreOf(room, p);

@@ -74,7 +74,7 @@ for (const [id, c] of Object.entries(CHAPTERS)) {
   if (!c.q) continue;
   const ids = c.scenes.flatMap((x) => (typeof x === "string" ? [x] : x.detours.flatMap((d) => d.scenes)));
   const first = typeof c.scenes[0] === "string" ? SCENE[c.scenes[0]] : { type: "fork" };
-  assert.ok(HANDS_ON.has(first.type) || first.case, `${id}: opens on a question, a case, or the room doing something`);
+  assert.ok(HANDS_ON.has(first.type) || first.case || first.live, `${id}: opens on a question, a case, or the room doing something`);
   assert.ok(ids.some((x) => HANDS_ON.has(SCENE[x].type)), `${id}: the room tries it on their phones`);
   assert.ok(c.remember && c.remember.split(/\s+/).length <= 8 && !/\.$/.test(c.remember), `${id}: one line to remember, 8 words at most, no period`);
   assert.ok(c.name.split(/\s+/).length <= 3 && c.q.split(/\s+/).length <= 8, `${id}: name 3 words, question 8`);
@@ -109,9 +109,9 @@ async function phone() {
   return call;
 }
 
-// Four phones land in four different groups; slower groups wait longer.
-let phones = await Promise.all([1, 2, 3, 4].map(phone));
-assert.deepEqual(GROUPS.map((g) => [...room().phones.values()].filter((p) => p.group === g).length), [1, 1, 1, 1]);
+// Six phones fill the six groups; slower groups wait longer.
+let phones = await Promise.all([1, 2, 3, 4, 5, 6].map(phone));
+assert.deepEqual(GROUPS.map((g) => [...room().phones.values()].filter((p) => p.group === g).length), [1, 1, 1, 1, 1, 1]);
 const times = await Promise.all(phones.map(async (call) => { const t0 = performance.now(); await call("/send", {}); return performance.now() - t0; }));
 assert.ok(Math.max(...times) >= 60 && Math.min(...times) < Math.max(...times), "groups differ (7 s → 70 ms at scale 0.01)");
 
@@ -353,7 +353,7 @@ assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<sc
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
 const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
-assert.ok(lib.find((c) => c.id === "sig-logs").min === 6 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.ok(lib.find((c) => c.id === "sig-logs").min === CHAPTERS["sig-logs"].scenes.reduce((t, id) => t + SCENE[id].min, 0) && lib.every((c) => c.q), "the console reads the chapter library with minutes");
 assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });

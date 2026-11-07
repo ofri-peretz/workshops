@@ -267,7 +267,7 @@
       }
       .groups {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 14px;
       }
       .g {
@@ -599,7 +599,19 @@
       .welcome .here { font-size: clamp(28px, 2.6vw, 44px); font-weight: 700; }
       .how { margin: 0 0 12px; padding: 8px 16px; border-left: 4px solid var(--primary); color: var(--muted); font-size: 1.3rem; }
     .how .label { margin-right: 8px; }
-</style>
+      .stepsvg text { font-family: var(--sans); }
+      .stepsvg { width: 100%; height: auto; display: block; overflow: visible; }
+      .stepex { display: grid; gap: 6px; margin-top: 10px; }
+      .stepex pre { font-size: clamp(18px, 1.45vw, 28px); white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px 18px; }
+      .anat { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); font-size: clamp(18px, 1.4vw, 24px); }
+      .anat > div { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr); column-gap: 12px; align-items: baseline; padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+      .anat code { font-weight: 700; color: var(--primary); }
+      .anat b { overflow-wrap: anywhere; font-family: var(--mono); font-size: 0.9em; }
+      .anat span { grid-column: 2; color: var(--muted); font-size: 0.85em; }
+      .anat.levels .lv-error code, .anat.levels .lv-fatal code { color: var(--bad); }
+      .stepitems { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+      .stepitems li { padding: 10px 14px; border-left: 3px solid var(--primary); background: var(--card); border-radius: 8px; }
+    </style>
   </head>
   <body>
     <div class="top">
@@ -671,8 +683,9 @@
           : ms >= 1000
             ? (ms / 1000).toFixed(1) + " s"
             : Math.round(ms) + " ms";
+      const GMS = [100, 300, 500, 1000, 3000, 7000]; // mirrors core GROUPS
       const gname = (ms, shown, i) =>
-        shown ? (ms < 1000 ? "0.1 s" : ms / 1000 + " s") : "Group " + "ABCD"[i];
+        shown ? ms / 1000 + " s" : "Group " + "ABCDEF"[i];
       $("joinurl").textContent = JOIN.replace(/^https?:\/\//, "") + (CODE ? "  ·  code " + CODE : "");
       const qr = (el, size, text = JOIN_QR) => {
         try {
@@ -758,6 +771,84 @@
       };
       const findMe = (v) =>
         `<div class="findme"><div style="display:grid;gap:6px"><span class="label">Find me</span><b>${esc(v.presenter.home.replace(/^https:\/\//, ""))}</b><span class="muted brands">${v.presenter.links.map((l) => `${ICON[l.icon] || ""}${esc(l.label)}`).join("")}</span></div></div>`;
+      // ---- explainer steps: one idea, one picture. Boxes build up across steps (dim = later), and one
+      // token moves once when the step opens. No loops; reduced motion shows the end state.
+      const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const once = (attr, from, to, begin = "0.3s", dur = "1.3s") =>
+        CALM ? "" : `<animate attributeName="${attr}" from="${from}" to="${to}" begin="${begin}" dur="${dur}" fill="freeze" calcMode="spline" keySplines="0.2 0.7 0.2 1" keyTimes="0;1"/>`;
+      function flowSvg(f, small) {
+        const n = f.nodes.length, W = small ? 360 : 960, gap = small ? 10 : 28, bw = (W - gap * (n - 1)) / n, H = small ? 120 : 150, y = small ? 24 : 30, bh = small ? 52 : 64;
+        const cx = (i) => i * (bw + gap) + bw / 2, upto = f.upto ?? n - 1, fs = small ? 11 : 17;
+        const boxes = f.nodes.map((t, i) => {
+          const on = i <= upto, hi = i === f.hi;
+          const words = String(t).split(" "), mid = Math.ceil(words.length / 2), lines = small && words.length > 1 ? [words.slice(0, mid).join(" "), words.slice(mid).join(" ")] : [t];
+          return `<g opacity="${on ? 1 : 0.28}"><rect x="${i * (bw + gap)}" y="${y}" width="${bw}" height="${bh}" rx="12" fill="var(--card)" stroke="${hi ? "var(--primary)" : "var(--line)"}" stroke-width="${hi ? 3 : 1.5}"/>
+            ${lines.map((l, k) => `<text x="${cx(i)}" y="${y + bh / 2 + (k - (lines.length - 1) / 2) * (fs + 2) + fs / 3}" text-anchor="middle" style="fill:var(--fg);font-size:${fs}px;font-weight:${hi ? 700 : 500}">${esc(l)}</text>`).join("")}</g>`;
+        }).join("");
+        const arrows = f.nodes.slice(1).map((_, i) => `<path d="M${(i + 1) * (bw + gap) - gap + 2} ${y + bh / 2} h${gap - 6}" stroke="var(--muted)" stroke-width="2" marker-end="url(#ah)" opacity="${i + 1 <= upto ? 1 : 0.28}"/>`).join("");
+        let token = "";
+        if (f.move) {
+          const [a, b] = f.move, x0 = cx(a), x1 = cx(b), ty = y + bh + (small ? 22 : 30), tw = Math.max(small ? 70 : 110, String(f.token || "").length * (small ? 6.6 : 9.5) + 20);
+          token = `<g transform="translate(${CALM ? x1 : x0} 0)"><rect x="${-tw / 2}" y="${ty - (small ? 13 : 17)}" width="${tw}" height="${small ? 22 : 30}" rx="${small ? 11 : 15}" fill="var(--primary)"/><text x="0" y="${ty + (small ? 2 : 3)}" text-anchor="middle" style="fill:var(--primary-fg, #fff);font-size:${small ? 11 : 15}px;font-weight:700">${esc(f.token || "")}</text>
+            ${CALM ? "" : `<animateTransform attributeName="transform" type="translate" from="${x0} 0" to="${x1} 0" begin="0.4s" dur="1.4s" fill="freeze" calcMode="spline" keySplines="0.3 0 0.2 1" keyTimes="0;1"/>`}</g>`;
+        }
+        return `<svg class="stepsvg" viewBox="-2 0 ${W + 4} ${H}" role="img" aria-label="${esc(f.nodes.slice(0, upto + 1).join(" → "))}"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>${arrows}${boxes}${token}</svg>`;
+      }
+      const VIZ = {
+        // 20 people's waits, slowest last: where p50, p95 and the average land
+        lineup(r, small) {
+          const ws = [0.2, 0.2, 0.25, 0.3, 0.3, 0.3, 0.35, 0.4, 0.4, 0.4, 0.45, 0.5, 0.5, 0.55, 0.6, 0.6, 0.7, 0.8, 5, 5];
+          const avg = ws.reduce((a, b) => a + b) / ws.length, W = small ? 360 : 960, H = small ? 170 : 260, base = H - 30, top = 16, bw = W / ws.length;
+          const h = (s) => ((base - top) * Math.min(s, 5)) / 5, ya = base - h(avg);
+          const bars = ws.map((s, i) => `<rect x="${i * bw + 2}" y="${base - h(s)}" width="${bw - 4}" height="${h(s)}" rx="3" fill="${i === 9 ? "var(--fg)" : i === 18 ? "var(--c1)" : "var(--c2)"}" opacity="${i === 9 || i === 18 ? 1 : 0.55}">${once("height", 0, h(s), `${0.1 + i * 0.04}s`, "0.5s")}${once("y", base, base - h(s), `${0.1 + i * 0.04}s`, "0.5s")}</rect>`).join("");
+          const fs = small ? 11 : 16;
+          return `<svg class="stepsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="20 waits in order: p50 0.45 s, p95 5 s, average ${avg.toFixed(2)} s">${bars}
+            <line x1="0" x2="${W}" y1="${ya}" y2="${ya}" stroke="var(--bad)" stroke-width="2" stroke-dasharray="6 5"/><text x="4" y="${ya - 6}" style="fill:var(--bad);font-size:${fs}px;font-weight:700">average ${avg.toFixed(2)} s: nobody waited this</text>
+            <text x="${9.5 * bw}" y="${H - 8}" text-anchor="middle" style="fill:var(--fg);font-size:${fs}px;font-weight:700">p50 0.45 s</text>
+            <text x="${18.5 * bw}" y="${H - 8}" text-anchor="middle" style="fill:var(--c1);font-size:${fs}px;font-weight:700">p95 5 s</text></svg>`;
+        },
+        // sync vs async: the request bar with and without waiting for the log to be sent
+        buffer(r, small) {
+          const W = small ? 360 : 960, fs = small ? 11 : 16, L = small ? 70 : 140, u = (W - L - 10) / 300, row = small ? 46 : 64;
+          const bar = (y, x, w, fill, label, begin) => `<rect x="${L + x * u}" y="${y}" width="${w * u}" height="${row - 22}" rx="6" fill="${fill}">${once("width", 0, w * u, begin, "0.6s")}</rect><text x="${L + x * u + 6}" y="${y + (row - 22) / 2 + fs / 3}" style="fill:var(--primary-fg, #fff);font-size:${fs}px;font-weight:600">${label}</text>`;
+          return `<svg class="stepsvg" viewBox="0 0 ${W} ${row * 2 + 40}" role="img" aria-label="Sync: the request waits 120 ms more for the log. Async: it doesn't; logs leave later in a batch">
+            <text x="0" y="${row / 2}" style="fill:var(--fg);font-size:${fs}px;font-weight:700">Sync</text>${bar(8, 0, 80, "var(--c2)", "work", "0.2s")}${bar(8, 80, 120, "var(--bad)", "wait for log store", "0.8s")}<text x="${L + 204 * u}" y="${row / 2}" style="fill:var(--fg);font-size:${fs}px;font-weight:700">answer: 200 ms</text>
+            <text x="0" y="${row + row / 2}" style="fill:var(--fg);font-size:${fs}px;font-weight:700">Async</text>${bar(row + 8, 0, 80, "var(--c2)", "work", "1.6s")}<text x="${L + 84 * u}" y="${row + row / 2}" style="fill:var(--fg);font-size:${fs}px;font-weight:700">answer: 80 ms · line into memory</text>
+            ${bar(row * 2 + 4, 220, 70, "var(--c1)", "batch", "2.3s")}<text x="${L + 218 * u}" y="${row * 2 + 4 + (row - 22) / 2 + fs / 3}" text-anchor="end" style="fill:var(--muted);font-size:${fs}px">every few seconds, off the request:</text></svg>`;
+        },
+        // a trace as a waterfall: each span appears in turn
+        spans(r, small) {
+          const S = [["POST /send", 0, 300, 0], ["auth.check", 10, 40, 1], ["db.insert", 60, 150, 1], ["push.notify", 220, 70, 1]];
+          const W = small ? 360 : 960, L = small ? 96 : 190, u = (W - L - 10) / 300, row = small ? 30 : 42, fs = small ? 11 : 16;
+          return `<svg class="stepsvg" viewBox="0 0 ${W} ${S.length * row + 26}" role="img" aria-label="One trace: POST /send 300 ms, containing auth.check, db.insert and push.notify">${S.map(([n, st, d, depth], i) => `<g opacity="${CALM ? 1 : 0}">${once("opacity", 0, 1, `${0.2 + i * 0.45}s`, "0.4s")}
+            <text x="${depth * 14}" y="${i * row + row / 2 + fs / 3}" style="fill:var(--fg);font-size:${fs}px">${n}</text><rect x="${L + st * u}" y="${i * row + 5}" width="${d * u}" height="${row - 12}" rx="5" fill="${i ? "var(--c2)" : "var(--c1)"}"/><text x="${L + (st + d) * u + 6}" y="${i * row + row / 2 + fs / 3}" style="fill:var(--muted);font-size:${fs}px">${d} ms</text></g>`).join("")}
+            <text x="${L}" y="${S.length * row + 20}" style="fill:var(--muted);font-size:${fs}px">One trace id on every bar. Each bar is a span.</text></svg>`;
+        },
+      };
+      const LEVEL_SAYS = { DEBUG: "Detail for developers. Off in production", INFO: "Normal: a request finished", WARN: "Odd, still working: a slow request", ERROR: "A request failed: someone should fix it", FATAL: "The program stops: wake someone" };
+      function liveOf(st, r = {}, mine) {
+        const line = mine || r.line;
+        const who = mine ? "Your last message" : "The room's latest message";
+        if (st.live === "line") return line ? `<div class="stepex"><span class="label">${who}, as a log line</span><pre class="logline">${esc(JSON.stringify(line))}</pre></div>` : `<p class="muted">Send Dana a message to see its line.</p>`;
+        if (st.live === "anatomy") {
+          if (!line) return `<p class="muted">Send Dana a message to see its line.</p>`;
+          return `<div class="stepex"><span class="label">${who}, as the server wrote it</span><pre class="logline">${esc(JSON.stringify(line))}</pre><span class="label">The same line, field by field</span><div class="anat">${Object.entries(st.parts).map(([k, d], i) => `<div style="--i:${i}"><code>${esc(k)}</code><b>${esc(String(line[k] ?? "—"))}</b><span>${esc(d)}</span></div>`).join("")}</div></div>`;
+        }
+        if (st.live === "levels") return `<div class="anat levels">${Object.entries(LEVEL_SAYS).map(([k, d], i) => `<div style="--i:${i}" class="lv-${k.toLowerCase()}"><code>${k}</code><b>${r.by ? r.by[k] ?? 0 : 0}</b><span>${esc(d)}</span></div>`).join("")}</div><p class="muted">The numbers are this room's messages, by level.</p>`;
+        if (st.live === "traceid") return line?.trace_id ? `<div class="stepex"><span class="label">${who}: its trace id</span><pre class="logline">${esc(line.trace_id)}</pre></div>` : "";
+        if (st.live === "request") return line ? `<div class="stepex"><span class="label">${who}</span><pre class="logline">POST /send → ${line.status} ${line.status === 200 ? "OK" : "Unavailable"} in ${fmt(line.duration_ms)}</pre></div>` : "";
+        if (st.live === "cost") {
+          const per = r.lines ? r.bytes / r.lines : 220, day = (per * 1000 * 86400) / 1e9;
+          return `<div class="anat"><div><code>This room</code><b>${r.lines || 0} lines</b><span>${((r.bytes || 0) / 1024).toFixed(1)} KB so far, ~${Math.round(per)} bytes a line</span></div>
+            <div><code>At 1,000 requests a second</code><b>${day.toFixed(0)} GB a day</b><span>about ${(day * 30 / 1000).toFixed(1)} TB a month</span></div>
+            <div><code>CloudWatch Logs</code><b>~$${Math.round(day * 30 * 0.5).toLocaleString()} a month</b><span>to send it in, at $0.50 per GB, before storage</span></div></div>`;
+        }
+        return "";
+      }
+      function stepHtml(st, r, mine, small) {
+        return (st.flow ? flowSvg(st.flow, small) : "") + (st.viz ? VIZ[st.viz](r, small) : "") + (st.live ? liveOf(st, r, mine) : "")
+          + (st.example ? `<div class="stepex"><span class="label">${esc(st.example.label)}</span><pre class="logline">${esc(st.example.text)}</pre></div>` : "");
+      }
       const S = {
         chat(v, s, r) {
           if (s.breaks) {
@@ -772,7 +863,7 @@
         poll(v, s, r) {
           let body;
           if (s.reveal === "groups" && v.shown) {
-            body = `<div class="groups">${r.byGroup.map((c, i) => `<div class="g"><h3>${gname(r.groupsMs?.[i] ?? [100, 1000, 3000, 7000][i], v.groupsShown, i)}</h3>${bars(s.options, c)}</div>`).join("")}</div>`;
+            body = `<div class="groups">${r.byGroup.map((c, i) => `<div class="g"><h3>${gname(r.groupsMs?.[i] ?? GMS[i], v.groupsShown, i)}</h3>${bars(s.options, c)}</div>`).join("")}</div>`;
           } else body = bars(s.options, r.counts, s.answer, v.shown, v.defs);
           const visual =
             s.type === "gantt"
@@ -802,6 +893,9 @@
             body = r.failed ? `${id(r.failed)}${traceSvg(r.failed)}` : `<p class="muted">No failed messages yet — press Break Relay (B).</p>`;
           else body = `${id(r.latest)}${traceSvg(r.latest)}`;
           return `${head}${body}<p class="muted">${r.n} messages traced this session</p><p class="lead">${esc(s.lead)}</p>`;
+        },
+        step(v, s, r) {
+          return `<span class="label">${esc(v.act)}</span><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p>${stepHtml(s, r || {}, null, false)}${s.items ? `<ul class="stepitems">${s.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}`;
         },
         show(v, s) {
           return `<span class="label">${esc(v.act)}</span><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p><div class="checks">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
@@ -847,7 +941,7 @@
           const x = (ms) =>
             L +
             ((Math.log10(Math.max(30, ms)) - lo) / (hi - lo)) * (W - L - 20);
-          const rowY = (g) => 40 + [100, 1000, 3000, 7000].indexOf(g) * 44;
+          const rowY = (g) => 40 + GMS.indexOf(g) * 36;
           const marks = [
             ["mean", r.mean, "var(--faint)"],
             ["p50", r.p50, "var(--fg)"],
@@ -856,7 +950,7 @@
             ["max", r.max, "var(--bad)"],
           ];
           return `<h1>${esc(s.title)}</h1><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Every message's response time, with mean, p50, p95, p99 and max">
-      ${[100, 1000, 3000, 7000].map((g, i) => `<text x="0" y="${rowY(g) + 4}">${gname(g, v.groupsShown, i)}</text><line x1="${L}" x2="${W - 20}" y1="${rowY(g)}" y2="${rowY(g)}" stroke="var(--line)"/>`).join("")}
+      ${GMS.map((g, i) => `<text x="0" y="${rowY(g) + 4}">${gname(g, v.groupsShown, i)}</text><line x1="${L}" x2="${W - 20}" y1="${rowY(g)}" y2="${rowY(g)}" stroke="var(--line)"/>`).join("")}
       ${r.dots.map((d, i) => `<circle cx="${x(d.ms)}" cy="${rowY(d.g) + (((i * 37) % 17) - 8)}" r="5" fill="var(--c2)" fill-opacity=".7"/>`).join("")}
       ${marks.map(([n, ms, c], k) => `<line x1="${x(ms)}" x2="${x(ms)}" y1="20" y2="${H - 96}" stroke="${c}" stroke-width="2" stroke-dasharray="${n === "mean" ? "3 4" : ""}"/><text x="${x(ms) + 4}" y="${H - 86 + k * 15}" style="fill:${c}">${n} ${fmt(ms)}</text>`).join("")}
       ${[100, 1000, 10000].map((t) => `<text x="${x(t)}" y="${H - 4}" text-anchor="middle">${fmt(t)}</text>`).join("")}

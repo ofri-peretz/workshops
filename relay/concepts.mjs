@@ -123,6 +123,8 @@ export const GLOSSARY = {
   "structured log": { def: "A log line made of named fields, usually JSON, so it can be filtered instead of searched.", example: '{"status":503,"duration_ms":3012,"trace_id":"4bf9…"}' },
   stdout: { def: "The process's standard output. Containers and serverless platforms collect what apps write there.", example: "console.log, System.out, a ConsoleAppender." },
   OpenTelemetry: { def: "The open standard for producing and shipping metrics, logs and traces: one SDK, any vendor's backend.", example: "The SDK in your app sends spans to the OTel Collector, which forwards them to Jaeger, Datadog or Grafana." },
+  "log level": { def: "How serious a log line is: DEBUG, INFO, WARN, ERROR or FATAL.", example: "A message slower than 2.5 s is logged as WARN." },
+  flush: { def: "Sending what was buffered in memory out in one batch.", example: "The SDK flushes spans every few seconds, and on shutdown." },
   "log shipper": { def: "An agent that reads log streams and sends them to a store, adding where they came from.", example: "Fluent Bit, Filebeat, the CloudWatch agent, the OpenTelemetry Collector." },
   scrape: { def: "A metrics server pulling a service's /metrics page on a schedule.", example: "Prometheus GETs /metrics every 15 s." },
 };
