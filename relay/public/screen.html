@@ -960,7 +960,7 @@
         },
       };
 
-      let lastKey = "", lastPeople = 0, deepLinked = false;
+      let lastKey = "", lastPeople = 0, deepLinked = false, lastHtml = "";
       const bumpEl = (el) => { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); };
       // Hide the controls when the mouse rests; any movement or a focused control brings them back.
       let idleTimer;
@@ -1004,10 +1004,13 @@
         const board = v.leaderboard?.length ? `<aside class="board" data-testid="leaderboard"><span class="label">Leaderboard</span>${v.leaderboard.map((x, i) => `<div class="row"><span><b>${i + 1}</b> ${esc(x.name)}</span><em>${x.points.toLocaleString()}</em></div>`).join("")}</aside>` : "";
         const who = v.who ? `<div class="who-voted">${v.who.map((names, i) => names.length ? `<div><span class="label">${esc(s.options[i])}</span>${esc(names.slice(0, 6).join(", "))}${names.length > 6 ? ` +${names.length - 6}` : ""}</div>` : "").join("")}</div>` : "";
         document.body.classList.toggle("eyes", !!v.eyes);
-        $("stage").innerHTML = (
+        let html = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
         )(v, s, v.results) + (s.case && !board ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
-        if (board) $("stage").innerHTML = `<div class="withboard"><div class="main">${$("stage").innerHTML}</div>${board}</div>`; // the board gets its own column
+        if (board) html = `<div class="withboard"><div class="main">${html}</div>${board}</div>`; // the board gets its own column
+        if (html === lastHtml && !changed) return; // nothing on the slide changed: leave the page alone (no rebuild, no flicker)
+        lastHtml = html;
+        $("stage").innerHTML = html;
         const big = $("qrbig");
         if (big) qr(big, 240);
       }
