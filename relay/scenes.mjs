@@ -27,10 +27,10 @@ export const PRESENTER = {
   photo: "/ofri.jpg", // his public GitHub avatar, 320 px
   home: "https://workshop.ofriperetz.dev",
   links: [
-    { label: "LinkedIn", cta: "Follow on LinkedIn", href: "https://www.linkedin.com/in/ofri-peretz/" },
-    { label: "Blog", cta: "Read the blog", href: "https://dev.to/ofri-peretz" },
-    { label: "GitHub", cta: "See the code", href: "https://github.com/ofri-peretz" },
-    { label: "Site", cta: "About me", href: "https://ofriperetz.dev" },
+    { label: "LinkedIn", cta: "Follow on LinkedIn", icon: "linkedin", href: "https://www.linkedin.com/in/ofri-peretz/" },
+    { label: "dev.to", cta: "Read on dev.to", icon: "devto", href: "https://dev.to/ofri-peretz" },
+    { label: "GitHub", cta: "Star on GitHub", icon: "github", href: "https://github.com/ofri-peretz" },
+    { label: "Blog", cta: "Visit the blog", icon: "blog", href: "https://ofriperetz.dev" },
   ],
 };
 // First time: the full who-I-am. Returning: the group knows me, so one line and straight in.

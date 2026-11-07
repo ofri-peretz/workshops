@@ -123,7 +123,7 @@ assert.ok(screenIntro.speaker.items.some((x) => x.includes("Amichai")) && screen
 const phoneIntro = await (await phones[0]("/join")).json();
 assert.ok(phoneIntro.items.length && !phoneIntro.items.some((x) => /8200|Amichai/.test(x)), "phones never show military or personal background");
 assert.equal(phoneIntro.promise, WORKSHOPS[1].promise);
-assert.deepEqual(phoneIntro.presenter.links.map((l) => l.label), ["LinkedIn", "Blog", "GitHub", "Site"], "the intro carries the presenter's links");
+assert.deepEqual(phoneIntro.presenter.links.map((l) => l.label), ["LinkedIn", "dev.to", "GitHub", "Blog"], "the intro carries the presenter's links");
 
 // An impatient second tap counts as a resend; the phone's measured time attaches to its message.
 const slowest = phones[times.indexOf(Math.max(...times))];
