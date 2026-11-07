@@ -354,7 +354,7 @@ const outroOf = (room) => ({ next: nextTrack(), series: SERIES, presenter: PRESE
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);
-  return { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
+  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, terms: c.terms ?? [] })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
@@ -371,6 +371,9 @@ export function phoneView(room, p) {
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (s.type === "today") v.today = todayOf(room);
   v.timer = timerOf(room, s);
+  if (p) v.score = scoreOf(room, p);
+  if (POLL_TYPES.has(s.type) || s.type === "cases" || s.type === "takeaway") v.tally = { done: results(room, s, Date.now()).total, of: room.phones.size };
+  if (s.type === "cases") v.cards = studiesOf(room).map((c) => ({ who: c.who, what: c.what }));
   if (s.type === "why") v.why = whyOf(room);
   if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
   if (s.type === "outro") Object.assign(v, outroOf(room));
@@ -407,6 +410,7 @@ export function screenView(room, now) {
     learning: s.type === "qa" ? learningOf(room) : undefined,
     why: s.type === "why" ? whyOf(room) : undefined,
     study: s.type === "cases" && room.shown.has(s.id) ? storyOf(winnerOf(room, s)) : undefined,
+    cards: s.type === "cases" ? studiesOf(room).map((c) => ({ who: c.who, what: c.what })) : undefined,
     ...(s.type === "outro" ? outroOf(room) : {}),
     clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead };
 }

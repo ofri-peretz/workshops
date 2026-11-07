@@ -68,11 +68,11 @@ export const SCENES = [
 
   { id: "why", act: "Welcome", min: 1, type: "why", title: "Why this matters", phone: "Why today matters.", concepts: [], terms: [],
     notes: "Say the workshop's And, But, Therefore: what's true, the problem, so what we'll do. One number, then move on." },
-  { id: "cases", act: "Case studies", min: 2, type: "cases", title: "Which case do we take apart?", phone: "Vote: which case do we take apart?", concepts: [], terms: [],
+  { id: "cases", act: "Business use cases", min: 3, type: "cases", title: "Which one do we take apart?", phone: "Pick the case we take apart.", concepts: [], terms: [],
     notes: "The room votes among real cases with different root causes. Reveal shows the winner in three beats: what happened, why, the lesson. Tell it from the notes; offer the others in the recap." },
   { id: "outro", act: "What's next", min: 1, type: "outro", title: "This was one of four", phone: "Follow along: the next one, your recap, my links.", concepts: [], terms: [],
     notes: "Tease the next workshop with its question, then point at the QR: the series, your recap, my links. Leave this up while people leave." },
-  { id: "today", act: "Welcome", min: 1, type: "today", title: "Today", phone: "New terms collect on your phone as we go.", concepts: [], terms: [],
+  { id: "today", act: "What we'll cover", min: 1, type: "today", title: "Today", phone: "New terms collect on your phone as we go.", concepts: [], terms: [],
     notes: "Say: the topic in one line, then each part as its question. Point at the terms: nobody needs them yet, they land on every phone as we go. Name the cases: real outages, and apps everyone uses." },
 
   // ---- feel it ---------------------------------------------------------------------------------

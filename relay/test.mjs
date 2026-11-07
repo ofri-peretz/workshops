@@ -35,10 +35,9 @@ assert.deepEqual(written.filter((k) => !allowedKinds(schemaSql.replace(",'curiou
 // ---- every workshop, over every combination of fork choices, fits its minutes -------------------
 for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
-  assert.equal(ids[0], "intro", `workshop ${w} opens with the intro`);
   // The arc every workshop follows: who I am, why it matters, what we'll cover; hands-on chapters;
   // then the case studies the room picks, the one thing for Monday, questions, and the outro.
-  assert.deepEqual(ids.slice(0, 3), ["intro", "why", "today"], `workshop ${w} opens: who I am, why, what we'll cover`);
+  assert.deepEqual(ids.slice(0, 2), ["today", "why"], `workshop ${w} opens on what we'll cover, then why (the host is on the waiting screen)`);
   assert.deepEqual([ids.at(-4), ids.at(-2), ids.at(-1)], ["cases", "qa", "outro"], `workshop ${w} closes: case studies, Monday, questions, outro`);
   assert.ok(W.why?.title && W.why.lead && W.why.abt && CASES[W.why.case]?.source, `workshop ${w}: a why with a real case`);
   assert.ok(W.studies.length >= 3 && W.studies.every((c) => CASES[c]?.source), `workshop ${w}: at least 3 real case studies for the room to pick from`);
@@ -115,6 +114,7 @@ assert.ok(Math.max(...times) >= 60 && Math.min(...times) < Math.max(...times), "
 // Who I am depends on the audience; phones only ever get the tech version (the phone page is public).
 assert.equal((await ctl("audience", { a: "nobody" })).status, 400);
 await ctl("audience", { a: "jewish-community" });
+await ctl("detour", { id: "intro" }); // the intro is a library slide now; the waiting screen carries the host
 const screenIntro = await screen();
 assert.equal(screenIntro.scene.type, "intro");
 assert.ok(screenIntro.speaker.items.some((x) => x.includes("Amichai")) && screenIntro.speaker.items.some((x) => x.includes("8200")));
@@ -161,14 +161,14 @@ await ctl("next");
 assert.equal(here(), "impact");
 await ctl("next");
 assert.equal(here(), "requests", "back on the spine after the detour");
-assert.equal((await screen()).total, WORKSHOPS[1].minutes, "the chosen path keeps the workshop's length");
+assert.equal((await screen()).total, WORKSHOPS[1].minutes + SCENE.intro.min, "the chosen path keeps the workshop's length (plus the intro played from the library)");
 
 // A library jump plays any scene now, costs its minutes, and names the flex scenes to skip.
 await ctl("detour", { id: "n1" });
 assert.equal(here(), "n1");
 const jumped = await screen();
-assert.equal(jumped.over, 2);
-assert.equal(jumped.total, WORKSHOPS[1].minutes + 2, "the jump adds its minutes");
+assert.equal(jumped.over, SCENE.intro.min + 2, "library jumps add up");
+assert.equal(jumped.total, WORKSHOPS[1].minutes + SCENE.intro.min + 2, "the jump adds its minutes");
 assert.ok(jumped.flexAhead.includes(SCENE.aws.title));
 await ctl("next");
 assert.equal(here(), "aws", "back to the spine after a jump: on to the next spine scene");
@@ -234,17 +234,17 @@ assert.deepEqual([room().intro, room().audience], ["returning", "tech"], "the co
 await ctl("reset");
 assert.equal(room().intro, "returning", "a reset keeps the intro");
 await ctl("start", { w: 2 });
-assert.equal(here(), "intro");
+assert.equal(here(), "today");
 const waiter = await phone();
 assert.equal((await waiter.view()).type, "waiting", "after Go live, phones wait for the presenter");
 assert.equal((await screen()).scene.type, "waiting", "the big screen waits too, with the join code");
 await ctl("begin");
-assert.equal((await waiter.view()).type, "intro", "Begin starts every phone on the intro");
+assert.equal((await waiter.view()).type, "today", "Begin starts every phone on what we'll cover");
 await ctl("start", { w: 2 });
 await ctl("next");
-assert.equal([here(), (await screen()).scene.type].join(), "intro,intro", "Next from the waiting room begins on the intro");
+assert.equal([here(), (await screen()).scene.type].join(), "today,today", "Next from the waiting room begins on what we'll cover");
 await ctl("prev");
-assert.equal(here(), "intro", "Back stops at the start");
+assert.equal(here(), "today", "Back stops at the start");
 
 // Workshop 2: the room's incident update is posted, fix resolves; Next at a fork takes the default.
 phones = await Promise.all([1, 2].map(phone));

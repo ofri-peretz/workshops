@@ -95,6 +95,13 @@
       }
       .timer { font: 700 16px/1 var(--mono); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); margin-left: auto; }
       .timer.low { border-color: var(--primary, currentColor); }
+      header { position: relative; }
+      .progress { position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; background: transparent; } .progress i { display: block; height: 100%; width: 0; background: var(--primary, currentColor); transition: width 400ms ease; }
+      .score { font: 700 15px/1 var(--mono); padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+      .locked { font-weight: 600; }
+      .casecard { display: grid; gap: 4px; text-align: left; padding: 16px; }
+      .casecard span { color: var(--muted); font-weight: 400; }
+      @media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
       .findme {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -486,7 +493,8 @@
         <b>Workshops</b>
       </div>
       <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
-      <span id="where">Joining…</span><span class="timer" id="timer" hidden aria-live="off"></span>
+      <span id="where">Joining…</span><span class="score" id="score" hidden title="Right answers"></span><span class="timer" id="timer" hidden aria-live="off"></span>
+      <div class="progress" aria-hidden="true"><i id="progress"></i></div>
     </header>
     <main>
       <section id="gate" class="card" hidden aria-labelledby="gateTitle">
@@ -686,7 +694,7 @@
           return `<span class="label">Why this matters</span><h1>${esc(v.why.title)}</h1><p class="lead">${esc(v.why.lead)}</p><p class="card"><span class="label">Case</span> <b>${esc(v.why.case.who)}</b> · ${esc(v.why.case.what)}</p>`;
         },
         cases(v) {
-          if (!v.study) return `<span class="label">Case studies</span><h1>${esc(v.title)}</h1><div class="opts">${v.options.map((o, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(o)}</button>`).join("")}</div>${v.mine !== undefined ? "<p>Voted. Watch the screen.</p>" : ""}`;
+          if (!v.study) return `<span class="label">Business use cases · you choose</span><h1>${esc(v.title)}</h1><div class="opts">${(v.cards || v.options.map((o) => ({ who: o, what: "" }))).map((c, i) => `<button type="button" class="casecard" data-a="${i}" aria-pressed="${v.mine === i}"><b>${esc(c.who)}</b><span>${esc(c.what)}</span></button>`).join("")}</div>${lockedIn(v)}`;
           const c = v.study;
           return `<span class="label">Case study</span><h1>${esc(c.who)}</h1><div class="card"><p><b>What happened:</b> ${esc(c.happened || c.what)}</p>${c.why ? `<p><b>Why:</b> ${esc(c.why)}</p>` : ""}${c.lesson ? `<p><b>The lesson:</b> ${esc(c.lesson)}</p>` : ""}<a href="${esc(c.source)}" rel="noopener">The source</a></div>`;
         },
@@ -736,9 +744,7 @@
           const after =
             v.answer !== undefined
               ? `<p class="${v.mine === v.answer ? "ok" : "err"}"><b>${v.mine === undefined ? "Answer:" : v.mine === v.answer ? "You got it." : "Not quite."}</b> ${esc(v.options[v.answer])}</p>`
-              : v.mine !== undefined
-                ? `<p>Locked in. Watch the screen.</p>`
-                : "";
+              : lockedIn(v);
           return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${leadHtml(v)}${v.link ? `<a class="btn" href="${esc(v.link)}" target="_blank" rel="noopener">Open Relay's status page</a>` : ""}`;
         },
         gantt(v) {
@@ -866,7 +872,10 @@
         const v = view;
         if (!v) return;
         setTimer(v.timer);
-        $("where").textContent = `${v.workshopId === 5 ? "Signals" : "Workshop " + v.workshopId} · ${v.act}`;
+        $("where").textContent = v.act;
+        $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
+        $("score").hidden = !v.score?.answered;
+        if (v.score?.answered) $("score").textContent = `★ ${v.score.right}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
         const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
@@ -886,6 +895,9 @@
         }
         wire(v);
       }
+      // After a choice: locked in, and how much of the room has chosen. Change your mind any time before the reveal.
+      const lockedIn = (v) => v.mine === undefined ? (v.tally ? `<p class="muted">${v.tally.done} of ${v.tally.of} chose so far</p>` : "")
+        : `<p class="locked">✓ Locked in${v.tally ? ` · ${v.tally.done} of ${v.tally.of} chose` : ""}. Tap another to change.</p>`;
       const findMe = (v) =>
         `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.cta || l.label)}</a>`).join("")}</nav>`;
       const NO_DEEPER = new Set(["intro", "why", "today", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway"]);

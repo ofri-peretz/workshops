@@ -100,8 +100,8 @@ test.describe("relay", () => {
     await expectFits(page, "waiting room");
     await control(page, { op: "begin" });
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-    await expect(page.locator(".findme a")).toHaveCount(4);
+    await expect(page.locator("#where")).toHaveText("What we'll cover"); // Begin opens on the plan; the host was on the waiting screen
+    await expect(page.getByRole("heading", { name: "Signals" })).toBeVisible();
     const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;
     await control(page, { op: "goto", i: n - 1 });
     await page.reload();

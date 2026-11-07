@@ -20,7 +20,9 @@ export const SERIES = [
 // without (the bookends) isn't listed. Workshops are lists of chapters; the console can compose any
 // list (core.mjs validates it), so a chapter is the unit you mix, reorder and remember per group.
 export const CHAPTERS = {
-  welcome: { name: "Welcome", scenes: ["intro", "why", "today"] },
+  // The host is on the waiting screen while he talks; Begin opens on what we'll cover, then why it
+  // matters. The "intro" slide stays in the library for a stage without a waiting screen.
+  welcome: { name: "Welcome", scenes: ["today", "why"] },
 
   "sig-feel": { name: "Feel it", q: "Who's waiting?", remember: "Dashboards say fine. Users still wait", terms: ["metric", "log", "trace"], scenes: ["join", "felt", "signals"] },
   "sig-metrics": { name: "Metrics", q: "Are users OK?", remember: "Watch the p95, not the average", terms: ["p95", "histogram"], scenes: ["sig-metrics", "sig-dash", "sig-metrics-room", "two", "dots", "mean", "histogram", "impact"] },
