@@ -24,7 +24,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
   const json = (code, body, headers = {}) => new Response(JSON.stringify(body), { status: code, headers: { "content-type": "application/json", "cache-control": "no-store", ...headers } });
   const read = async (request) => {
     const text = await request.text();
-    if (text.length > 1024) throw new Error("too large");
+    if (text.length > 2048) throw new Error("too large"); // a composed program lists up to 24 chapters
     try { return text ? JSON.parse(text) : {}; } catch { throw new Error("bad json"); }
   };
   const used = (p, kind) => (p.used[kind] || 0) >= CAP[kind];
@@ -48,7 +48,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c });
         return json(200, screenView(room, Date.now()));
       }
       // Everything below is for phones, and only while the presenter has the room open.

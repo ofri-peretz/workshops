@@ -13,70 +13,80 @@ export const SERIES = [
   { track: "4 · Before users notice", what: "Hear it break before users do", status: "Coming", w: [2] },
 ];
 
+// A chapter is one part of a workshop, told the same way every time: a question; a hook (it opens on a
+// question, a case, or the room doing something); the room trying it on their phones; a real case;
+// and one line to remember, shown on its last scene. Its key terms add up to "Today". Scenes run in
+// order (forks included), so a chapter has its own minutes. A chapter with a question is a part on "Today" and names the scenes' header; one
+// without (the bookends) isn't listed. Workshops are lists of chapters; the console can compose any
+// list (core.mjs validates it), so a chapter is the unit you mix, reorder and remember per group.
+export const CHAPTERS = {
+  welcome: { name: "Welcome", scenes: ["intro", "today"] },
+
+  "sig-feel": { name: "Feel it", q: "Who's waiting?", remember: "Dashboards say fine. Users still wait", terms: ["metric", "log", "trace"], scenes: ["join", "felt", "signals"] },
+  "sig-metrics": { name: "Metrics", q: "Are users OK?", remember: "Watch the p95, not the average", terms: ["p95", "histogram"], scenes: ["sig-metrics", "sig-dash", "sig-metrics-room", "two", "dots", "mean", "histogram", "impact"] },
+  "sig-logs": { name: "Logs", q: "Who exactly?", remember: "Every log line carries a trace id", terms: ["structured log"], scenes: ["sig-statement", "sig-logs", "sig-logs-room", "sig-road"] },
+  "sig-traces": { name: "Traces", q: "Where did the time go?", remember: "If time has no span, nobody owns it", terms: ["span", "traceparent"], scenes: ["yourtrace", "spanparts", "gap", "propagate", "browser"] },
+  "sig-outage": { name: "The outage", q: "What broke?", remember: "Metrics say that, logs who, traces where", terms: ["exemplar"], scenes: ["outage", "first", "update", "spike", "exemplar"] },
+  "sig-close": { name: "Wrap up", scenes: ["sig-monday", "sig-next", "qa"] },
+
+  "slow-feel": { name: "Feel it", q: "Who's waiting?", remember: "A late answer is a failed one", terms: ["latency", "timeout"], scenes: ["join", "felt", "timeout", "journey"] },
+  "slow-measure": { name: "Measure it", q: "What do users feel?", remember: "Measure the tail, not the average", terms: ["percentile", "p99"], scenes: ["two", "mean", "dots",
+    fork("w1", [
+      { title: "The tail reaches everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
+      { title: "What a slow tail costs", scenes: ["again", "impact"], after: ["felt", "journey"] },
+      { title: "Numbers the business and every tool understand", scenes: ["business", "roadmap", "names"], after: ["timeout", "two"] },
+    ]),
+    "requests"] },
+  "slow-promise": { name: "Promise it", q: "How fast, how often?", remember: "Promise what %, how fast, over how long", terms: ["SLA", "SLO", "error budget"], scenes: ["aws", "nines", "slo"] },
+  "slow-close": { name: "Wrap up", scenes: ["monday1", "next1", "qa"] },
+
+  "breaks-break": { name: "Break it", q: "What do users see?", remember: "Tell users what they see, and when", terms: ["incident", "status page", "error rate"], scenes: ["join2", "two2", "outage", "first", "update", "spike"] },
+  "breaks-find": { name: "Find it", q: "Where did it break?", remember: "Every gap is time nobody owns", terms: ["trace", "span"], scenes: ["signals", "gantt",
+    fork("w2", [
+      { title: "GraphQL: 200 OK with errors inside", scenes: ["graphql"], after: ["first", "update", "spike"] },
+      { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gantt", "signals"] },
+      { title: "Your own service, live", scenes: ["flagship"], after: ["spike", "two2"] },
+    ])] },
+  "breaks-prove": { name: "Prove it", q: "Will the fix hold?", remember: "Test at a fixed rate, not fixed users", terms: ["open model", "Little's Law"], scenes: ["closed", "open"] },
+  "breaks-close": { name: "Wrap up", scenes: ["monday", "qa"] },
+
+  "gql-endpoint": { name: "One endpoint", q: "What does a 200 hide?", remember: "Measure the operation, not the endpoint", terms: ["GraphQL", "operation", "blended percentile", "parse"], scenes: ["join", "two2", "blend", "operation", "graphql", "errors", "phases"] },
+  "gql-find": { name: "Find it", q: "Which query is slow?", remember: "Count the calls behind one request", terms: ["span"], scenes: ["gantt",
+    fork("w3", [
+      { title: "Count the calls, measure the cost", scenes: ["n1", "cost"], after: ["gantt", "phases"] },
+      { title: "Who's calling? Per consumer, by name", scenes: ["perconsumer", "names"], after: ["operation", "blend"] },
+      { title: "Your own service, live", scenes: ["flagship"], after: ["graphql", "errors"] },
+    ])] },
+  "gql-prove": { name: "Prove it", q: "Will it hold under load?", remember: "Load-test the real mix of operations", terms: ["open model"], scenes: ["loadop", "open"] },
+  "gql-close": { name: "Wrap up", scenes: ["monday3", "qa"] },
+
+  "follow-follow": { name: "Follow it", q: "Where did the time go?", remember: "One trace id follows the request", terms: ["trace", "span", "root span", "traceparent"], scenes: ["join", "journey", "signals", "yourtrace", "spanparts", "propagate"] },
+  "follow-find": { name: "Find it", q: "Which span is slow?", remember: "Every gap is time nobody owns", terms: ["TTFB"], scenes: ["gap",
+    fork("w4", [
+      { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gap", "yourtrace"] },
+      { title: "When a span fails", scenes: ["spanerror"], after: ["spanparts", "sampling"] },
+      { title: "Your own service, live", scenes: ["flagship"], after: ["propagate", "exemplar"] },
+    ]),
+    "browser"] },
+  "follow-keep": { name: "Keep it", q: "Which traces do we keep?", remember: "Keep the slow and failed traces", terms: ["sampling", "exemplar"], scenes: ["sampling", "exemplar"] },
+  "follow-close": { name: "Wrap up", scenes: ["monday4", "next4", "qa"] },
+};
+
+// The spine and the parts follow from the chapters; nothing lists scenes twice.
+export const spineOf = (chapters) => chapters.flatMap((c) => CHAPTERS[c].scenes);
+export const partsOf = (chapters) => chapters.filter((c) => CHAPTERS[c].q).map((c) => [CHAPTERS[c].name, CHAPTERS[c].q]);
+export const termsOf = (chapters) => [...new Set(chapters.flatMap((c) => CHAPTERS[c].terms ?? []))];
+const workshop = (w) => ({ ...w, spine: spineOf(w.chapters), parts: partsOf(w.chapters), terms: termsOf(w.chapters) });
+
 export const WORKSHOPS = {
-  5: {
-    parts: [["Metrics", "Are users OK?"], ["Logs", "Who exactly?"], ["Traces", "Where did the time go?"], ["The outage", "What broke?"]],
-    terms: ["metric", "log", "trace", "p95", "histogram", "span", "traceparent", "exemplar"],
-    title: "Signals",
-    minutes: 60,
-    promise: "See what your users feel",
-    spine: ["intro", "today", "join", "felt", "signals",
-      "sig-metrics", "two", "dots", "mean", "histogram", "impact",
-      "sig-logs",
-      "yourtrace", "spanparts", "gap", "propagate", "browser",
-      "outage", "first", "update", "spike", "exemplar",
-      "sig-monday", "next4", "qa"],
-  },
-  1: {
-    parts: [["Feel it", "Who's waiting?"], ["Measure it", "What do users feel?"], ["Promise it", "How fast, how often?"]],
-    terms: ["latency", "timeout", "percentile", "p99", "SLA", "SLO", "error budget"],
-    title: "Relay is slow",
-    promise: "Turn a wait into a target",
-    spine: ["intro", "today", "join", "felt", "timeout", "journey", "two", "mean", "dots",
-      fork("w1", [
-        { title: "The tail reaches everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
-        { title: "What a slow tail costs", scenes: ["again", "impact"], after: ["felt", "journey"] },
-        { title: "Numbers the business and every tool understand", scenes: ["business", "roadmap", "names"], after: ["timeout", "two"] },
-      ]),
-      "requests", "aws", "nines", "slo", "monday1", "next1", "qa"],
-  },
-  2: {
-    parts: [["Break it", "What do users see?"], ["Find it", "Where did it break?"], ["Prove it", "Will the fix hold?"]],
-    terms: ["incident", "status page", "error rate", "trace", "span", "open model", "Little's Law"],
-    title: "Relay breaks",
-    promise: "Find the break, prove the fix",
-    spine: ["intro", "today", "join2", "two2", "outage", "first", "update", "spike", "signals", "gantt",
-      fork("w2", [
-        { title: "GraphQL: 200 OK with errors inside", scenes: ["graphql"], after: ["first", "update", "spike"] },
-        { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gantt", "signals"] },
-        { title: "Your own service, live", scenes: ["flagship"], after: ["spike", "two2"] },
-      ]),
-      "closed", "open", "monday", "qa"],
-  },
-  3: {
-    parts: [["One endpoint", "What does a 200 hide?"], ["Find it", "Which query is slow?"], ["Prove it", "Will it hold under load?"]],
-    terms: ["GraphQL", "operation", "blended percentile", "parse", "execute", "span", "open model"],
-    title: "GraphQL measured",
-    promise: "One endpoint hides every slow query",
-    spine: ["intro", "today", "join", "two2", "blend", "operation", "graphql", "errors", "phases", "gantt",
-      fork("w3", [
-        { title: "Count the calls, measure the cost", scenes: ["n1", "cost"], after: ["gantt", "phases"] },
-        { title: "Who's calling? Per consumer, by name", scenes: ["perconsumer", "names"], after: ["operation", "blend"] },
-        { title: "Your own service, live", scenes: ["flagship"], after: ["graphql", "errors"] },
-      ]),
-      "loadop", "open", "monday3", "qa"],
-  },
-  4: {
-    parts: [["Follow it", "Where did the time go?"], ["Find it", "Which span is slow?"], ["Keep it", "Which traces do we keep?"]],
-    terms: ["trace", "span", "root span", "traceparent", "sampling", "exemplar", "TTFB"],
-    title: "Follow one request",
-    promise: "Follow one request end to end",
-    spine: ["intro", "today", "join", "journey", "signals", "yourtrace", "spanparts", "propagate", "gap", "sampling", "exemplar",
-      fork("w4", [
-        { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gap", "yourtrace"] },
-        { title: "When a span fails", scenes: ["spanerror"], after: ["spanparts", "sampling"] },
-        { title: "Your own service, live", scenes: ["flagship"], after: ["propagate", "exemplar"] },
-      ]),
-      "browser", "monday4", "next4", "qa"],
-  },
+  5: workshop({ title: "Signals", minutes: 60, promise: "See what your users feel",
+    chapters: ["welcome", "sig-feel", "sig-metrics", "sig-logs", "sig-traces", "sig-outage", "sig-close"] }),
+  1: workshop({ title: "Relay is slow", promise: "Turn a wait into a target",
+    chapters: ["welcome", "slow-feel", "slow-measure", "slow-promise", "slow-close"] }),
+  2: workshop({ title: "Relay breaks", promise: "Find the break, prove the fix",
+    chapters: ["welcome", "breaks-break", "breaks-find", "breaks-prove", "breaks-close"] }),
+  3: workshop({ title: "GraphQL measured", promise: "One endpoint hides every slow query",
+    chapters: ["welcome", "gql-endpoint", "gql-find", "gql-prove", "gql-close"] }),
+  4: workshop({ title: "Follow one request", promise: "Follow one request end to end",
+    chapters: ["welcome", "follow-follow", "follow-find", "follow-keep", "follow-close"] }),
 };

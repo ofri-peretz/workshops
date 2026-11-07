@@ -23,6 +23,20 @@ the explanation is spoken, from the speaker notes.
    in `workshops.mjs`; cases come from the scenes on the path (`case` in `scenes.mjs`), so the slide
    only promises what the workshop tells. Each case also shows on its own scene.
 
+## Every chapter is told the same way
+
+A workshop is a list of chapters (`CHAPTERS` in `relay/workshops.mjs`). Each part chapter has:
+
+1. **A question** it answers ("Who exactly?"), shown on Today and in the header.
+2. **A hook:** it opens on a question, a case, or the room doing something on their phones.
+3. **Hands on:** the room tries it on their phones, then sees the room's result together.
+4. **Real cases:** at least one real, sourced case on its main line (company, year, what happened).
+   A made-up story is allowed only labelled "Example".
+5. **One line to remember,** 8 words at most, shown on its last scene.
+6. **Up to 4 key terms,** each taught inside the chapter. They add up to Today's terms.
+
+No scene runs longer than 3 minutes. `relay/test.mjs` checks all of it.
+
 ## The rules
 
 | Level              | Shape                                         | Max words | Example                                 |

@@ -2,7 +2,7 @@
 // reduce() folds them into the room in order, so any server (or serverless instance) that replays
 // the same log sees the same room. Randomness happens before an event is written, never here.
 import { SCENES, SCENE, POLL_TYPES, AUDIENCES, PRESENTER, INTROS } from "./scenes.mjs";
-import { WORKSHOPS, SERIES } from "./workshops.mjs";
+import { WORKSHOPS, SERIES, CHAPTERS, spineOf, partsOf, termsOf } from "./workshops.mjs";
 import { GLOSSARY } from "./concepts.mjs";
 
 export const GROUPS = [100, 1000, 3000, 7000]; // ms per chat message, hidden until revealed
@@ -62,8 +62,14 @@ const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
 
 // The room walks a path: the workshop's spine, with each fork's chosen detour spliced in after it
 // and any library jump inserted where it was played. Forks appear as "fork:<id>".
-const spineOf = (w) => WORKSHOPS[w].spine.map((x) => (typeof x === "string" ? x : "fork:" + x.fork));
-const forkOf = (w, id) => WORKSHOPS[w].spine.find((x) => x.fork === id);
+// room.chapters is the workshop's list unless the console composed another one.
+const pathOf = (chapters) => spineOf(chapters).map((x) => (typeof x === "string" ? x : "fork:" + x.fork));
+const FORKS = Object.fromEntries(Object.values(CHAPTERS).flatMap((c) => c.scenes.filter((x) => typeof x !== "string").map((f) => [f.fork, f])));
+const forkOf = (_w, id) => FORKS[id];
+// Each path step carries its chapter (room.part), so the header matches "Today"; detours and library
+// jumps take the chapter of the step they were played from.
+const partsAlong = (chapters) => chapters.flatMap((c) => CHAPTERS[c].scenes.map(() => c));
+const insertSteps = (room, at, ids) => { room.path.splice(at, 0, ...ids); room.part.splice(at, 0, ...ids.map(() => room.part[at - 1])); };
 export function sceneAt(room, k = room.pos) {
   const id = room.path[k];
   if (!id.startsWith("fork:")) return SCENE[id];
@@ -82,16 +88,16 @@ function arrive(room) { // freeze a fork's option order (by curiosity) the momen
 function choose(room, f, d) { // d = detour index in the workshop file
   if (room.choices[f.id] !== undefined || !f.detours[d]) return;
   room.choices[f.id] = d;
-  room.path.splice(room.path.indexOf("fork:" + f.id) + 1, 0, ...f.detours[d].scenes);
+  insertSteps(room, room.path.indexOf("fork:" + f.id) + 1, f.detours[d].scenes);
 }
 const minutes = (room, upto) => room.path.slice(0, upto).reduce((t, id, k) => {
   const s = sceneAt(room, k);
   return t + (s.type === "fork" ? (s.chosen === undefined ? s.slot : 0) : s.min);
 }, 0);
 
-export function fresh(w = 1) {
+export function fresh(w = 1, chapters = WORKSHOPS[w].chapters) {
   return {
-    workshop: w, path: spineOf(w), pos: 0, choices: {}, forkOrder: {}, over: 0, curious: {}, instrumented: false,
+    workshop: w, chapters, path: pathOf(chapters), part: partsAlong(chapters), pos: 0, choices: {}, forkOrder: {}, over: 0, curious: {}, instrumented: false,
     groupsShown: false, broken: false, shown: new Set(), slo: null, audience: "tech", intro: "first", begun: true,
     phones: new Map(), // id -> { id, group, sends, dups, answers, used, last, job }
     chat: [], reqs: [], jobs: { n: 0, slow: 0 }, load: [], incidents: [],
@@ -136,10 +142,10 @@ export function reduce(room, ev) {
   }
 }
 
-function control(room, { op, i, w, a, id, t, intro }) {
+function control(room, { op, i, w, a, id, t, intro, c }) {
   const s = sceneAt(room);
-  if (op === "reset") return { ...fresh(room.workshop), audience: room.audience, intro: room.intro }; // stay in this workshop
-  if (op === "start") return { ...fresh(w), audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
+  if (op === "reset") return { ...fresh(room.workshop, room.chapters), audience: room.audience, intro: room.intro }; // stay in this workshop
+  if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
   if (op === "begin" || (op === "next" && !room.begun)) { room.begun = true; return room; }
   if (op === "goto" || op === "detour") room.begun = true; // jumping to a scene starts the workshop
   if (op === "audience") { room.audience = a; return room; } // who's in the room decides the intro
@@ -150,7 +156,7 @@ function control(room, { op, i, w, a, id, t, intro }) {
   } else if (op === "prev") { if (room.pos > 0) room.pos--; }
   else if (op === "goto") { if (i < room.path.length) { room.pos = i; arrive(room); } }
   else if (op === "choose") { if (s.type === "fork") choose(room, s, i); }
-  else if (op === "detour") { room.path.splice(room.pos + 1, 0, id); room.over += SCENE[id].min; room.pos++; } // a library jump costs time
+  else if (op === "detour") { insertSteps(room, room.pos + 1, [id]); room.over += SCENE[id].min; room.pos++; } // a library jump costs time
   else if (op === "groups") room.groupsShown = true;
   else if (op === "instrument") room.instrumented = true; // "Add span": later messages show db.pool.acquire
   else if (op === "break" && !room.broken) { room.broken = true; room.incidents.push({ start: t, end: null, title: "Messages failing to send", updates: [{ at: t, text: "Investigating elevated errors on the Chat API." }] }); }
@@ -173,10 +179,15 @@ function control(room, { op, i, w, a, id, t, intro }) {
   return room;
 }
 
-export function validControl({ op, i, w, a, id, intro }) {
+// A composed program: known chapters, each once, opening with the welcome and up to 3 hours.
+export const MAX_PROGRAM_MIN = 180;
+const programMinutes = (c) => spineOf(c).reduce((t, x) => t + (typeof x === "string" ? SCENE[x].min : x.slot), 0);
+export const validProgram = (c) => Array.isArray(c) && c.length >= 2 && c.length <= 24 && c[0] === "welcome" && new Set(c).size === c.length
+  && c.every((x) => typeof x === "string" && Object.hasOwn(CHAPTERS, x)) && programMinutes(c) <= MAX_PROGRAM_MIN;
+export function validControl({ op, i, w, a, id, intro, c }) {
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
   if (["begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
-  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro));
+  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
   return (op === "goto" || op === "choose") && Number.isInteger(i) && i >= 0 && i < 100;
 }
@@ -296,16 +307,25 @@ function outage(room, now) {
 const ALWAYS_LEAD = new Set(["intro", "today", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
+// The header names the step's chapter; the chapter's last step shows its line to remember.
+const actAt = (room, k = room.pos) => (room.path[k]?.startsWith("fork:") ? "Your call" : CHAPTERS[room.part[k]]?.name ?? sceneAt(room, k).act);
+const rememberAt = (room, k = room.pos) => (room.part[k] !== room.part[k + 1] ? CHAPTERS[room.part[k]]?.remember : undefined);
+// Each part's case on "Today": its first real (sourced) case, else its first example.
+const leadCase = (c) => {
+  const cases = c.scenes.filter((x) => typeof x === "string").map((id) => SCENE[id].case).filter(Boolean);
+  const k = cases.find((x) => x.source) ?? cases[0];
+  return k && { who: k.who, what: k.what, real: !!k.source };
+};
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = WORKSHOPS[room.workshop];
-  return { parts: W.parts.map(([name, q]) => ({ name, q })), terms: W.terms.map((term) => ({ term, ...GLOSSARY[term] })),
-    cases: room.path.map((id) => SCENE[id]?.case).filter(Boolean).map(({ who, what }) => ({ who, what })) };
+  return { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
+    cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
   if (!room.begun) { const W = WORKSHOPS[room.workshop]; return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
   const s = sceneAt(room), shown = room.shown.has(s.id), W = WORKSHOPS[room.workshop];
-  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: s.act, title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
+  const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
     shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined,
@@ -314,7 +334,7 @@ export function phoneView(room, p) {
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (s.type === "today") v.today = todayOf(room);
-  if (s.case) v.case = { who: s.case.who, what: s.case.what };
+  if (s.case) v.case = { who: s.case.who, what: s.case.what, real: !!s.case.source };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
@@ -335,7 +355,7 @@ export function phoneView(room, p) {
 export function screenView(room, now) {
   const s = sceneAt(room), W = WORKSHOPS[room.workshop];
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
-  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
+  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),

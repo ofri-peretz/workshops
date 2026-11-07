@@ -367,6 +367,7 @@
       #keys kbd { font-family: var(--mono); }
       .chips { display: flex; flex-wrap: wrap; gap: 10px; }
       .chips span { border: 1px solid var(--line); border-radius: 999px; padding: 6px 16px; font-family: var(--mono); font-size: clamp(18px, 1.6vw, 26px); }
+      .remember { margin-top: 16px; font-size: clamp(24px, 2.2vw, 34px); font-weight: 600; border-left: 4px solid var(--primary, currentColor); padding-left: 16px; }
       .case { margin-top: 24px; font-size: clamp(20px, 1.8vw, 28px); color: var(--muted); }
       .qrbig {
         background: #fff;
@@ -653,7 +654,7 @@
           return `${head}${body}<p class="muted">${r.n} messages traced this session</p><p class="lead">${esc(s.lead)}</p>`;
         },
         show(v, s) {
-          return `<span class="label">${esc(s.act)}</span><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p><div class="checks">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
+          return `<span class="label">${esc(v.act)}</span><h1>${esc(s.title)}</h1><p class="lead">${esc(s.lead)}</p><div class="checks">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
         },
         stat(v, s, r) {
           if (s.stat === "resends")
@@ -772,7 +773,7 @@
           return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">Today</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
       <div class="series">${t.parts.map((x, i) => `<div class="g"><span class="label">${i + 1} · ${esc(x.name)}</span><span>${esc(x.q)}</span></div>`).join("")}</div></div>
       <div style="display:grid;gap:22px;align-content:start"><div class="g"><span class="label">Terms</span><div class="chips">${t.terms.map((x) => `<span>${esc(x.term)}</span>`).join("")}</div></div>
-      ${t.cases.length ? `<div class="g"><span class="label">Cases</span>${t.cases.map((c) => `<div class="row"><b>${esc(c.who)}</b><span class="muted">${esc(c.what)}</span></div>`).join("")}</div>` : ""}</div></div>`;
+      ${t.cases.length ? `<div class="g"><span class="label">Real cases</span>${t.cases.map((c) => `<div class="row"><b>${esc(c.who)}</b><span class="muted">${esc(c.what)}</span></div>`).join("")}</div>` : ""}</div></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
@@ -791,7 +792,7 @@
       function render(v) {
         const s = v.scene;
         $("where").textContent =
-          `${v.workshop} · ${s.act} · ${v.i + 1}/${v.n}`;
+          `${v.workshop} · ${v.act} · ${v.i + 1}/${v.n}`;
         $("people").textContent = v.people;
         $("deeper").textContent = v.curious;
         $("clock").textContent =
@@ -810,7 +811,7 @@
         }
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">Case</span> <b>${esc(s.case.who)}</b> · ${esc(s.case.what)}</p>` : "");
+        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}</b> · ${esc(s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "");
         const big = $("qrbig");
         if (big) qr(big, 240);
         const home = $("qrhome");

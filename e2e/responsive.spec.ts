@@ -70,6 +70,7 @@ test.describe("relay", () => {
   });
 
   test("big screen: every Signals scene", async ({ page }) => {
+    test.setTimeout(120_000); // one poll per scene, ~30 scenes
     test.skip((page.viewportSize()?.width ?? 0) < 1200, "the big screen is a projector");
     await control(page, { op: "start", w: 5 });
     const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;

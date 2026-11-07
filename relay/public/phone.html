@@ -655,7 +655,7 @@
           return `<span class="label">Today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
       <div class="card">${t.parts.map((x, i) => `<div class="row"><b>${i + 1} · ${esc(x.name)}</b></div><p>${esc(x.q)}</p>`).join("")}</div>
       <div class="card"><span class="label">Terms</span><p>${t.terms.map((x) => esc(x.term)).join(" · ")}</p></div>
-      ${t.cases.length ? `<div class="card"><span class="label">Cases</span>${t.cases.map((c) => `<p><b>${esc(c.who)}</b> · ${esc(c.what)}</p>`).join("")}</div>` : ""}<p>${esc(v.phone)}</p>`;
+      ${t.cases.length ? `<div class="card"><span class="label">Real cases</span>${t.cases.map((c) => `<p><b>${esc(c.who)}</b> · ${esc(c.what)}</p>`).join("")}</div>` : ""}<p>${esc(v.phone)}</p>`;
         },
         waiting(v) {
           return `<span class="label">${esc(v.workshop)}</span><h1>Starting soon</h1><p class="card">${esc(v.promise)}</p><p data-testid="waiting-people">${v.people} here</p>${findMe(v)}`;
@@ -810,7 +810,7 @@
         $("where").textContent = `${v.workshopId === 5 ? "Signals" : "Workshop " + v.workshopId} · ${v.act}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
-        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">Case</span> <b>${esc(v.case.who)}</b> · ${esc(v.case.what)}</p>` : "");
+        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";

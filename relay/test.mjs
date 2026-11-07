@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { SCENES, SCENE, POLL_TYPES, PRESENTER } from "./scenes.mjs";
 import { CONCEPTS, GLOSSARY } from "./concepts.mjs";
-import { WORKSHOPS, SERIES } from "./workshops.mjs";
+import { WORKSHOPS, SERIES, CHAPTERS } from "./workshops.mjs";
 import { GROUPS, fresh, reduce, sceneAt, checkTrace, buildTrace, SPAN_NAMES } from "./core.mjs";
 import { createServer } from "./server.mjs";
 
@@ -38,7 +38,7 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   assert.equal(ids[1], "today", `workshop ${w} says what it covers right after the intro`);
   const taught = new Set([...ids, ...forks.flatMap((f) => f.detours.flatMap((d) => d.scenes))].flatMap((id) => SCENE[id].terms));
   for (const t of W.terms) assert.ok(taught.has(t), `workshop ${w}: "Today" promises the term "${t}", which no scene on its path teaches`);
-  assert.ok(W.terms.length <= 8 && W.parts.length >= 2 && W.parts.length <= 4, `workshop ${w}: 2-4 parts, at most 8 terms on "Today"`);
+  assert.ok(W.terms.length <= 10 && W.parts.length >= 2 && W.parts.length <= 5, `workshop ${w}: 2-5 parts, at most 10 terms on "Today"`);
   assert.equal(ids.at(-1), "qa", `workshop ${w} closes with questions`);
   for (const f of forks) for (const d of f.detours) for (const id of [...d.scenes, ...d.after]) assert.ok(SCENE[id], `${w}/${f.fork}: unknown scene ${id}`);
   for (const id of ids) assert.ok(SCENE[id], `workshop ${w}: unknown scene ${id}`);
@@ -48,6 +48,22 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
     const total = base + c.reduce((t, d) => t + d.scenes.reduce((u, id) => u + SCENE[id].min, 0), 0);
     assert.equal(total, W.minutes ?? 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is ${W.minutes ?? 30} min`);
   }
+}
+
+// Every chapter is told the same way: a question; it opens on a question, a case or the room doing
+// something; the room tries it on their phones; one line to remember; its terms taught inside it.
+const HANDS_ON = new Set([...POLL_TYPES, "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines"]);
+for (const [id, c] of Object.entries(CHAPTERS)) {
+  if (!c.q) continue;
+  const ids = c.scenes.flatMap((x) => (typeof x === "string" ? [x] : x.detours.flatMap((d) => d.scenes)));
+  const first = typeof c.scenes[0] === "string" ? SCENE[c.scenes[0]] : { type: "fork" };
+  assert.ok(HANDS_ON.has(first.type) || first.case, `${id}: opens on a question, a case, or the room doing something`);
+  assert.ok(ids.some((x) => HANDS_ON.has(SCENE[x].type)), `${id}: the room tries it on their phones`);
+  assert.ok(c.remember && c.remember.split(/\s+/).length <= 8 && !/\.$/.test(c.remember), `${id}: one line to remember, 8 words at most, no period`);
+  assert.ok(c.name.split(/\s+/).length <= 3 && c.q.split(/\s+/).length <= 8, `${id}: name 3 words, question 8`);
+  const taught = new Set(ids.flatMap((x) => SCENE[x].terms));
+  assert.ok(c.scenes.some((x) => typeof x === "string" && SCENE[x].case?.source?.startsWith("https://")), `${id}: tells at least one real, sourced case on its main line`);
+  assert.ok((c.terms ?? []).length <= 4 && c.terms.every((t) => taught.has(t)), `${id}: up to 4 key terms, each taught inside the chapter`);
 }
 
 // Replaying the same log gives the same room (what every serverless instance relies on).
@@ -288,14 +304,31 @@ for (const id of WORKSHOPS[5].spine.filter((id) => typeof id === "string" && !["
   for (const it of s.items || []) within(`${id} item`, it, 8);
   for (const h of [s.title, s.takeaway].filter(Boolean)) assert.ok(!/\.$/.test(h), `${id}: a headline has no closing period: "${h}"`);
   if (s.case) { within(`${id} case`, s.case.who, 4); within(`${id} case line`, s.case.what, 8); }
+  if (s.case) assert.ok(s.case.source || s.case.who.startsWith("Example:"), `${id}: a case is real (with its source) or labelled Example`);
   if (s.type === "poll" && s.answer !== undefined) assert.ok(s.takeaway, `${id}: a question with an answer reveals a takeaway headline`);
 }
 
 await ctl("start", { w: 5 });
 await go("today");
 const today = (await screen()).today;
-assert.deepEqual(today.parts.map((x) => x.name), ["Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
-assert.deepEqual(today.cases.map((c) => c.who), ["A ride app", "A failed bank transfer", "A slow checkout", "AWS S3, 2017", "Knight Capital, 2012"], "Today names every case the path tells, in order");
+assert.deepEqual(today.parts.map((x) => x.name), ["Feel it", "Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
+assert.deepEqual(today.cases.map((c) => c.who), ["Google Search, 2009", "Amazon, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
+await go("signals");
+assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
+await go("sig-metrics");
+assert.equal((await screen()).remember, undefined, "the line to remember waits for the chapter's last scene");
+await go("impact");
+assert.equal((await screen()).remember, CHAPTERS["sig-metrics"].remember, "the chapter's last scene shows its line to remember");
+
+// The console can compose a program from any chapters, and Today follows it.
+assert.equal((await ctl("start", { w: 5, c: ["sig-logs"] })).status, 400, "a program opens with the welcome");
+assert.equal((await ctl("start", { w: 5, c: ["welcome", "nope"] })).status, 400, "unknown chapters are refused");
+await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"] });
+await go("today");
+assert.deepEqual((await screen()).today.parts.map((x) => x.name), ["Logs", "Find it"], "Today lists the composed program's parts");
+await ctl("reset");
+assert.equal(room().chapters.join(), "welcome,sig-logs,gql-find,sig-close", "a reset keeps the composed program");
+
 await ctl("start", { w: 5 });
 await go("mean");
 assert.equal((await screen()).scene.title, SCENE.mean.title, "a poll opens on its question");
