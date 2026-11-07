@@ -19,11 +19,12 @@ import { Refresh } from "./refresh";
 export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
-  { id: "5", title: "Signals", minutes: 60, summary: "See what your users feel" },
-  { id: "1", title: "Relay is slow", minutes: 32, summary: "Turn a wait into a target" },
-  { id: "2", title: "Relay breaks", minutes: 33, summary: "Find the break, prove the fix" },
-  { id: "3", title: "GraphQL measured", minutes: 33, summary: "One endpoint hides every slow query" },
-  { id: "4", title: "Follow one request", minutes: 32, summary: "Follow one request end to end" },
+  // Mirrors relay/workshops.mjs SERIES: where each workshop sits in the monitoring series.
+  { id: "5", part: "Part 1 · Signals", title: "Signals", minutes: 60, summary: "See what your users feel" },
+  { id: "1", part: "Part 2 · API performance", title: "Relay is slow", minutes: 32, summary: "Turn a wait into a target" },
+  { id: "3", part: "Part 2 · API performance", title: "GraphQL measured", minutes: 33, summary: "One endpoint hides every slow query" },
+  { id: "2", part: "Part 4 · Before users notice", title: "Relay breaks", minutes: 33, summary: "Find the break, prove the fix" },
+  { id: "4", part: "Extra", title: "Follow one request", minutes: 32, summary: "Follow one request end to end" },
 ];
 
 // Mirrors relay/scenes.mjs INTROS and AUDIENCES; the relay refuses anything else.
@@ -66,7 +67,7 @@ export default async function Console() {
       {room.status === "closed" ? (
         <section data-testid="workshops" aria-labelledby="pick" className="grid gap-4">
           <div className="grid gap-1">
-            <h2 id="pick" className="text-lg font-semibold">Open a workshop</h2>
+            <h2 id="pick" className="text-lg font-semibold">The monitoring series: open one part</h2>
             <p className="text-sm text-muted-foreground">Going live opens the doors: phones join and wait until you press Begin. The room stays open 2 hours; the join code works for 60 minutes.</p>
           </div>
           <form action={goLiveAction} className="grid gap-4">
@@ -86,7 +87,10 @@ export default async function Console() {
                 <Card data-testid={`workshop-${w.id}`} className="h-full">
                   <CardHeader>
                     <div className="flex items-center justify-between gap-2">
-                      <CardTitle>{w.title}</CardTitle>
+                      <div className="grid gap-1">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{w.part}</span>
+                        <CardTitle>{w.title}</CardTitle>
+                      </div>
                       <Badge data-testid={`workshop-${w.id}-minutes`} variant="secondary">{w.minutes} min</Badge>
                     </div>
                     <CardDescription>{w.summary}</CardDescription>

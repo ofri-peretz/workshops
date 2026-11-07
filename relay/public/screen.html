@@ -546,12 +546,7 @@
         <button type="button" id="notesBtn" aria-pressed="false">
           Notes (N)</button
         ><button type="button" id="keysBtn" aria-haspopup="dialog">Keys (?)</button
-        ><button type="button" id="reset">Reset room</button
-        ><button type="button" data-start="5">Start Signals</button
-        ><button type="button" data-start="1">Start workshop 1</button
-        ><button type="button" data-start="2">Start workshop 2</button
-        ><button type="button" data-start="3">Start workshop 3</button
-        ><button type="button" data-start="4">Start workshop 4</button>
+        ><button type="button" id="reset">Reset room</button>
         <label class="aud" for="aud">Audience <select id="aud"></select></label>
         <label class="aud" for="lib">Library <select id="lib"></select></label>
         <span class="clock" id="clock"></span>
@@ -856,7 +851,7 @@
         },
         today(v) {
           const t = v.today;
-          return `<div class="focus"><span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
+          return `<div class="focus"><span class="label">${v.part ? `${esc(v.part.series)} · Part ${v.part.n} of ${v.part.of}` : "What we'll cover"}</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
       <ol class="path">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><div class="chips">${x.terms.map((term) => `<span>${esc(term)}</span>`).join("")}</div></li>`).join("")}</ol></div>`;
         },
         next(v, s) {
@@ -871,7 +866,7 @@
           const w = v.waiting;
           return `<div class="welcome"><div style="display:grid;gap:22px">
         <div class="who"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" /><div><span class="label">Your host</span><b>${esc(v.presenter.name)}</b><span class="muted">${esc(w.lead)}</span></div></div>
-        <div><span class="label">Workshop · ${w.minutes} min · on your phone</span><h1>${esc(s.title)}</h1><p class="tag">${esc(v.promise)}</p></div>
+        <div><span class="label">${v.part ? `${esc(v.part.series)} · Part ${v.part.n} of ${v.part.of}` : "Workshop"} · ${w.minutes} min</span><h1>${esc(s.title)}</h1><p class="tag">${esc(v.promise)}</p></div>
         <div class="g"><span class="label">What we'll do</span><ol>${w.parts.map((p) => `<li><span><b>${esc(p.name)}</b> · ${esc(p.q)}</span></li>`).join("")}</ol></div></div>
       <div class="joinbox"><span class="label">Scan to join</span><div class="qrbig" id="qrbig"></div><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}
         <span class="here" data-testid="waiting-people"><span id="herecount">${v.people}</span> here · starting soon</span></div></div>`;
@@ -893,7 +888,7 @@
         const s = v.scene;
         setTimer(v.timer);
         $("where").textContent =
-          `${v.workshop} · ${v.act} · ${v.i + 1}/${v.n}`;
+          `${v.part ? `Part ${v.part.n} of ${v.part.of} · ` : ""}${v.workshop} · ${v.act}`;
         if (v.people > lastPeople) bumpEl($("people"));
         lastPeople = v.people;
         $("people").textContent = v.people;
@@ -937,19 +932,6 @@
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ op, ...extra }),
         });
-      document.querySelectorAll("[data-start]").forEach((b) => {
-        let armedStart = false; // switching workshops empties the room: tap twice
-        b.onclick = () => {
-          if (!armedStart) {
-            armedStart = true;
-            const label = b.textContent;
-            b.textContent = "Tap again: empties the room";
-            setTimeout(() => { armedStart = false; b.textContent = label; }, 3000);
-            return;
-          }
-          control("start", { w: +b.dataset.start });
-        };
-      });
       $("aud").onchange = (e) => control("audience", { a: e.target.value });
       $("lib").onchange = (e) => {
         if (e.target.value) control("detour", { id: e.target.value }); // plays now, then back to the spine

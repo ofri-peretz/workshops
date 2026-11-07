@@ -710,12 +710,12 @@
         },
         today(v) {
           const t = v.today;
-          return `<span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
+          return `<span class="label">${v.part ? `Part ${v.part.n} of ${v.part.of} · what we'll cover` : "What we'll cover"}</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
       <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span>${x.terms.map(esc).join(" · ")}</span></li>`).join("")}</ol>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
-      <div class="hero"><span class="label">Workshop · ${v.minutes} min · on your phone</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
+      <div class="hero"><span class="label">${v.part ? `${esc(v.part.series)} · Part ${v.part.n} of ${v.part.of}` : "Workshop"} · ${v.minutes} min</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
         <p class="meta" data-testid="waiting-people">Starting soon · ${v.people} here</p></div>
       <div class="col">
         <section class="card host" style="order:1"><img class="avatar" src="${esc(v.host.photo)}" alt="${esc(v.host.name)}" width="72" height="72" /><div><span class="label">Your host</span><b>${esc(v.host.name)}</b><p class="meta">${esc(v.host.lead)}</p><ul>${v.host.items.map((it) => `<li>${esc(it)}</li>`).join("")}</ul></div></section>

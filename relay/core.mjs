@@ -332,6 +332,8 @@ const winnerOf = (room, s) => {
   return studiesOf(room)[counts.indexOf(Math.max(...counts))];
 };
 const nextTrack = () => SERIES.find((x) => x.status === "Next");
+// Where this workshop sits in the series: "Part 1 of 4".
+const partOf = (room) => { const k = SERIES.findIndex((x) => (x.w || []).includes(room.workshop)); return k < 0 ? null : { n: k + 1, of: SERIES.length, series: "Monitoring series" }; };
 // A composed program may carry its own title; its promise is its parts' questions.
 const titled = (room) => (room.title ? { ...WORKSHOPS[room.workshop], title: room.title, promise: partsOf(room.chapters).map(([n]) => n).join(" · ") } : WORKSHOPS[room.workshop]);
 // The chapter library, for the console's Compose view.
@@ -362,7 +364,7 @@ const todayOf = (room) => {
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
-  if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [],
+  if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, part: partOf(room), people: room.phones.size, presenter: PRESENTER, terms: [],
     minutes: minutes(room, room.path.length), parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), host: { name: PRESENTER.name, photo: PRESENTER.photo, lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items } }; } // phones: tech only
   const s = sceneAt(room), shown = room.shown.has(s.id), W = titled(room);
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
@@ -376,6 +378,7 @@ export function phoneView(room, p) {
   if (s.type === "today") v.today = todayOf(room);
   v.timer = timerOf(room, s);
   if (p) v.score = scoreOf(room, p);
+  v.part = partOf(room);
   if (POLL_TYPES.has(s.type) || s.type === "cases" || s.type === "takeaway") v.tally = { done: results(room, s, Date.now()).total, of: room.phones.size };
   if (s.type === "cases") v.cards = studiesOf(room).map((c) => ({ who: c.who, what: c.what }));
   if (s.type === "why") v.why = whyOf(room);
@@ -402,7 +405,7 @@ export function phoneView(room, p) {
 export function screenView(room, now) {
   const s = sceneAt(room), W = titled(room);
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
-  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, waiting: room.begun ? undefined : { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), minutes: minutes(room, room.path.length), lead: AUDIENCES.tech.lead }, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
+  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, part: partOf(room), begun: room.begun, waiting: room.begun ? undefined : { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), minutes: minutes(room, room.path.length), lead: AUDIENCES.tech.lead }, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
