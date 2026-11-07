@@ -145,6 +145,12 @@ export function reduce(room, ev) {
 }
 
 function control(room, { op, i, w, a, id, t, intro, c, title, ev }) {
+  const before = room.pos, begunBefore = room.begun;
+  const out = control1(room, { op, i, w, a, id, t, intro, c, title, ev });
+  if (out.pos !== before || out.begun !== begunBefore || op === "detour") out.since = t; // the countdown restarts on every new step
+  return out;
+}
+function control1(room, { op, i, w, a, id, t, intro, c, title, ev }) {
   const s = sceneAt(room);
   if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, audience: room.audience, intro: room.intro }; // stay in this workshop
   if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), title: c ? title : undefined, runId: ev, audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
@@ -310,6 +316,9 @@ function outage(room, now) {
   return { mins, uptime: room.chat.length ? ok / room.chat.length : null };
 }
 
+// Hands-on steps get a countdown: the scene's minutes, from the moment the room arrived.
+export const TIMED = new Set([...POLL_TYPES, "cases", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway"]);
+const timerOf = (room, s, now = Date.now()) => (room.begun && room.since && TIMED.has(s.type) && s.min ? { left: Math.max(0, room.since + s.min * 60_000 - now), total: s.min * 60_000 } : undefined);
 const ALWAYS_LEAD = new Set(["intro", "why", "today", "outro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
@@ -329,7 +338,7 @@ const titled = (room) => (room.title ? { ...WORKSHOPS[room.workshop], title: roo
 export const chapterList = () => Object.entries(CHAPTERS).filter(([, c]) => c.q).map(([id, c]) => ({ id, name: c.name, q: c.q, min: programMinutes([id]),
   in: Object.entries(WORKSHOPS).filter(([, W]) => W.chapters.includes(id)).map(([k, W]) => ({ w: +k, title: W.title })) }));
 // The header names the step's chapter; the chapter's last step shows its line to remember.
-const actAt = (room, k = room.pos) => (room.path[k]?.startsWith("fork:") ? "Your call" : CHAPTERS[room.part[k]]?.name ?? sceneAt(room, k).act);
+const actAt = (room, k = room.pos) => (room.path[k]?.startsWith("fork:") ? "Your call" : CHAPTERS[room.part[k]]?.q ? CHAPTERS[room.part[k]].name : sceneAt(room, k).act); // bookends: the scene's own label
 const rememberAt = (room, k = room.pos) => (room.part[k] !== room.part[k + 1] ? CHAPTERS[room.part[k]]?.remember : undefined);
 // Each part's case on "Today": its first real (sourced) case, else its first example.
 const leadCase = (c) => {
@@ -349,7 +358,8 @@ const todayOf = (room) => {
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
-  if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
+  if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [],
+    minutes: minutes(room, room.path.length), parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), host: { name: PRESENTER.name, photo: PRESENTER.photo, lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items } }; } // phones: tech only
   const s = sceneAt(room), shown = room.shown.has(s.id), W = titled(room);
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
@@ -360,6 +370,7 @@ export function phoneView(room, p) {
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (s.type === "today") v.today = todayOf(room);
+  v.timer = timerOf(room, s);
   if (s.type === "why") v.why = whyOf(room);
   if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
   if (s.type === "outro") Object.assign(v, outroOf(room));
@@ -391,6 +402,8 @@ export function screenView(room, now) {
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
     today: s.type === "today" ? todayOf(room) : undefined,
+    timer: timerOf(room, s, now),
+    learning: s.type === "qa" ? learningOf(room) : undefined,
     why: s.type === "why" ? whyOf(room) : undefined,
     study: s.type === "cases" && room.shown.has(s.id) ? storyOf(winnerOf(room, s)) : undefined,
     ...(s.type === "outro" ? outroOf(room) : {}),
@@ -409,6 +422,15 @@ export function statusSummary(room, now) {
     incidents: room.incidents.slice().reverse(),
   };
 }
+
+// How the room learned: every question with a right answer the room reached, in order, with the
+// share who got it right. Answers are already in the event log, so this costs no new collection.
+export const learningOf = (room) => room.path.slice(0, room.pos + 1).map((id) => SCENE[id])
+  .filter((s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined)
+  .map((s) => { const a = [...room.phones.values()].map((p) => p.answers[s.id]).filter((x) => x !== undefined);
+    return { id: s.id, q: s.title, a: s.takeaway ?? s.options[s.answer], right: a.filter((x) => x === s.answer).length, total: a.length }; });
+const scoreOf = (room, p) => { const qs = room.path.map((id) => SCENE[id]).filter((s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined && p.answers[s.id] !== undefined);
+  return { right: qs.filter((s) => p.answers[s.id] === s.answer).length, answered: qs.length }; };
 
 // ---- after the room: the recap and the follow-up ---------------------------------------------------
 export const TAKEAWAYS = new Set(SCENES.filter((s) => s.type === "takeaway").map((s) => s.id));
@@ -431,8 +453,9 @@ export function recapView(room, p) {
   const v = { title: W.title, promise: W.promise, parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map(({ name, q, remember }) => ({ name, q, remember })),
     terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })), cases,
     room: { people: room.phones.size, messages: room.chat.length, p95: pct(all, 0.95) },
-    monday: take ? { items: take.items, counts: take.items.map((_, i) => picks.filter((a) => a === i).length) } : null };
+    monday: take ? { items: take.items, counts: take.items.map((_, i) => picks.filter((a) => a === i).length) } : null,
+    learning: learningOf({ ...room, pos: room.path.length - 1 }) };
   if (p) { const ms = room.chat.filter((c) => c.id === p.id).map(waited).filter((x) => x != null);
-    v.mine = { sent: ms.length, p95: pct(ms, 0.95), pick: take ? take.items[p.answers[take.id]] : undefined }; }
+    v.mine = { sent: ms.length, p95: pct(ms, 0.95), pick: take ? take.items[p.answers[take.id]] : undefined, score: scoreOf(room, p) }; }
   return v;
 }

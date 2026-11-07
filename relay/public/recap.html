@@ -105,9 +105,10 @@
         if (!r || !r.ok) { $("msg").textContent = "This recap isn't available. Check the link from your phone."; return; }
         const v = await r.json();
         $("title").textContent = v.title; $("promise").textContent = v.promise; document.title = v.title + " · recap";
-        const mine = v.mine ? `<section class="card" data-testid="recap-mine"><span class="label">You</span><div class="row"><span>Messages you sent</span><b>${v.mine.sent}</b></div><div class="row"><span>Your p95</span><b>${ms(v.mine.p95)}</b></div>${v.mine.pick ? `<p>Your one thing this week: <b>${esc(v.mine.pick)}</b></p>` : ""}</section>` : "";
+        const mine = v.mine ? `<section class="card" data-testid="recap-mine"><span class="label">You</span><div class="row"><span>Messages you sent</span><b>${v.mine.sent}</b></div><div class="row"><span>Your p95</span><b>${ms(v.mine.p95)}</b></div>${v.mine.score.answered ? `<div class="row"><span>Questions you got right</span><b>${v.mine.score.right} of ${v.mine.score.answered}</b></div>` : ""}${v.mine.pick ? `<p>Your one thing this week: <b>${esc(v.mine.pick)}</b></p>` : ""}</section>` : "";
         $("out").innerHTML = `<div style="display:grid;gap:16px">${mine}
           <section class="card"><span class="label">The room</span><div class="row"><span>People</span><b>${v.room.people}</b></div><div class="row"><span>Messages</span><b>${v.room.messages}</b></div><div class="row"><span>The room's p95</span><b>${ms(v.room.p95)}</b></div></section>
+          ${v.learning.length ? `<section class="card"><span class="label">How the room learned · % right</span>${v.learning.map((x) => `<div class="row"><span>${esc(x.a)}</span><b>${x.total ? Math.round((100 * x.right) / x.total) + "%" : "—"}</b></div>`).join("")}</section>` : ""}
           <section class="card"><span class="label">What we covered</span>${v.parts.map((p) => `<p><b>${esc(p.name)}</b> · ${esc(p.q)}<br>${esc(p.remember)}</p>`).join("")}</section>
           ${v.monday ? `<section class="card"><span class="label">What the room will do this week</span>${v.monday.items.map((it, i) => `<div class="row"><span>${esc(it)}</span><b>${v.monday.counts[i]}</b></div>`).join("")}</section>` : ""}
           <section class="card"><span class="label">Terms</span><dl>${v.terms.map((t) => `<dt>${esc(t.term)}</dt><dd>${esc(t.def)}</dd>`).join("")}</dl></section>

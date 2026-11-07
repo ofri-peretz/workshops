@@ -7,6 +7,7 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <title>Workshop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
       /* Phone: the audience's controls. Interlace chrome; the chat itself looks like a phone's messages app. */
       :root {
@@ -66,6 +67,34 @@
       * {
         box-sizing: border-box;
       }
+      .onepage { display: grid; gap: 20px; }
+      .onepage .label { display: block; margin-bottom: 6px; }
+      .onepage .col { display: contents; } /* phone: one column, in reading order */
+      .onepage h1 { font-size: 40px; line-height: 1.05; margin: 4px 0; }
+      .onepage .tag { font-size: 20px; color: var(--fg); margin: 0; }
+      .onepage .meta { color: var(--muted); margin: 0; }
+      .onepage ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: p; }
+      .onepage ol li { counter-increment: p; display: grid; grid-template-columns: 28px 1fr; gap: 2px 8px; }
+      .onepage ol li::before { content: counter(p); grid-row: span 2; font-weight: 700; color: var(--primary, var(--fg)); }
+      .onepage ol li span { color: var(--muted); }
+      .host { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: start; }
+      .host .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+      .host ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+      .share { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+      .share .qr { background: #fff; padding: 8px; border-radius: 12px; width: 132px; height: 132px; }
+      .share .qr img, .share .qr canvas { width: 116px !important; height: 116px !important; }
+      @media (min-width: 900px) {
+        .onepage { grid-template-columns: 1.2fr 1fr; align-items: start; column-gap: 32px; }
+        .onepage > .hero { grid-column: 1 / -1; }
+        .onepage .col { display: grid; gap: 20px; align-content: start; }
+        .onepage h1 { font-size: clamp(48px, 6vw, 96px); }
+        .onepage .tag { font-size: clamp(22px, 2.2vw, 36px); }
+        .onepage { font-size: clamp(16px, 1.2vw, 22px); }
+        .share .qr { width: clamp(132px, 14vw, 240px); height: clamp(132px, 14vw, 240px); }
+        .share .qr img, .share .qr canvas { width: 100% !important; height: 100% !important; }
+      }
+      .timer { font: 700 16px/1 var(--mono); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); margin-left: auto; }
+      .timer.low { border-color: var(--primary, currentColor); }
       .findme {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -162,6 +191,9 @@
         color: var(--muted);
       }
       main {
+        width: 100%;
+        max-width: 1200px; /* mobile first; on a laptop or TV the page stays readable, not stretched */
+        margin-inline: auto;
         overflow-y: auto;
         padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
         display: grid;
@@ -454,7 +486,7 @@
         <b>Workshops</b>
       </div>
       <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
-      <span id="where">Joining…</span>
+      <span id="where">Joining…</span><span class="timer" id="timer" hidden aria-live="off"></span>
     </header>
     <main>
       <section id="gate" class="card" hidden aria-labelledby="gateTitle">
@@ -672,7 +704,19 @@
       ${t.cases.length ? `<div class="card"><span class="label">Real cases</span>${t.cases.map((c) => `<p><b>${esc(c.who)}</b> · ${esc(c.what)}</p>`).join("")}</div>` : ""}<p>${esc(v.phone)}</p>`;
         },
         waiting(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>Starting soon</h1><p class="card">${esc(v.promise)}</p><p data-testid="waiting-people">${v.people} here</p>${findMe(v)}`;
+                    return `<div class="onepage" data-testid="onepage">
+      <div class="hero"><span class="label">Workshop · ${v.minutes} min · on your phone</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
+        <p class="meta" data-testid="waiting-people">Starting soon · ${v.people} here</p></div>
+      <div class="col">
+        <section class="card host" style="order:1"><img class="avatar" src="${esc(v.host.photo)}" alt="${esc(v.host.name)}" width="72" height="72" /><div><span class="label">Your host</span><b>${esc(v.host.name)}</b><p class="meta">${esc(v.host.lead)}</p><ul>${v.host.items.map((it) => `<li>${esc(it)}</li>`).join("")}</ul></div></section>
+        <section class="card share" style="order:5"><div class="qr" id="shareqr" aria-label="QR code to join"></div><div><span class="label">Bring someone</span><p>Show this to the person next to you. It opens the workshop.</p></div></section>
+      </div>
+      <div class="col">
+        <section class="card" style="order:2"><span class="label">What we'll do</span><ol>${v.parts.map((p) => `<li><b>${esc(p.name)}</b><span>${esc(p.q)}</span></li>`).join("")}</ol></section>
+        <section class="card" style="order:3"><span class="label">You'll leave with</span><p>Your own numbers, real cases, a recap link, and one thing to check on Monday.</p></section>
+        <div style="order:4">${findMe(v)}</div>
+      </div>
+    </div>`;
         },
         chat(v) {
           return `<h1>${esc(v.phone || v.title)}</h1>${v.group != null ? `<p class="card">Your messages took <b>${fmt(v.group)}</b> each.</p>` : ""}`;
@@ -800,7 +844,7 @@
           const who = v.intro === "returning"
             ? `<h1>Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
             : `<h1>${esc(v.title)}</h1><p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>`;
-          return `<span class="label">${esc(v.workshop)}</span>${who}${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}${findMe(v)}
+          return `<span class="label">${esc(v.workshop)}</span><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="96" height="96" style="border-radius:50%" />${who}${v.promise ? `<p class="card">${esc(v.promise)}</p>` : ""}${findMe(v)}
       <div class="card"><span class="label">The series</span>${(v.series || []).map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div>`;
         },
         next(v) {
@@ -821,6 +865,7 @@
       function render() {
         const v = view;
         if (!v) return;
+        setTimer(v.timer);
         $("where").textContent = `${v.workshopId === 5 ? "Signals" : "Workshop " + v.workshopId} · ${v.act}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
@@ -834,10 +879,15 @@
         }
         if (!NO_DEEPER.has(v.type))
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
+        const share = $("shareqr");
+        if (share && !share.firstChild && window.QRCode) { // the join link, with this room's code when the phone came in with one
+          const c = new URLSearchParams(location.search).get("c");
+          new QRCode(share, { text: location.origin + "/" + (c ? "?c=" + encodeURIComponent(c) : ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        }
         wire(v);
       }
       const findMe = (v) =>
-        `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</nav>`;
+        `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.cta || l.label)}</a>`).join("")}</nav>`;
       const NO_DEEPER = new Set(["intro", "why", "today", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
@@ -991,6 +1041,21 @@
           setTimeout(poll, 1500);
         }
       }
-    </script>
+    
+      // The countdown: the server says how much is left; this page counts down from when it heard it.
+      let deadline = null;
+      function setTimer(t) { deadline = t ? { at: Date.now() + t.left, total: t.total } : null; tick(); }
+      function tick() {
+        const el = document.getElementById("timer");
+        if (!el) return;
+        if (!deadline) { el.hidden = true; return; }
+        const left = Math.max(0, deadline.at - Date.now()), sec = Math.ceil(left / 1000);
+        el.hidden = false;
+        el.textContent = left ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` : "Time";
+        el.classList.toggle("low", left > 0 && left <= 30_000);
+        el.classList.toggle("done", left === 0);
+      }
+      setInterval(tick, 1000);
+</script>
   </body>
 </html>

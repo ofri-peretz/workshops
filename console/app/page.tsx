@@ -152,6 +152,16 @@ export default async function Console() {
             <Stat label="Answered the follow-up" value={impact.followedUp} testId="impact-followed" />
             <Stat label="Did it" value={impact.followedUp ? `${Math.round((100 * impact.did) / impact.followedUp)}%` : "—"} testId="impact-did" />
           </CardContent>
+          {impact.questions.length ? (
+            <CardContent className="grid gap-2">
+              <span className="text-sm text-muted-foreground">Hardest questions, across every session (% right)</span>
+              <ul data-testid="impact-questions" className="grid gap-1">
+                {impact.questions.slice(0, 5).map((x) => (
+                  <li key={x.id} className="flex justify-between gap-4"><span>{x.q}</span><b className="tabular-nums">{Math.round((100 * x.right) / x.total)}% of {x.total}</b></li>
+                ))}
+              </ul>
+            </CardContent>
+          ) : null}
         </Card>
       ) : null}
 

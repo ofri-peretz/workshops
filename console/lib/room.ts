@@ -85,7 +85,8 @@ export async function readStage(): Promise<{ begun: boolean; people: number } | 
 }
 
 /** Across every session: who picked one thing to do, and who said they did it a week later. */
-export async function readImpact(): Promise<{ picked: number; followedUp: number; did: number } | null> {
+export type Impact = { picked: number; followedUp: number; did: number; questions: { id: string; q: string; right: number; total: number }[] };
+export async function readImpact(): Promise<Impact | null> {
   const r = await fetch(`${env.relayUrl()}/api/impact?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
   return r?.ok ? r.json() : null;
 }

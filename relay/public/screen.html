@@ -336,6 +336,9 @@
         content: "□  ";
         color: var(--c1);
       }
+      .timer { font: 700 clamp(28px, 3vw, 48px)/1 var(--mono); padding: 6px 16px; border-radius: 12px; border: 2px solid var(--line); }
+      .timer.low { border-color: var(--primary, currentColor); }
+      .timer.done { opacity: 0.7; }
       .findme {
         display: grid;
         grid-template-columns: auto 1fr;
@@ -461,7 +464,7 @@
   <body>
     <div class="top">
       <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg
-      ><span class="brand">interlace</span><b>Workshops</b><span class="where" id="where"></span
+      ><span class="brand">interlace</span><b>Workshops</b><span class="where" id="where"></span><span class="timer" id="timer" hidden></span
       ><span class="spacer"></span>
       <span class="join"
         ><span id="joinurl"></span><span id="qrs" aria-hidden="true"></span
@@ -765,7 +768,7 @@
           const head = v.intro === "returning"
             ? `<h1 style="font-size:clamp(44px,5.6vw,88px)">Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
             : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
-          return `<div class="grid2"><div style="display:grid;gap:18px">${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(28px,2.6vw,40px);font-weight:600">${esc(v.promise)}</span></div>
+          return `<div class="grid2"><div style="display:grid;gap:18px"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="160" height="160" style="width:clamp(120px,10vw,180px);height:auto;border-radius:50%" />${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(28px,2.6vw,40px);font-weight:600">${esc(v.promise)}</span></div>
       <div class="series"><span class="label">The series</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
         },
         why(v) {
@@ -797,7 +800,9 @@
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
         },
         qa(v, s) {
-          return `<span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1>${findMe(v)}`;
+          const L = v.learning || [];
+          const learned = L.length ? `<div class="g"><span class="label">How the room learned · % right, in order</span>${L.map((x) => `<div class="row"><span>${esc(x.a)}</span><b>${x.total ? Math.round((100 * x.right) / x.total) + "%" : "—"}</b></div>`).join("")}</div>` : "";
+          return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1>${findMe(v)}</div>${learned}</div>`;
         },
         waiting(v, s) {
           return `<div class="grid2"><div style="display:grid;gap:22px"><span class="label">Starting soon</span><h1>${esc(s.title)}</h1><p class="lead">${esc(v.promise)}</p><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}<p class="lead" data-testid="waiting-people">${v.people} here</p></div><div class="qrbig" id="qrbig"></div></div>`;
@@ -809,6 +814,7 @@
 
       function render(v) {
         const s = v.scene;
+        setTimer(v.timer);
         $("where").textContent =
           `${v.workshop} · ${v.act} · ${v.i + 1}/${v.n}`;
         $("people").textContent = v.people;
@@ -912,6 +918,21 @@
         } catch {}
         setTimeout(poll, 1000);
       })();
-    </script>
+    
+      // The countdown: the server says how much is left; this page counts down from when it heard it.
+      let deadline = null;
+      function setTimer(t) { deadline = t ? { at: Date.now() + t.left, total: t.total } : null; tick(); }
+      function tick() {
+        const el = document.getElementById("timer");
+        if (!el) return;
+        if (!deadline) { el.hidden = true; return; }
+        const left = Math.max(0, deadline.at - Date.now()), sec = Math.ceil(left / 1000);
+        el.hidden = false;
+        el.textContent = left ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` : "Time";
+        el.classList.toggle("low", left > 0 && left <= 30_000);
+        el.classList.toggle("done", left === 0);
+      }
+      setInterval(tick, 1000);
+</script>
     </body>
 </html>

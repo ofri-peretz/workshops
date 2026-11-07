@@ -99,7 +99,12 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const ans = await store.events({ kind: "answer" });
         const picks = new Set(ans.filter((e) => TAKEAWAYS.has(e.data.scene)).map((e) => e.phone)), fu = ans.filter((e) => e.data.scene === "followup");
-        return json(200, { picked: picks.size, followedUp: fu.length, did: fu.filter((e) => e.data.value === 1).length });
+        // Every answer ever given to a question with a right answer: which ideas the rooms find hard.
+        const qs = SCENES.filter((x) => x.answer !== undefined && x.type !== "takeaway").map((x) => {
+          const got = ans.filter((e) => e.data.scene === x.id);
+          return { id: x.id, q: x.title, right: got.filter((e) => e.data.value === x.answer).length, total: got.length };
+        }).filter((x) => x.total).sort((a, b) => a.right / a.total - b.right / b.total);
+        return json(200, { picked: picks.size, followedUp: fu.length, did: fu.filter((e) => e.data.value === 1).length, questions: qs });
       }
       // Everything below is for phones, and only while the presenter has the room open.
       if (!(await store.gate()).live) return json(403, { error: JOIN.closed[1], closed: true });

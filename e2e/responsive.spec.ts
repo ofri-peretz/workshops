@@ -92,8 +92,11 @@ test.describe("relay", () => {
   test("waiting room, intro and outro carry the links and the calls to action", async ({ page }) => {
     await control(page, { op: "start", w: 5, intro: "returning" });
     await page.goto(`${RELAY}/?c=424242`);
-    await expect(page.getByRole("heading", { name: "Starting soon" })).toBeVisible();
-    await expect(page.locator(".findme a")).toHaveCount(4);
+    const onepage = page.getByTestId("onepage");
+    await expect(onepage.getByRole("heading", { name: "Signals" })).toBeVisible();
+    await expect(onepage.getByRole("img", { name: "Ofri Peretz" })).toBeVisible();
+    await expect(onepage.getByText("Starting soon")).toBeVisible();
+    await expect(onepage.locator(".findme a")).toHaveCount(4);
     await expectFits(page, "waiting room");
     await control(page, { op: "begin" });
     await page.reload();

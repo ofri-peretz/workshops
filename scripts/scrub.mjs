@@ -17,6 +17,7 @@ const hits = [];
 for (const f of files) {
   if (f === self) continue;
   if (/(^|\/)\.env(\.|$)/.test(f) && !f.endsWith(".env.example")) { hits.push(`${f}: env file must not be committed`); continue; }
+  if (/\.(jpe?g|png|gif|webp|ico|pdf|woff2?)$/i.test(f)) continue; // binary: no text to leak, and its bytes read as noise
   let text;
   try { text = readFileSync(f, "utf8"); } catch { continue; }
   text.split("\n").forEach((line, i) => {
