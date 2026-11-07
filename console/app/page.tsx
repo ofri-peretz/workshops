@@ -199,9 +199,9 @@ export default async function Console() {
 /** One labelled set of radios; the first option is the default. */
 function Choice({ legend, name, options }: { legend: string; name: string; options: { id: string; label: string; detail: string }[] }) {
   return (
-    <fieldset className="grid gap-3">
+    <fieldset className="grid content-start gap-3">
       <legend className="mb-3 text-sm font-medium text-muted-foreground">{legend}</legend>
-      <RadioGroup name={name} defaultValue={options[0].id} data-testid={`${name}-choice`} className="gap-3">
+      <RadioGroup name={name} defaultValue={options[0].id} data-testid={`${name}-choice`} className="content-start gap-3">
         {options.map((o) => (
           <Label key={o.id} className="flex items-start gap-3 font-normal">
             <RadioGroupItem value={o.id} data-testid={`${name}-${o.id}`} className="mt-0.5" />
