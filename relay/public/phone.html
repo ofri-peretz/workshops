@@ -451,6 +451,8 @@
       .out.failed {
         background: var(--bad);
       }
+      .how { margin: 0; padding: 8px 12px; border-left: 3px solid var(--primary); background: var(--card); border-radius: 8px; font-size: 15px; }
+      .how .label { display: block; }
       .typing {
         display: flex;
         gap: 4px;
@@ -903,7 +905,7 @@
           return `<span class="label">Your call</span>` + R.poll(v);
         },
         show(v) {
-          return `<h1>${esc(v.title)}</h1>${leadHtml(v)}<p>${esc(v.phone)}</p>`;
+          return `<h1>${esc(v.title)}</h1>${leadHtml(v)}${v.items ? `<ul class="card">${v.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : `<p>${esc(v.phone)}</p>`}`;
         },
         trace(v) {
           const t = v.trace, more = `<button type="button" class="primary" id="sendmore">Send Dana a message</button>`;
@@ -1044,7 +1046,8 @@
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
         lastKey = key;
-        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}:</b> ${esc(v.case.happened || v.case.what)}${v.case.bridge ? `<br><b>→ ${esc(v.case.bridge)}</b>` : ""}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
+        const how = v.how && !v.needName ? `<p class="how" data-testid="how"><span class="label">How it works</span> ${esc(v.how)}</p>` : "";
+        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (how) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}:</b> ${esc(v.case.happened || v.case.what)}${v.case.bridge ? `<br><b>→ ${esc(v.case.bridge)}</b>` : ""}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";
