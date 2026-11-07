@@ -325,6 +325,7 @@ for (const id of WORKSHOPS[5].spine.filter((id) => typeof id === "string" && !["
   for (const h of [s.title, s.takeaway].filter(Boolean)) assert.ok(!/\.$/.test(h), `${id}: a headline has no closing period: "${h}"`);
   if (s.case) { within(`${id} case`, s.case.who, 4); within(`${id} case line`, s.case.what, 8); }
   if (s.case) assert.ok(s.case.source || s.case.who.startsWith("Example:"), `${id}: a case is real (with its source) or labelled Example`);
+  if (s.case) assert.ok(s.bridge && s.bridge.split(/\s+/).length <= 12, `${id}: a case on the Signals path ties to what the room just did (a bridge, 12 words)`);
   if (s.type === "poll" && s.answer !== undefined) assert.ok(s.takeaway, `${id}: a question with an answer reveals a takeaway headline`);
 }
 
@@ -337,7 +338,7 @@ await go("signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");
 assert.equal((await screen()).remember, undefined, "the line to remember waits for the chapter's last scene");
-await go("mean");
+await go("sig-spread");
 assert.equal((await screen()).remember, CHAPTERS["sig-metrics"].remember, "the chapter's last scene shows its line to remember");
 
 // The console can compose a program from any chapters, and Today follows it.
@@ -352,7 +353,7 @@ assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<sc
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
 const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
-assert.ok(lib.find((c) => c.id === "sig-logs").min === 9 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.ok(lib.find((c) => c.id === "sig-logs").min === 8 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
 assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });

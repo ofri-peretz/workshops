@@ -537,6 +537,7 @@
       a.cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font-weight: 600; text-decoration: none; }
       a.cta.primary-cta { min-height: 64px; font-size: 18px; background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
       .me { display: flex; gap: 16px; align-items: center; } .me img { border-radius: 50%; flex: none; }
+      .def { display: block; margin-top: 4px; font-weight: 400; font-size: 14px; color: var(--muted); }
       @media (prefers-reduced-motion: reduce) { body.enter #rest > *, body.enter #top > * { animation: none; } button, .findme a { transition: none; } }
     </style>
   </head>
@@ -774,7 +775,8 @@
           return `<span class="label">${r.mode === "logs" ? "Your log line" : "Your trace"}</span><h1>${esc(v.title)}</h1>
       <button type="button" class="primary" id="roadsend">Send a message</button>
       <ol class="road" id="road">${r.stages.map((st, i) => `<li data-at="${st.at}"><b>${esc(st.name)}</b><span>${esc(st.what)}</span></li>`).join("")}</ol>
-      ${what}<p class="muted small">Typical delays, shown so you can see the road.</p>`;
+      ${what}<p class="muted small">Typical delays, shown so you can see the road.</p>
+      ${r.levels ? `<div class="card"><span class="label">Log levels</span>${r.levels.map(([k, d]) => `<p><b>${k}</b> · ${esc(d)}</p>`).join("")}</div>` : ""}`;
         },
         series(v) {
           const k = v.part ? v.part.n - 1 : -1;
@@ -784,6 +786,20 @@
         },
         scan(v) {
           return `<span class="label">You're in</span><h1>Welcome to ${esc(v.workshop)}</h1><p class="lead">${esc(v.phone)}</p><p class="locked">✓ Connected · ${v.people} joined</p>`;
+        },
+        basics(v) {
+          const r = v.results || {};
+          return `<span class="label">Three words</span><h1>${esc(v.title)}</h1>
+      <div class="card"><b>Latency</b><p>How long one request took. ${r.min != null ? `Yours: ${fmt(r.min)} to ${fmt(r.max)}.` : ""}</p></div>
+      <div class="card"><b>Error rate</b><p>The share of requests that failed.</p></div>
+      <div class="card"><b>Uptime</b><p>The share of time it worked, from outside.</p><p class="muted">99% ≈ 7 h down a month · 99.9% ≈ 43 min · 99.99% ≈ 4 min</p></div>`;
+        },
+        spread(v) {
+          const r = v.results || {}, me = v.mineMs;
+          const verdict = me == null ? "Send a message to see yours." : r.mean && me > 2 * r.mean ? "The average hides you. p95 finds you." : "The average describes you. Look who it hides.";
+          return `<span class="label">Your wait vs the room</span><h1>${esc(v.title)}</h1>
+      <div class="card"><div class="row"><span>Your typical wait</span><b>${fmt(me)}</b></div><div class="row"><span>Room average</span><b>${fmt(r.mean)}</b></div><div class="row"><span>Room p95</span><b>${fmt(r.p95)}</b></div></div>
+      <p class="locked">${esc(verdict)}</p>`;
         },
         today(v) {
           const t = v.today;
@@ -820,7 +836,7 @@
                     ? "right"
                     : "wrong"
                   : "";
-              return `<button type="button" data-a="${i}" class="${cls}" aria-pressed="${v.mine === i}">${esc(o)}</button>`;
+              return `<button type="button" data-a="${i}" class="${cls}" aria-pressed="${v.mine === i}">${esc(o)}${v.defs?.[i] ? `<span class="def">${esc(v.defs[i])}</span>` : ""}</button>`;
             })
             .join("");
           const after =
@@ -979,7 +995,7 @@
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
         lastKey = key;
-        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}:</b> ${esc(v.case.happened || v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
+        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}:</b> ${esc(v.case.happened || v.case.what)}${v.case.bridge ? `<br><b>→ ${esc(v.case.bridge)}</b>` : ""}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";

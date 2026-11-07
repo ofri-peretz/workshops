@@ -251,6 +251,12 @@ export function results(room, s, now) {
       }),
       outage: outage(room, now),
     };
+    case "basics": { const ms = room.chat.filter((c) => c.ok).map(waited).filter((x) => x != null);
+      return { min: ms.length ? Math.round(Math.min(...ms)) : null, max: ms.length ? Math.round(Math.max(...ms)) : null, failed: room.chat.filter((c) => !c.ok).length, total: room.chat.length }; }
+    case "spread": { // every message the room sent, and where the average and the percentiles land
+      const ms = room.chat.filter((c) => c.ok).map(waited).filter((x) => x != null), m = mean(ms);
+      const byPhone = [...room.phones.values()].map((p) => pct(room.chat.filter((c) => c.id === p.id && c.ok).map(waited).filter((x) => x != null), 0.5)).filter((x) => x != null);
+      return { dots: ms.slice(-400), mean: m, p50: pct(ms, 0.5), p95: pct(ms, 0.95), p99: pct(ms, 0.99), people: byPhone.length, hidden: m ? byPhone.filter((x) => x > 2 * m).length : 0 }; }
     case "dots": {
       const ok = room.chat.filter((c) => c.ok && c.rtt != null), ms = ok.map((c) => c.rtt);
       return { dots: ok.map((c) => ({ ms: c.rtt, g: c.g })), mean: mean(ms), p50: pct(ms, 0.5), p95: pct(ms, 0.95), p99: pct(ms, 0.99), max: ms.length ? Math.round(Math.max(...ms)) : null };
@@ -396,17 +402,20 @@ export function phoneView(room, p) {
   if (s.type === "series") Object.assign(v, { series: SERIES, part: partOf(room) });
   if (s.type === "scan") v.people = room.phones.size;
   if (s.type === "road") v.road = roadOf(room, s, p, Date.now());
+  if ((s.type === "spread" || s.type === "basics") ) v.results = results(room, s, Date.now());
+  if (s.type === "spread" && p) v.mineMs = pct(room.chat.filter((c) => c.id === p.id && c.ok).map(waited).filter((x) => x != null), 0.5);
   v.timer = timerOf(room, s);
   if (p) v.score = scoreOf(room, p);
   if (p) Object.assign(v, { points: pointsOf(room, p), rank: rankOf(room, p), of: room.phones.size, needName: room.names === "named" && !p.name, name: p.name });
   v.eyes = room.eyes;
+  if (s.options) v.defs = defsOf(s);
   v.part = partOf(room);
   if (POLL_TYPES.has(s.type) || s.type === "cases" || s.type === "takeaway") v.tally = { done: results(room, s, Date.now()).total, of: room.phones.size };
   if (s.type === "cases") v.cards = studiesOf(room).map((c) => ({ who: c.who, what: c.what }));
   if (s.type === "why") v.why = whyOf(room);
   if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
   if (s.type === "outro") Object.assign(v, outroOf(room));
-  if (s.case) v.case = { who: s.case.who, what: s.case.what, happened: s.case.happened, real: !!s.case.source };
+  if (s.case) v.case = { who: s.case.who, what: s.case.what, happened: s.case.happened, real: !!s.case.source, bridge: s.bridge };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
@@ -437,7 +446,7 @@ export function screenView(room, now) {
     today: s.type === "today" ? todayOf(room) : undefined,
     road: s.type === "road" ? roadOf(room, s, null, now) : undefined,
     timer: timerOf(room, s, now),
-    eyes: room.eyes, names: room.names, voters: room.voters,
+    eyes: room.eyes, names: room.names, voters: room.voters, defs: s.options ? defsOf(s) : undefined,
     leaderboard: QUIZ(s) && room.shown.has(s.id) ? leaderboardOf(room) : undefined,
     who: QUIZ(s) && room.shown.has(s.id) ? votersOf(room, s) : undefined,
     learning: s.type === "qa" ? learningOf(room) : undefined,
@@ -486,11 +495,25 @@ export const ROADS = {
     { at: 4000, name: "Visible", what: "Tempo or Jaeger shows the whole trace" },
   ],
 };
+// Log levels as the industry uses them (syslog / OpenTelemetry severity, simplified).
+export const LEVELS = [
+  ["DEBUG", "Detail for developers; usually off in production"],
+  ["INFO", "Normal events: a request finished"],
+  ["WARN", "Odd but still working: a slow request"],
+  ["ERROR", "A request failed"],
+  ["FATAL", "The process can't go on"],
+];
 const roadOf = (room, s, p, now) => {
   const stages = ROADS[s.mode], mine = p && room.chat.findLast((c) => c.id === p.id);
   return { mode: s.mode, stages, now, mine: mine ? { t: mine.t, line: logLine(mine), trace: mine.trace ?? null } : null,
-    counts: stages.map((st) => room.chat.filter((c) => now - c.t >= st.at).length) };
+    counts: stages.map((st) => room.chat.filter((c) => now - c.t >= st.at).length),
+    // lines go to the big screen only: phones would redraw on every message
+    lines: s.mode === "logs" && !p ? room.chat.slice(-6).map(logLine) : undefined, levels: s.mode === "logs" ? LEVELS : undefined };
 };
+
+// A short definition under each answer that names a term ("Logs" -> log), so anyone can answer.
+const defOf = (o) => { const k = String(o).toLowerCase(); const g = GLOSSARY[k] || GLOSSARY[k.replace(/s$/, "")]; return g ? g.def.split(/(?<=\.)\s/)[0] : undefined; };
+export const defsOf = (s) => (s.options && s.options.some((o) => defOf(o)) ? s.options.map(defOf) : undefined);
 
 // The game: a right answer scores 500 plus up to 500 for speed (time left on that step's countdown).
 const QUIZ = (s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined;

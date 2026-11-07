@@ -556,6 +556,31 @@
       #stage.enter .beats > div:nth-child(2) { animation-delay: 160ms; } #stage.enter .beats > div:nth-child(3) { animation-delay: 320ms; }
       .beats p { margin: 0; font-size: clamp(24px, 2vw, 36px); line-height: 1.3; }
       .beats .lesson { border-color: var(--primary); } .beats .lesson p { font-weight: 700; }
+      /* The one QR: everything centred, both ways, in the space between the header and the controls. */
+      .scan { min-height: calc(100vh - 220px); display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+      .scan h1 { font-size: clamp(56px, 6vw, 110px); margin: 0; }
+      .scan .here { font-size: clamp(28px, 2.6vw, 44px); font-weight: 700; }
+      .case .bridge { display: block; margin-top: 6px; color: var(--fg); font-weight: 600; }
+      .bar .def { display: block; margin-top: 4px; font-size: clamp(15px, 1.1vw, 20px); color: var(--muted); }
+      .term { font: 500 clamp(15px, 1.15vw, 20px)/1.6 var(--mono); background: #050505; color: #d6d3d1; border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; display: grid; gap: 2px; }
+      .term .label { margin-bottom: 8px; }
+      .term .ln b { display: inline-block; min-width: 4.6em; }
+      .term .info b { color: #34d399; } .term .warn b { color: #fbbf24; } .term .error b { color: #f87171; }
+      .term .new { animation: rise 420ms ease-out both; }
+      .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+      .lv { display: grid; gap: 4px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+      .lv b { font: 700 16px/1 var(--mono); } .lv span { color: var(--muted); font-size: clamp(15px, 1.1vw, 19px); }
+      .lv.debug b { color: var(--muted); } .lv.info b { color: #34d399; } .lv.warn b { color: #fbbf24; } .lv.error b { color: #f87171; } .lv.fatal b { color: #ef4444; }
+      @media (prefers-reduced-motion: reduce) { .term .new { animation: none; } }
+      .nines { display: block; font: 600 clamp(16px, 1.3vw, 22px)/1.5 var(--mono); color: var(--muted); }
+      .nines b { color: var(--fg); }
+      .spread { width: 100%; height: auto; }
+      .spread circle { fill: color-mix(in oklab, var(--primary) 55%, transparent); }
+      .spread line { stroke-width: 4; } .spread text { font: 600 26px var(--mono); }
+      .spread .avg { stroke: var(--muted); fill: var(--muted); stroke-dasharray: 10 8; } .spread .p50 { stroke: var(--fg); fill: var(--fg); } .spread .p95 { stroke: var(--bad); fill: var(--bad); }
+      .spread .axis { fill: var(--muted); font-size: 20px; }
+      .big-claim { font-size: clamp(26px, 2.4vw, 42px); margin: 0; } .big-claim b { color: var(--bad); }
+      .scan .qrbig { justify-self: center; width: auto; display: grid; place-items: center; }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -666,10 +691,10 @@
         [99.999, "5 min 15 s", "26 s", "0.9 s"],
       ];
 
-      function bars(options, counts, answer, shown) {
+      function bars(options, counts, answer, shown, defs) {
         const max = Math.max(1, ...counts),
           tot = counts.reduce((a, b) => a + b, 0);
-        return `<div class="bars">${options.map((o, i) => `<div class="bar ${shown && i === answer ? "right" : ""}"><div class="t"><i style="width:${(100 * counts[i]) / max}%"></i><span>${esc(o)}</span></div><b>${tot ? Math.round((100 * counts[i]) / tot) + "%" : "0"}</b></div>`).join("")}</div>`;
+        return `<div class="bars">${options.map((o, i) => `<div class="bar ${shown && i === answer ? "right" : ""}"><div class="t"><i style="width:${(100 * counts[i]) / max}%"></i><span>${esc(o)}${defs?.[i] ? `<small class="def">${esc(defs[i])}</small>` : ""}</span></div><b>${tot ? Math.round((100 * counts[i]) / tot) + "%" : "0"}</b></div>`).join("")}</div>`;
       }
       function gantt() {
         return `<svg viewBox="0 0 900 170" role="img" aria-label="Trace: request 95 ms, database 15 ms, 80 ms with no span">
@@ -744,7 +769,7 @@
           let body;
           if (s.reveal === "groups" && v.shown) {
             body = `<div class="groups">${r.byGroup.map((c, i) => `<div class="g"><h3>${gname(r.groupsMs?.[i] ?? [100, 1000, 3000, 7000][i], v.groupsShown, i)}</h3>${bars(s.options, c)}</div>`).join("")}</div>`;
-          } else body = bars(s.options, r.counts, s.answer, v.shown);
+          } else body = bars(s.options, r.counts, s.answer, v.shown, v.defs);
           const visual =
             s.type === "gantt"
               ? gantt() + (v.shown && r.real ? `<span class="label">Your room's slowest message</span>${traceSvg(r.real)}` : "")
@@ -917,9 +942,11 @@
         },
         road(v, s) {
           const r = v.road;
-          return `<span class="label">${r.mode === "logs" ? "Logs · the road" : "Traces · the road"}</span><h1>${esc(s.title)}</h1>
-      <ol class="road-h">${r.stages.map((st, i) => `<li><em>${r.counts[i]}</em><b>${esc(st.name)}</b><span>${esc(st.what)}</span></li>`).join("")}</ol>
-      <p class="lead">${esc(s.lead)}</p><p class="muted">Messages that reached each stage · typical delays</p>`;
+          const term = r.lines ? `<div class="term" aria-label="Relay's stdout"><span class="label">Relay's stdout · what the server prints</span>${r.lines.map((l, k) => `<div class="ln ${l.level} ${k === r.lines.length - 1 ? "new" : ""}"><b>${l.level.toUpperCase()}</b> ${esc(l.time.slice(11, 19))} ${esc(l.route)} ${l.status} ${l.duration_ms ?? "—"}ms trace=${esc((l.trace_id || "").slice(0, 8))}</div>`).join("") || `<div class="ln">Waiting for the first message…</div>`}</div>` : "";
+          const levels = r.levels ? `<div class="levels">${r.levels.map(([k, d]) => `<div class="lv ${k.toLowerCase()}"><b>${k}</b><span>${esc(d)}</span></div>`).join("")}</div>` : "";
+          return `<span class="label">${r.mode === "logs" ? "Logs · the road" : "Traces · the road"}</span><h1>${esc(s.title)}</h1>${term}
+      <ol class="road-h">${r.stages.map((st, i) => `<li><em>${r.counts[i]}</em><b>${esc(st.name)}</b><span>${esc(st.what)}</span></li>`).join("")}</ol>${levels}
+      <p class="muted">Messages that reached each stage · typical delays</p>`;
         },
         series(v, s) {
           const k = v.part ? v.part.n - 1 : -1;
@@ -928,10 +955,32 @@
         return `<div class="scard ${i === k ? "today" : ""}" style="--i:${i}"><span class="num">Part ${esc(n)}</span><b>${esc(name)}</b><span>${esc(x.what)}</span>${i === k ? `<em>Today</em>` : ""}</div>`; }).join("")}</div>`;
         },
         scan(v, s) {
-          return `<div class="welcome"><div style="display:grid;gap:18px;align-content:center"><span class="label">Join from your phone</span><h1>${esc(s.title)}</h1>
-        <div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : `<p class="muted">No join code on this screen: press New code in the console, then open the big screen again.</p>`}
-        <span class="here" data-testid="joined"><span id="herecount">${v.people}</span> joined</span></div>
-      <div class="joinbox"><div class="qrbig" id="qrbig"></div></div></div>`;
+          return `<div class="scan"><span class="label">Join from your phone</span><h1>${esc(s.title)}</h1>
+      <div class="qrbig" id="qrbig"></div>
+      <div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : `<p class="muted">No join code on this screen: press New code in the console, then reload.</p>`}
+      <span class="here" data-testid="joined"><span id="herecount">${v.people}</span> joined</span></div>`;
+        },
+        basics(v, s, r) {
+          const range = r && r.min != null ? `Your messages: ${fmt(r.min)} to ${fmt(r.max)}` : "Your messages, in a moment";
+          return `<span class="label">Three words</span><h1>${esc(s.title)}</h1>
+      <div class="beats">
+        <div><span class="label">Latency</span><p>How long one request took, from asking to the answer.</p><span class="muted">${range}</span></div>
+        <div><span class="label">Error rate</span><p>The share of requests that failed.</p><span class="muted">${r && r.total ? `${r.failed} failed of ${r.total}` : "2 failed of 100 = 2%"}</span></div>
+        <div class="lesson"><span class="label">Uptime</span><p>The share of time it worked, measured from outside.</p>
+          <span class="nines"><b>99%</b> ≈ 7 h down a month · <b>99.9%</b> ≈ 43 min · <b>99.99%</b> ≈ 4 min</span></div>
+      </div><p class="lead">${esc(s.lead)}</p>`;
+        },
+        spread(v, s, r) {
+          if (!r || !r.dots || !r.dots.length) return `<h1>${esc(s.title)}</h1><p class="lead">Send a few messages first.</p>`;
+          const lo = Math.log(50), hi = Math.log(10_000), x = (ms) => 40 + 1820 * (Math.log(Math.min(Math.max(ms, 50), 10_000)) - lo) / (hi - lo);
+          const mark = (ms, label, cls) => `<line x1="${x(ms)}" x2="${x(ms)}" y1="40" y2="230" class="${cls}"/><text x="${x(ms)}" y="30" text-anchor="middle" class="${cls}">${label} ${fmt(ms)}</text>`;
+          return `<span class="label">Your room's messages · each dot is one</span><h1>${esc(s.title)}</h1>
+      <svg class="spread" viewBox="0 0 1900 260" role="img" aria-label="Every message, with the average and percentiles marked">
+        ${r.dots.map((ms, i) => `<circle cx="${x(ms)}" cy="${80 + ((i * 37) % 130)}" r="6"/>`).join("")}
+        ${mark(r.mean, "average", "avg")}${mark(r.p50, "p50", "p50")}${mark(r.p95, "p95", "p95")}
+        <text x="40" y="255" class="axis">50 ms</text><text x="1860" y="255" text-anchor="end" class="axis">10 s</text>
+      </svg>
+      <p class="big-claim"><b>${r.hidden}</b> of ${r.people} people waited more than twice the average. p95 is ${fmt(r.p95)}; the average says ${fmt(r.mean)}.</p>`;
         },
         today(v) {
           const t = v.today;
@@ -1006,7 +1055,7 @@
         document.body.classList.toggle("eyes", !!v.eyes);
         let html = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case && !board ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
+        )(v, s, v.results) + (s.case && !board ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}${s.bridge ? `<span class="bridge">→ ${esc(s.bridge)}</span>` : ""}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
         if (board) html = `<div class="withboard"><div class="main">${html}</div>${board}</div>`; // the board gets its own column
         if (html === lastHtml && !changed) return; // nothing on the slide changed: leave the page alone (no rebuild, no flicker)
         lastHtml = html;
