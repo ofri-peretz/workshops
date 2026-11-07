@@ -148,6 +148,7 @@ function control(room, { op, i, w, a, id, t, intro, c, title, ev }) {
   const before = room.pos, begunBefore = room.begun;
   const out = control1(room, { op, i, w, a, id, t, intro, c, title, ev });
   if (out.pos !== before || out.begun !== begunBefore || op === "detour") out.since = t; // the countdown restarts on every new step
+  out.seq = (room.seq || 0) + 1; // every presenter action: what /api/stream pushes to phones
   return out;
 }
 function control1(room, { op, i, w, a, id, t, intro, c, title, ev }) {

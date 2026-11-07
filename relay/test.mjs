@@ -417,6 +417,21 @@ assert.deepEqual([rc.mine.sent, rc.mine.pick], [1, SCENE["sig-monday"].items[1]]
 assert.equal((await (await fetch(`${base}/recap?r=${runId}`)).json()).mine, undefined, "without your link, only the room's");
 assert.equal((await fetch(`${base}/recap?r=${runId + 1}`)).status, 404, "a recap starts at a session's start");
 
+// Push: a phone's /stream hears "step" the moment the presenter moves (well under a second).
+store.setAccess({ liveUntil: Infinity, joinUntil: Infinity, locked: false, openedAt: Date.now() });
+await ctl("start", { w: 5 });
+const listener = await phone();
+const res = await fetch(base + "/stream", { headers: { cookie: listener.cookie } });
+assert.equal(res.headers.get("content-type"), "text/event-stream");
+const reader = res.body.getReader(), dec = new TextDecoder();
+const heard = (async () => { let buf = ""; for (;;) { const { value, done } = await reader.read(); if (done) return null; buf += dec.decode(value); if (buf.includes("event: step")) return Date.now(); } })();
+const sentAt = Date.now();
+await ctl("next");
+const at = await Promise.race([heard, new Promise((r) => setTimeout(() => r(null), 3000))]);
+assert.ok(at && at - sentAt < 1000, `the phone hears Next within a second (took ${at ? at - sentAt : "never"} ms)`);
+await reader.cancel();
+assert.equal((await fetch(base + "/stream")).status, 401, "the stream is for joined phones and the presenter");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

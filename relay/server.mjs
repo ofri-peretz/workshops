@@ -32,7 +32,9 @@ export function createServer({ store = memoryStore(), token = randomBytes(6).toS
     const body = req.method === "GET" ? undefined : Readable.toWeb(req);
     const response = await handle(new Request(url, { method: req.method, headers: req.headers, body, duplex: "half" }));
     res.writeHead(response.status, Object.fromEntries(response.headers));
-    res.end(Buffer.from(await response.arrayBuffer()));
+    if (!response.body) return res.end();
+    for await (const chunk of response.body) res.write(chunk); // streams (SSE) flow as they come
+    res.end();
   });
   return { server, token, store, code, codeSecret };
 }

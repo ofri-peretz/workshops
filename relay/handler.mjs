@@ -18,9 +18,9 @@ const JOIN = {
 };
 
 // The close's links: this session's recap, and (once you've picked) your follow-up.
-const withLinks = (v, room, p, k) => {
+// Links use the address the phone came in on: localhost locally, the real domain on Vercel.
+const withLinks = (v, room, p, k, home) => {
   if (!["takeaway", "qa", "outro"].includes(v.type)) return v;
-  const home = "https://workshop.ofriperetz.dev";
   return { ...v, recap: room.runId ? `${home}/recap?r=${room.runId}&p=${p.id}&k=${k}` : undefined,
     followup: v.mine !== undefined || Object.keys(p.answers).some((s) => TAKEAWAYS.has(s)) ? `/api/followup.ics?p=${p.id}&k=${k}` : undefined };
 };
@@ -77,7 +77,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         const pick = mine.findLast((e) => TAKEAWAYS.has(e.data.scene)), done = mine.findLast((e) => e.data.scene === "followup");
         if (!pick) return json(404, { error: "No pick to follow up on." });
         const item = SCENES.find((x) => x.id === pick.data.scene).items[pick.data.value];
-        const link = `https://workshop.ofriperetz.dev/followup?p=${q.get("p")}&k=${q.get("k")}`;
+        const link = `${url.origin}/followup?p=${q.get("p")}&k=${q.get("k")}`;
         if (path === "/followup.ics") {
           const day = new Date(Date.parse(pick.data.t) || pick.data.t); day.setUTCDate(day.getUTCDate() + 7);
           const d = day.toISOString().slice(0, 10).replaceAll("-", "");
@@ -106,6 +106,27 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         }).filter((x) => x.total).sort((a, b) => a.right / a.total - b.right / b.total);
         return json(200, { picked: picks.size, followedUp: fu.length, did: fu.filter((e) => e.data.value === 1).length, questions: qs });
       }
+      // Push: a Server-Sent Events stream that says "step" the moment the presenter acts, so every
+      // phone (and screen) re-reads its view at once. Each stream lives under a minute; the browser's
+      // EventSource reconnects by itself. Polling stays as the fallback.
+      if (method === "GET" && path === "/stream") {
+        if (!presenter && !p) return json(401, { error: "join first" });
+        const enc = new TextEncoder(), until = Date.now() + 50_000;
+        let last = store.room().seq || 0;
+        const body = new ReadableStream({
+          async start(ctrl) {
+            ctrl.enqueue(enc.encode("retry: 1000\n: open\n\n"));
+            while (Date.now() < until && !request.signal?.aborted) {
+              await new Promise((r) => setTimeout(r, 250));
+              try { await store.sync(); } catch {}
+              const seq = store.room().seq || 0;
+              if (seq !== last) { last = seq; ctrl.enqueue(enc.encode(`event: step\ndata: ${seq}\n\n`)); }
+            }
+            ctrl.close();
+          },
+        });
+        return new Response(body, { headers: { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" } });
+      }
       // Everything below is for phones, and only while the presenter has the room open.
       if (!(await store.gate()).live) return json(403, { error: JOIN.closed[1], closed: true });
       if (method === "POST" && path === "/join") {
@@ -124,7 +145,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/metrics") // what a Prometheus scrape of Relay would read
         return new Response(promText(room, Date.now()), { headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" } });
       if (!p) return json(401, { error: "join first" });
-      if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, "follow:" + p.id).slice(0, 24)));
+      if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, "follow:" + p.id).slice(0, 24), url.origin));
 
       if (method === "POST" && path === "/send") { // a chat message: waits the phone's group time
         if (used(p, "send")) return json(429, { error: "that's plenty for today" });

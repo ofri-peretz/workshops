@@ -7,7 +7,6 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <title>Workshop</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
       /* Phone: the audience's controls. Interlace chrome; the chat itself looks like a phone's messages app. */
       :root {
@@ -491,6 +490,33 @@
       #send:active {
         transform: scale(0.88);
       }
+
+      /* ---- Design layer: calm depth, one accent, big type, gentle entrances (once per step). ---- */
+      body { background: radial-gradient(120% 60% at 50% -10%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
+      main { max-width: 680px; gap: 18px; padding-top: 22px; }
+      main:has(.onepage) { max-width: 1200px; }
+      header { background: color-mix(in oklab, var(--card) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); position: sticky; top: 0; z-index: 5; }
+      h1 { font-size: clamp(28px, 7.5vw, 40px); line-height: 1.08; letter-spacing: -0.02em; font-weight: 800; text-wrap: balance; }
+      .label { letter-spacing: 0.14em; color: color-mix(in oklab, var(--primary) 70%, var(--muted)); }
+      .lead { font-size: 18px; }
+      .card { border-radius: 20px; padding: 18px; background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, var(--primary) 4%), var(--card)); box-shadow: 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent) inset, 0 10px 30px -18px rgb(0 0 0 / 0.5); }
+      button, .findme a { border-radius: 16px; min-height: 56px; transition: transform 120ms ease, border-color 200ms ease, background 200ms ease; }
+      button:active, .findme a:active { transform: scale(0.98); }
+      button[aria-pressed="true"] { background: color-mix(in oklab, var(--primary) 18%, var(--card)); box-shadow: 0 0 0 2px var(--primary) inset; }
+      .casecard b { font-size: 18px; }
+      .locked { display: inline-flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 999px; background: color-mix(in oklab, var(--primary) 14%, var(--card)); color: var(--fg); justify-self: start; }
+      .steps li b { font-size: 18px; }
+      .timer { background: var(--card); }
+      .timer.low { background: color-mix(in oklab, var(--primary) 22%, var(--card)); }
+      .live { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in oklab, var(--good) 25%, transparent); flex: none; }
+      body.offline .live { background: #f59e0b; box-shadow: 0 0 0 3px rgb(245 158 11 / 0.25); }
+      @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+      body.enter #rest > *, body.enter #top > * { animation: rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      body.enter #rest > *:nth-child(2) { animation-delay: 60ms; } body.enter #rest > *:nth-child(3) { animation-delay: 120ms; } body.enter #rest > *:nth-child(n + 4) { animation-delay: 180ms; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chips i { font: 500 13px/1 var(--mono); font-style: normal; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--quiet); color: var(--fg); }
+      .steps li { padding: 4px 0; } .steps li + li { border-top: 1px solid var(--line); padding-top: 12px; }
+      @media (prefers-reduced-motion: reduce) { body.enter #rest > *, body.enter #top > * { animation: none; } button, .findme a { transition: none; } }
     </style>
   </head>
   <body>
@@ -500,7 +526,7 @@
         <b>Workshops</b>
       </div>
       <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
-      <span id="where">Joining…</span><span class="score" id="score" hidden title="Right answers"></span><span class="timer" id="timer" hidden aria-live="off"></span>
+      <span class="live" aria-hidden="true"></span><span id="where">Joining…</span><span class="score" id="score" hidden title="Right answers"></span><span class="timer" id="timer" hidden aria-live="off"></span>
       <div class="progress" aria-hidden="true"><i id="progress"></i></div>
     </header>
     <main>
@@ -688,6 +714,7 @@
       function answer(value) {
         post("/api/answer", { value }).then((r) => {
           if (r.ok) {
+            try { navigator.vibrate?.(12); } catch {}
             view.mine = value;
             render();
           }
@@ -714,7 +741,7 @@
         today(v) {
           const t = v.today;
           return `<span class="label">${v.part ? `Part ${v.part.n} of ${v.part.of} · what we'll cover` : "What we'll cover"}</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
-      <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span>${x.terms.map(esc).join(" · ")}</span></li>`).join("")}</ol>`;
+      <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="chips">${x.terms.map((term) => `<i>${esc(term)}</i>`).join("")}</span></li>`).join("")}</ol>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
@@ -722,7 +749,6 @@
         <p class="meta" data-testid="waiting-people">Starting soon · ${v.people} here</p></div>
       <div class="col">
         <section class="card host" style="order:1"><img class="avatar" src="${esc(v.host.photo)}" alt="${esc(v.host.name)}" width="72" height="72" /><div><span class="label">Your host</span><b>${esc(v.host.name)}</b><p class="meta">${esc(v.host.lead)}</p><ul>${v.host.items.map((it) => `<li>${esc(it)}</li>`).join("")}</ul></div></section>
-        <section class="card share" style="order:5"><div class="qr" id="shareqr" aria-label="QR code to join"></div><div><span class="label">Bring someone</span><p>Show this to the person next to you. It opens the workshop.</p></div></section>
       </div>
       <div class="col">
         <section class="card" style="order:2"><span class="label">What we'll do</span><ol>${v.parts.map((p) => `<li><b>${esc(p.name)}</b><span>${esc(p.q)}</span></li>`).join("")}</ol></section>
@@ -873,6 +899,7 @@
         },
       };
 
+      let lastKey = "";
       function render() {
         const v = view;
         if (!v) return;
@@ -883,6 +910,9 @@
         if (v.score?.answered) $("score").textContent = `★ ${v.score.right}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
+        const key = `${v.id}:${v.shown}`;
+        document.body.classList.toggle("enter", key !== lastKey);
+        lastKey = key;
         const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
@@ -893,11 +923,6 @@
         }
         if (!NO_DEEPER.has(v.type))
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
-        const share = $("shareqr");
-        if (share && !share.firstChild && window.QRCode) { // the join link, with this room's code when the phone came in with one
-          const c = new URLSearchParams(location.search).get("c");
-          new QRCode(share, { text: location.origin + "/" + (c ? "?c=" + encodeURIComponent(c) : ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
-        }
         wire(v);
       }
       // After a choice: locked in, and how much of the room has chosen. Change your mind any time before the reveal.
@@ -1022,9 +1047,11 @@
         $("chat").hidden = true;
         $("where").textContent = askCode ? "Code needed" : "Closed";
       };
+      let joinCode = new URLSearchParams(location.search).get("c") || (() => { try { return sessionStorage.getItem("relay-code"); } catch { return null; } })();
       const join = (code) =>
         post("/api/join", code ? { code } : {}).then((r) => {
           if (r.ok) {
+            if (code) { joinCode = code; try { sessionStorage.setItem("relay-code", code); } catch {} }
             $("gate").hidden = true;
             $("chat").hidden = false;
             if (location.search) history.replaceState(null, "", location.pathname);
@@ -1058,11 +1085,24 @@
             try {
               const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" });
               if (r.status === 403) return gate("The presenter closed the workshop. Thanks for joining.", false);
+              if (r.status === 401 && joinCode) { // our session is gone (e.g. the room restarted): rejoin quietly
+                const again = await post("/api/join", { code: joinCode });
+                if (again.ok) { apply(again.body); setTimeout(poll, 1500); return; }
+              }
               if (r.ok) apply(await r.json());
             } catch {}
             setTimeout(poll, 1500);
           };
           setTimeout(poll, 1500);
+          // Push: the presenter's Next reaches this phone at once; polling above is the fallback.
+          if (window.EventSource) {
+            const es = new EventSource("/api/stream");
+            es.onopen = () => document.body.classList.remove("offline");
+            es.onerror = () => document.body.classList.add("offline"); // EventSource retries by itself
+            es.addEventListener("step", async () => {
+              try { const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" }); if (r.ok) apply(await r.json()); } catch {}
+            });
+          }
         }
       }
     
