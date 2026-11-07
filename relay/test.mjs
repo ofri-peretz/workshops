@@ -338,7 +338,7 @@ await go("signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");
 assert.equal((await screen()).remember, undefined, "the line to remember waits for the chapter's last scene");
-await go("sig-spread");
+await go("sig-histogram");
 assert.equal((await screen()).remember, CHAPTERS["sig-metrics"].remember, "the chapter's last scene shows its line to remember");
 
 // The console can compose a program from any chapters, and Today follows it.
@@ -353,7 +353,7 @@ assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<sc
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
 const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
-assert.ok(lib.find((c) => c.id === "sig-logs").min === 8 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.ok(lib.find((c) => c.id === "sig-logs").min === 6 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
 assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });
