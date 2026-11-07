@@ -451,6 +451,23 @@
       .out.failed {
         background: var(--bad);
       }
+      .typing {
+        display: flex;
+        gap: 4px;
+        padding: 12px 14px;
+      }
+      .typing i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.4;
+        animation: blink 1.2s infinite;
+      }
+      .typing i:nth-child(2) { animation-delay: 0.2s; }
+      .typing i:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes blink { 40% { opacity: 1; transform: translateY(-2px); } }
+      @media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: 0.7; } }
       .receipt {
         align-self: flex-end;
         font-size: 11px;
@@ -570,7 +587,7 @@
       <section id="chat" aria-label="Chat with Dana">
         <div class="ctop">
           <div class="avatar" aria-hidden="true">D</div>
-          <small>Dana</small>
+          <small id="danaStatus">Dana · online</small>
         </div>
         <div id="msgs" aria-live="polite">
           <div class="spacer"></div>
@@ -692,6 +709,33 @@
         r.textContent = text;
         $("msgs").append(r);
       }
+      // Dana answers the latest message; what she says depends on how long yours took, so each group lives a different chat
+      const DANA = {
+        fast: ["👍", "Great, see you soon", "Perfect", "Ha, ok!", "On my way too"],
+        slow: ["Just got this, the app is lagging?", "Sorry, your message came in late", "Wait, which one is the latest?", "Your texts arrive in slow motion"],
+        awful: ["Hello?? I waited ages for that", "Is your phone ok? Took forever", "I almost left, thought you weren't coming", "Calling you instead, this app is useless"],
+        lost: ["Did you send something? Nothing came through", "I'm not getting your messages 😕", "Still nothing from you…"],
+      };
+      let danaTimer = 0, danaN = 0;
+      function dana(kind) {
+        clearTimeout(danaTimer);
+        $("msgs").querySelector(".typing")?.remove();
+        const dots = document.createElement("div");
+        dots.className = "msg in typing";
+        dots.setAttribute("aria-label", "Dana is typing");
+        dots.innerHTML = "<i></i><i></i><i></i>";
+        const start = setTimeout(() => { $("msgs").append(dots); $("danaStatus").textContent = "Dana · typing…"; $("msgs").scrollTop = 1e9; }, 500);
+        danaTimer = setTimeout(() => {
+          clearTimeout(start);
+          dots.remove();
+          $("danaStatus").textContent = "Dana · online";
+          const m = document.createElement("div");
+          m.className = "msg in";
+          m.textContent = DANA[kind][danaN++ % DANA[kind].length];
+          $("msgs").append(m);
+          $("msgs").scrollTop = 1e9;
+        }, 1400 + Math.random() * 900);
+      }
       $("send").addEventListener("click", async () => {
         const again = pending > 0,
           text = LINES[(again ? n - 1 : n) % LINES.length];
@@ -720,11 +764,14 @@
           if (r.body.spans) post("/api/rtt", { ms, trace: r.body.trace, spans: r.body.spans, phases: phasesFor(t0) });
           else if (r.ok) post("/api/rtt", { ms });
           if (r.ok) {
-            if (b === [...$("msgs").querySelectorAll(".msg.out")].at(-1))
+            if (b === [...$("msgs").querySelectorAll(".msg.out")].at(-1)) {
               receipt("Delivered");
+              if (pending === 1) dana(ms < 1500 ? "fast" : ms < 5000 ? "slow" : "awful");
+            }
           } else {
             b.classList.add("failed");
             receipt("Not Delivered", true);
+            if (pending === 1) dana("lost");
           }
         } catch {
           b.classList.add("failed");

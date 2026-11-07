@@ -333,7 +333,7 @@ await ctl("start", { w: 5 });
 await go("today");
 const today = (await screen()).today;
 assert.deepEqual(today.parts.map((x) => x.name), ["Feel it", "Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
-assert.deepEqual(today.cases.map((c) => c.who), ["US unemployment insurance, 2020", "Amazon Dynamo, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
+assert.deepEqual(today.cases.map((c) => c.who), ["Google, 2009", "Amazon Dynamo, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
 await go("signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");

@@ -80,7 +80,7 @@ export const SCENES = [
   { id: "join", act: "Feel it", min: 2, type: "chat", title: "Send Dana a few messages", lead: "You're a Relay user now.", phone: "Send Dana a few messages.",
     concepts: ["feel-latency"], terms: ["latency"],
     notes: "Say: Scan the code. You're a Relay user now. Send Dana a few messages. Each phone is silently in one of four groups: 0.1 s, 1 s, 3 s or 7 s per message. Let them chat for a minute before saying anything." },
-  { id: "felt", case: "us-ui-2020", bridge: "Your slowest group waited 7 seconds. They waited weeks.", act: "Feel it", min: 2, type: "poll", title: "How did sending feel?", takeaway: "Same app, four different waits", options: ["Instant", "Fine", "Slow", "Broken"], reveal: "groups",
+  { id: "felt", case: "google-2009", bridge: "Your slow groups felt it. Google users felt 0.4 s.", act: "Feel it", min: 2, type: "poll", title: "How did sending feel?", takeaway: "Same app, four different waits", options: ["Instant", "Fine", "Slow", "Broken"], reveal: "groups",
     concepts: ["feel-latency"], terms: [],
     notes: "Reveal splits the votes by hidden group. Then press Reveal groups: every phone shows its own response time." },
   { id: "again", case: "aws-2021", act: "Feel it", min: 1, type: "stat", stat: "resends", title: "Who sent the same message twice?",
