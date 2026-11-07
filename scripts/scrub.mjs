@@ -13,6 +13,9 @@ const RULES = [
 ];
 const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { encoding: "utf8" }).split("\n").filter(Boolean);
 const self = "scripts/scrub.mjs";
+// The presenter's public job title (on LinkedIn and interlace.tools/brand.json) may name the employer,
+// only in the generated brand file and only as that title. Everything else about work stays out.
+const PUBLIC_TITLE = { "relay/brand.json": /Engineering Manager at Snappy\b/ };
 const hits = [];
 for (const f of files) {
   if (f === self) continue;
@@ -21,7 +24,8 @@ for (const f of files) {
   let text;
   try { text = readFileSync(f, "utf8"); } catch { continue; }
   text.split("\n").forEach((line, i) => {
-    for (const [re, why] of RULES) if (re.test(line)) hits.push(`${f}:${i + 1}: ${why}`);
+    const titled = PUBLIC_TITLE[f]?.test(line);
+    for (const [re, why] of RULES) if (re.test(titled ? line.replace(PUBLIC_TITLE[f], "") : line)) hits.push(`${f}:${i + 1}: ${why}`);
   });
 }
 if (hits.length) { console.error(hits.join("\n")); process.exit(1); }

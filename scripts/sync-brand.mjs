@@ -14,7 +14,7 @@ const get = async (url) => { const r = await fetch(url); if (!r.ok) throw new Er
 const messages = JSON.parse(readFileSync(MESSAGES, "utf8"));
 const numbers = JSON.parse(await get(NUMBERS));
 const downloads = (await get(README)).match(/(\d+(?:\.\d+)?[KM]\+) npm downloads/)?.[1];
-if (!Number.isInteger(numbers.rules?.total) || !Number.isInteger(numbers.plugins?.total) || !downloads) throw new Error("brand: a number is missing");
+if (!Number.isInteger(numbers.rules?.total) || !Number.isInteger(numbers.plugins?.total) || !downloads || !messages.author?.facts?.length) throw new Error("brand: a number is missing");
 
 const brand = {
   source: "interlace brand-messages.json + eslint interlace-numbers.json + profile README (scripts/sync-brand.mjs)",
@@ -26,6 +26,8 @@ const brand = {
   rules: numbers.rules.total,
   plugins: numbers.plugins.total,
   downloads,
+  // Who's presenting: role, tenure and team, from the same brand file.
+  author: { lead: messages.author.lead, facts: messages.author.facts },
 };
 writeFileSync(new URL("../relay/brand.json", import.meta.url), JSON.stringify(brand, null, 2) + "\n");
 console.log(brand);

@@ -10,9 +10,9 @@ import { CASES } from "./cases.mjs";
 // version. Phones always get the tech version: the phone page is public, and military and personal
 // background stay off public pages (say them out loud, from the notes).
 // Interlace lines come from brand.json (npm run sync:brand), never typed here.
+const ME = BRAND.author.facts; // role, tenure, experience, the team
 const TECH = [
-  "Tel Aviv → U.S., building the first U.S. team",
-  "8 engineers, 5 time zones",
+  ...ME,
   `${BRAND.name}: tools that ${BRAND.does[0].toLowerCase()}${BRAND.does.slice(1)}`,
   `${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`,
 ];
@@ -38,14 +38,14 @@ export const INTROS = ["first", "returning"];
 export const AUDIENCES = {
   tech: {
     label: "Tech event",
-    lead: "Engineering leader. JavaScript at scale.",
+    lead: BRAND.author.lead,
     items: TECH,
     notes:
       "Tech only. The story: why I relocated (to build the first U.S. team) and how 8 engineers in 5 time zones work — the overlap is scarce, so decisions and numbers live in writing.",
   },
   "israeli-tech": {
     label: "Jewish & Israeli tech community",
-    lead: "Engineering leader. JavaScript at scale.",
+    lead: BRAND.author.lead,
     items: [UNIT, ...TECH],
     notes:
       "Open with Mamram and 8200: where I learned that systems people depend on must be measured. Then the move to the U.S. and the team across 5 time zones.",
@@ -53,7 +53,7 @@ export const AUDIENCES = {
   "jewish-community": {
     label: "Jewish community",
     lead: "Engineering leader. Open source.",
-    items: [AMICHAI, UNIT, TECH[0], TECH[1]],
+    items: [AMICHAI, UNIT, ...ME],
     notes:
       "Open with Amichai: caring for people taught me that every user's wait is a person's wait. Then Mamram and 8200, the move, the team. Skip the open-source numbers.",
   },

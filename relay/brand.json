@@ -6,5 +6,14 @@
   "does": "Check what coding agents ship",
   "rules": 495,
   "plugins": 31,
-  "downloads": "1M+"
+  "downloads": "1.25M+",
+  "author": {
+    "lead": "Engineering leader. JavaScript at scale.",
+    "facts": [
+      "Engineering Manager at Snappy · 5 years",
+      "10+ years building software",
+      "Tel Aviv → U.S., building the first U.S. team",
+      "8 engineers, 5 time zones"
+    ]
+  }
 }
