@@ -47,7 +47,14 @@ them all; DNS is A records to Vercel at the registrar.
 2. Open http://localhost:4180, email yourself a sign-in link, open it on the same computer.
 3. **Go live**: the room opens for 2 hours with a join code good for 60 minutes. Open the big
    screen (HDMI); the room scans the QR.
-4. **Close the room** when you're done. Every phone is out at once.
+4. **Begin** in the console when the room is in: phones wait on "Starting soon" until then.
+5. **Close the room** when you're done. Every phone is out at once.
+
+**Compose** builds a session from chapters of any workshop (up to 3 hours). Type the group's name
+and the console remembers which chapters it has seen, in `console/.groups.json` on your laptop
+only. **Impact** counts the phones that picked one thing to do this week and, from the follow-up
+link a week later, how many did it. After the session each phone keeps a recap link at
+`workshop.ofriperetz.dev/recap`.
 
 The hosted room is closed unless the console opened it. Phones need the code; 5 wrong tries per
 network or 30 across the room stop guessing.

@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
-import { readRoom, readStage } from "@/lib/room";
+import { readChapters, readImpact, readRoom, readStage } from "@/lib/room";
+import { readGroups } from "@/lib/groups";
+import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
 import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction } from "./actions";
 import { Countdown } from "./countdown";
@@ -42,6 +44,8 @@ export default async function Console() {
   const room = await readRoom(jwt);
   const stage = room.status === "closed" ? null : await readStage();
   const waiting = stage?.begun === false;
+  const impact = await readImpact();
+  const [chapters, groups] = room.status === "closed" ? await Promise.all([readChapters(), readGroups()]) : [[], []];
   const phone = env.phoneUrl();
   const joinLink = room.code ? `${phone}?c=${room.code}` : null;
   const qr = joinLink ? await QRCode.toDataURL(joinLink, { margin: 1, width: 320 }) : null;
@@ -94,6 +98,7 @@ export default async function Console() {
               </li>
             ))}
           </ul>
+          <Compose chapters={chapters} groups={groups} />
           </form>
         </section>
       ) : (
@@ -136,6 +141,20 @@ export default async function Console() {
         </Card>
       )}
 
+      {impact ? (
+        <Card data-testid="impact-card">
+          <CardHeader>
+            <CardTitle>Impact</CardTitle>
+            <CardDescription>Each phone picks one thing to do this week; a week later its follow-up link asks if they did.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-8">
+            <Stat label="Picked one thing" value={impact.picked} testId="impact-picked" />
+            <Stat label="Answered the follow-up" value={impact.followedUp} testId="impact-followed" />
+            <Stat label="Did it" value={impact.followedUp ? `${Math.round((100 * impact.did) / impact.followedUp)}%` : "—"} testId="impact-did" />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card data-testid="prepare-card">
         <CardHeader>
           <CardTitle>Prepare</CardTitle>
@@ -166,5 +185,15 @@ function Choice({ legend, name, options }: { legend: string; name: string; optio
         ))}
       </RadioGroup>
     </fieldset>
+  );
+}
+
+/** One number with its label. */
+function Stat({ label, value, testId }: { label: string; value: number | string; testId: string }) {
+  return (
+    <div className="grid gap-1">
+      <span data-testid={testId} className="text-3xl font-semibold tabular-nums">{value}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
+    </div>
   );
 }

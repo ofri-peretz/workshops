@@ -5,11 +5,13 @@
 //   bump(d)     atomically change the load scene's in-flight counter, returning the new value
 //   gate()      is the room live, and does the join code still admit phones?
 //   tryJoin(hmac, ip)  one join attempt: ok | wrong | rate_limited | locked | expired | closed
+//   events({ from, phone, kind })  past events, oldest first (recaps and follow-ups, after the room closes)
 import { fresh, reduce } from "./core.mjs";
 
 // Local runs and the self-check. Mirrors relay_gate() and relay_try_join() in migrations/.
 export function memoryStore() {
   let room = fresh(), id = 0, inflight = 0;
+  const log = [];
   let access = { liveUntil: Infinity, joinUntil: Infinity, codeHmac: null, locked: false, openedAt: 0 }, fails = [];
   const recent = (ip) => fails.filter((f) => f.at >= Math.max(Date.now() - 600_000, access.openedAt) && (ip === undefined || f.ip === ip)).length;
   return {
@@ -31,7 +33,8 @@ export function memoryStore() {
     },
     async sync() {},
     room: () => room,
-    async append(ev) { ev.id = ++id; room = reduce(room, ev); return ev; },
+    async append(ev) { ev.id = ++id; log.push(ev); room = reduce(room, ev); return ev; },
+    async events({ from = 0, phone, kind } = {}) { return log.filter((e) => e.id >= from && (!phone || e.phone === phone) && (!kind || e.kind === kind)); },
     async bump(d) { inflight = Math.max(0, inflight + d); return inflight; },
   };
 }
@@ -81,6 +84,10 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
       const [g] = await rest("rpc/relay_gate", { method: "POST", body: "{}" });
       gateAt = Date.now(); gateCache = g ?? { live: false, joinable: false, locked: false };
       return gateCache;
+    },
+    async events({ from = 0, phone, kind } = {}) { // ponytail: one page of 5000; a run is far smaller
+      const q = [`id=gte.${Number(from) || 0}`, phone && `phone=eq.${phone}`, kind && `kind=eq.${kind}`].filter(Boolean).join("&");
+      return rest(`relay_events?select=id,phone,kind,data&${q}&order=id.asc&limit=5000`);
     },
     async tryJoin(hmac, ip) { gateAt = 0; return rest("rpc/relay_try_join", { method: "POST", body: JSON.stringify({ p_hmac: hmac, p_ip: ip }) }); },
   };

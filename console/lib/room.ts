@@ -51,8 +51,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string, { intro, audience }: { intro: string; audience: string }) {
-  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience });
+export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title }: { intro: string; audience: string; chapters?: string[]; title?: string }) {
+  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience, ...(chapters ? { c: chapters, title } : {}) });
   const code = newCode(), now = Date.now();
   const row = await update(jwt, {
     opened_at: new Date(now).toISOString(),
@@ -82,6 +82,20 @@ export async function readStage(): Promise<{ begun: boolean; people: number } | 
   if (!r?.ok) return null;
   const v = await r.json();
   return { begun: v.begun !== false, people: v.people };
+}
+
+/** Across every session: who picked one thing to do, and who said they did it a week later. */
+export async function readImpact(): Promise<{ picked: number; followedUp: number; did: number } | null> {
+  const r = await fetch(`${env.relayUrl()}/api/impact?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  return r?.ok ? r.json() : null;
+}
+
+export type Chapter = { id: string; name: string; q: string; min: number; in: { w: number; title: string }[] };
+
+/** The relay's chapter library, for Compose. Empty when the relay can't be read. */
+export async function readChapters(): Promise<Chapter[]> {
+  const r = await fetch(`${env.relayUrl()}/api/chapters?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  return r?.ok ? (await r.json()).chapters : [];
 }
 
 export async function relayControl(body: Record<string, unknown>) {

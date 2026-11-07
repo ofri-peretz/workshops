@@ -793,14 +793,14 @@
           return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
         },
         qa(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${findMe(v)}`;
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${v.recap ? `<a class="btn" data-testid="recap-link" href="${esc(v.recap)}">Today's recap</a>` : ""}${findMe(v)}`;
         },
         takeaway(v) {
-          let done = {};
-          try {
-            done = JSON.parse(localStorage.getItem("relay-done") || "{}");
-          } catch {}
-          return `<h1>${esc(v.title)}</h1><div class="card">${v.items.map((it, i) => `<label class="check"><input type="checkbox" data-i="${i}" ${done[i] ? "checked" : ""}><span>${esc(it)}</span></label>`).join("")}</div><p>${esc(v.phone)}</p>`;
+          const opts = v.items.map((it, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(it)}</button>`).join("");
+          const after = v.followup
+            ? `<div class="card" data-testid="followup"><b>In a week we'll ask: did you?</b><a class="btn" href="${esc(v.followup)}">Add a reminder</a></div>`
+            : `<p>Pick the one you'll do this week.</p>`;
+          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${v.recap ? `<a class="btn" data-testid="recap-link" href="${esc(v.recap)}">Today's recap</a>` : ""}`;
         },
       };
 
@@ -824,7 +824,7 @@
       }
       const findMe = (v) =>
         `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</nav>`;
-      const NO_DEEPER = new Set(["intro", "today", "qa", "fork", "next", "takeaway"]);
+      const NO_DEEPER = new Set(["intro", "today", "qa", "waiting", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
         let kept = {};
@@ -908,19 +908,6 @@
             clearInterval(local.load.timer);
             if (sw.checked) local.load.timer = setInterval(loadOnce, 1000);
           };
-        document.querySelectorAll(".check input").forEach(
-          (c) =>
-            (c.onchange = () => {
-              let d = {};
-              try {
-                d = JSON.parse(localStorage.getItem("relay-done") || "{}");
-              } catch {}
-              d[c.dataset.i] = c.checked;
-              try {
-                localStorage.setItem("relay-done", JSON.stringify(d));
-              } catch {}
-            }),
-        );
       }
       async function loadOnce() {
         const L = local.load;

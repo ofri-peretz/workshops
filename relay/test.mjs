@@ -328,6 +328,12 @@ await go("today");
 assert.deepEqual((await screen()).today.parts.map((x) => x.name), ["Logs", "Find it"], "Today lists the composed program's parts");
 await ctl("reset");
 assert.equal(room().chapters.join(), "welcome,sig-logs,gql-find,sig-close", "a reset keeps the composed program");
+assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<script>" })).status, 400, "a program title is plain words");
+await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
+assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
+const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
+assert.ok(lib.find((c) => c.id === "sig-logs").min === 12 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });
 await go("mean");
@@ -340,6 +346,37 @@ const BRAND = JSON.parse(readFileSync(new URL("./brand.json", import.meta.url), 
 const techItems = (await import("./scenes.mjs")).AUDIENCES.tech.items.join(" | ");
 assert.ok(techItems.includes(`${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`), "the intro carries the brand's numbers");
 assert.ok(!/\b\d+ ESLint plugins\b|750k/i.test(readFileSync(new URL("./scenes.mjs", import.meta.url), "utf8")), "no hand-typed Interlace numbers in scenes.mjs");
+// The close: each phone picks one thing for the week, gets a signed follow-up and the session's recap.
+store.setAccess({ liveUntil: Infinity, joinUntil: Infinity, locked: false, openedAt: Date.now() }); // a fresh room
+await ctl("start", { w: 5 });
+const runId = room().runId;
+const closer = await phone(), other = await phone();
+await closer("/send", {});
+await go("sig-monday");
+assert.equal((await closer.view()).followup, undefined, "no follow-up before a pick");
+assert.equal((await closer("/answer", { value: 1 })).status, 200);
+assert.equal((await other("/answer", { value: 9 })).status, 400, "a pick is one of the items");
+assert.deepEqual((await screen()).results.counts, [0, 1, 0], "the big screen counts the picks");
+const v = await closer.view(), fu = new URL(v.followup, "http://x");
+assert.ok(v.recap.includes(`r=${runId}`), "the phone gets this session's recap link");
+const q = `p=${fu.searchParams.get("p")}&k=${fu.searchParams.get("k")}`;
+store.setAccess({ liveUntil: Date.now() - 1 }); // everything below works after the room has closed
+assert.equal((await (await fetch(`${base}/followup?${q}`)).json()).pick, SCENE["sig-monday"].items[1], "the follow-up knows your pick");
+assert.equal((await fetch(`${base}/followup?p=${fu.searchParams.get("p")}&k=nope`)).status, 403, "a follow-up link is signed");
+assert.match(await (await fetch(`${base}/followup.ics?${q}`)).text(), /BEGIN:VEVENT[\s\S]*DTSTART;VALUE=DATE:\d{8}/, "the reminder is a calendar event");
+const did = (x) => fetch(`${base}/followup?${q}`, { method: "POST", body: JSON.stringify({ did: x }) });
+assert.equal((await did(true)).status, 200);
+assert.equal((await did(false)).status, 409, "one answer per follow-up");
+assert.deepEqual(await (await fetch(base + "/impact?t=t")).json(), { picked: 1, followedUp: 1, did: 1 }, "the console sees picks and follow-through");
+await ctl("start", { w: 1 }); // the next session must not leak into this recap
+const rc = await (await fetch(`${base}/recap?r=${runId}&${q}`)).json();
+assert.equal(rc.title, "Signals");
+assert.deepEqual(rc.monday.counts, [0, 1, 0], "the recap keeps the room's picks");
+assert.equal(rc.room.people, 2, "the recap is this session's room only");
+assert.deepEqual([rc.mine.sent, rc.mine.pick], [1, SCENE["sig-monday"].items[1]], "with your link, the recap shows your own numbers");
+assert.equal((await (await fetch(`${base}/recap?r=${runId}`)).json()).mine, undefined, "without your link, only the room's");
+assert.equal((await fetch(`${base}/recap?r=${runId + 1}`)).status, 404, "a recap starts at a session's start");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

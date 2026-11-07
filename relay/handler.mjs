@@ -2,7 +2,7 @@
 // function both call it; only the store differs.
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { SCENES } from "./scenes.mjs";
-import { promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
+import { TAKEAWAYS, runOf, recapView, chapterList, promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
 
 const ID = /^[0-9a-f-]{36}$/;
 const TRACEPARENT = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/; // W3C Trace Context
@@ -15,6 +15,14 @@ const JOIN = {
   rate_limited: [429, "Too many wrong codes from this network. Wait 10 minutes, or scan the QR code."],
   locked: [429, "Joining is paused. The presenter will reopen it."],
   closed: [403, "This workshop isn't running right now."],
+};
+
+// The close's links: this session's recap, and (once you've picked) your follow-up.
+const withLinks = (v, room, p, k) => {
+  if (v.type !== "takeaway" && v.type !== "qa") return v;
+  const home = "https://workshop.ofriperetz.dev";
+  return { ...v, recap: room.runId ? `${home}/recap?r=${room.runId}&p=${p.id}&k=${k}` : undefined,
+    followup: v.mine !== undefined || Object.keys(p.answers).some((s) => TAKEAWAYS.has(s)) ? `/api/followup.ics?p=${p.id}&k=${k}` : undefined };
 };
 
 export function createHandler({ store, token, codeSecret, scale = 1, random = Math.random }) {
@@ -43,13 +51,55 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       const lookupMs = performance.now() - t0;
       const append = async (kind, data = {}) => { const ev = await store.append({ phone: p?.id ?? null, kind, data: { t: Date.now(), ...data } }); room = store.room(); p = p && room.phones.get(p.id); return ev; };
 
+      if (method === "GET" && path === "/chapters") return presenter ? json(200, { chapters: chapterList() }) : json(403, { error: "presenter link needed" });
       if (method === "GET" && path === "/screen") return presenter ? json(200, screenView(room, Date.now())) : json(403, { error: "presenter link needed" });
       if (method === "POST" && path === "/control") {
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title });
         return json(200, screenView(room, Date.now()));
+      }
+      // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).
+      const follow = (pid) => hmac(codeSecret, "follow:" + pid).slice(0, 24);
+      const signed = (q) => ID.test(q.get("p") || "") && q.get("k") === follow(q.get("p"));
+      if (method === "GET" && path === "/recap") {
+        const r = Number(url.searchParams.get("r"));
+        if (!Number.isInteger(r) || r < 1) return json(400, { error: "which session?" });
+        const run = runOf(await store.events({ from: r }), r);
+        if (!run) return json(404, { error: "no such session" });
+        return json(200, recapView(run, signed(url.searchParams) ? run.phones.get(url.searchParams.get("p")) : undefined), { "cache-control": "public, max-age=60" });
+      }
+      if (path === "/followup" || path === "/followup.ics") {
+        const q = url.searchParams;
+        if (!signed(q)) return json(403, { error: "This follow-up link isn't valid." });
+        const mine = await store.events({ phone: q.get("p"), kind: "answer" });
+        const pick = mine.findLast((e) => TAKEAWAYS.has(e.data.scene)), done = mine.findLast((e) => e.data.scene === "followup");
+        if (!pick) return json(404, { error: "No pick to follow up on." });
+        const item = SCENES.find((x) => x.id === pick.data.scene).items[pick.data.value];
+        const link = `https://workshop.ofriperetz.dev/followup?p=${q.get("p")}&k=${q.get("k")}`;
+        if (path === "/followup.ics") {
+          const day = new Date(Date.parse(pick.data.t) || pick.data.t); day.setUTCDate(day.getUTCDate() + 7);
+          const d = day.toISOString().slice(0, 10).replaceAll("-", "");
+          const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//workshop.ofriperetz.dev//EN", "BEGIN:VEVENT", `UID:${q.get("p")}@workshop.ofriperetz.dev`,
+            `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`, `DTSTART;VALUE=DATE:${d}`, "SUMMARY:Did you do it? (workshop follow-up)",
+            `DESCRIPTION:${item.replace(/[,;\\]/g, (c) => "\\" + c)}\\n${link}`, `URL:${link}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+          return new Response(ics, { headers: { "content-type": "text/calendar; charset=utf-8", "content-disposition": "attachment; filename=followup.ics" } });
+        }
+        if (method === "GET") return json(200, { pick: item, done: done ? done.data.value === 1 : null });
+        if (method === "POST") {
+          const { did } = await read(request);
+          if (typeof did !== "boolean") return json(400, { error: "did you, or not yet?" });
+          if (done) return json(409, { error: "Already answered. Thank you." });
+          await store.append({ phone: q.get("p"), kind: "answer", data: { t: Date.now(), scene: "followup", value: did ? 1 : 0, of: pick.data.scene } });
+          return json(200, { ok: true });
+        }
+      }
+      if (method === "GET" && path === "/impact") {
+        if (!presenter) return json(403, { error: "presenter link needed" });
+        const ans = await store.events({ kind: "answer" });
+        const picks = new Set(ans.filter((e) => TAKEAWAYS.has(e.data.scene)).map((e) => e.phone)), fu = ans.filter((e) => e.data.scene === "followup");
+        return json(200, { picked: picks.size, followedUp: fu.length, did: fu.filter((e) => e.data.value === 1).length });
       }
       // Everything below is for phones, and only while the presenter has the room open.
       if (!(await store.gate()).live) return json(403, { error: JOIN.closed[1], closed: true });
@@ -69,7 +119,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/metrics") // what a Prometheus scrape of Relay would read
         return new Response(promText(room, Date.now()), { headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" } });
       if (!p) return json(401, { error: "join first" });
-      if (method === "GET" && path === "/view") return json(200, phoneView(room, p));
+      if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, "follow:" + p.id).slice(0, 24)));
 
       if (method === "POST" && path === "/send") { // a chat message: waits the phone's group time
         if (used(p, "send")) return json(429, { error: "that's plenty for today" });

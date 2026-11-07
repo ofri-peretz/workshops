@@ -137,15 +137,15 @@ export function reduce(room, ev) {
     case "job": if (p) { room.jobs.n++; if (d.slow) room.jobs.slow++; p.job = { slow: d.slow, slowCalls: d.slowCalls, ms: d.ms }; } return room;
     case "load": room.load.push({ t, ms: d.ms }); return room;
     case "curious": if (p && !p.curious.has(d.scene)) { p.curious.add(d.scene); room.curious[d.scene] = (room.curious[d.scene] || 0) + 1; } return room;
-    case "control": return control(room, d);
+    case "control": return control(room, { ...d, ev: ev.id });
     default: return room;
   }
 }
 
-function control(room, { op, i, w, a, id, t, intro, c }) {
+function control(room, { op, i, w, a, id, t, intro, c, title, ev }) {
   const s = sceneAt(room);
-  if (op === "reset") return { ...fresh(room.workshop, room.chapters), audience: room.audience, intro: room.intro }; // stay in this workshop
-  if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
+  if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, audience: room.audience, intro: room.intro }; // stay in this workshop
+  if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), title: c ? title : undefined, runId: ev, audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
   if (op === "begin" || (op === "next" && !room.begun)) { room.begun = true; return room; }
   if (op === "goto" || op === "detour") room.begun = true; // jumping to a scene starts the workshop
   if (op === "audience") { room.audience = a; return room; } // who's in the room decides the intro
@@ -182,12 +182,13 @@ function control(room, { op, i, w, a, id, t, intro, c }) {
 // A composed program: known chapters, each once, opening with the welcome and up to 3 hours.
 export const MAX_PROGRAM_MIN = 180;
 const programMinutes = (c) => spineOf(c).reduce((t, x) => t + (typeof x === "string" ? SCENE[x].min : x.slot), 0);
-export const validProgram = (c) => Array.isArray(c) && c.length >= 2 && c.length <= 24 && c[0] === "welcome" && new Set(c).size === c.length
+export const validProgram = (c) => Array.isArray(c) && c.length >= 2 && c.some((x) => CHAPTERS[x]?.q) && c.length <= 24 && c[0] === "welcome" && new Set(c).size === c.length
   && c.every((x) => typeof x === "string" && Object.hasOwn(CHAPTERS, x)) && programMinutes(c) <= MAX_PROGRAM_MIN;
-export function validControl({ op, i, w, a, id, intro, c }) {
+export function validControl({ op, i, w, a, id, intro, c, title }) {
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
   if (["begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
-  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c));
+  if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c))
+    && (title === undefined || (typeof title === "string" && /^[\p{L}\p{N} &,.:'’-]{1,40}$/u.test(title)));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
   return (op === "goto" || op === "choose") && Number.isInteger(i) && i >= 0 && i < 100;
 }
@@ -195,6 +196,7 @@ export function validAnswer(s, value) {
   if (POLL_TYPES.has(s.type)) return Number.isInteger(value) && value >= 0 && value < s.options.length;
   if (s.type === "nines") return NINES.includes(value);
   if (s.type === "slo") return !!value && SLO_MS.includes(value.ms) && SLO_PCT.includes(value.pct);
+  if (s.type === "takeaway") return Number.isInteger(value) && value >= 0 && value < s.items.length; // "the one I'll do this week"
   return false;
 }
 
@@ -202,6 +204,7 @@ export function validAnswer(s, value) {
 export function results(room, s, now) {
   const answers = [...room.phones.values()].map((p) => [p.group, p.answers[s.id]]).filter(([, a]) => a !== undefined);
   switch (s.type) {
+    case "takeaway": return { counts: s.items.map((_, i) => answers.filter(([, a]) => a === i).length), total: answers.length };
     case "fork": return { ...results(room, { ...s, type: "poll" }, now), curious: s.order.map((d) => curiosity(room, s.detours[d])) };
     case "gantt": { const tr = traced(room); return { ...results(room, { ...s, type: "poll" }, now), real: tr.length ? buildTrace(tr.at(-1)) : null }; }
     case "trace": {
@@ -307,6 +310,11 @@ function outage(room, now) {
 const ALWAYS_LEAD = new Set(["intro", "today", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
+// A composed program may carry its own title; its promise is its parts' questions.
+const titled = (room) => (room.title ? { ...WORKSHOPS[room.workshop], title: room.title, promise: partsOf(room.chapters).map(([n]) => n).join(" · ") } : WORKSHOPS[room.workshop]);
+// The chapter library, for the console's Compose view.
+export const chapterList = () => Object.entries(CHAPTERS).filter(([, c]) => c.q).map(([id, c]) => ({ id, name: c.name, q: c.q, min: programMinutes([id]),
+  in: Object.entries(WORKSHOPS).filter(([, W]) => W.chapters.includes(id)).map(([k, W]) => ({ w: +k, title: W.title })) }));
 // The header names the step's chapter; the chapter's last step shows its line to remember.
 const actAt = (room, k = room.pos) => (room.path[k]?.startsWith("fork:") ? "Your call" : CHAPTERS[room.part[k]]?.name ?? sceneAt(room, k).act);
 const rememberAt = (room, k = room.pos) => (room.part[k] !== room.part[k + 1] ? CHAPTERS[room.part[k]]?.remember : undefined);
@@ -318,13 +326,13 @@ const leadCase = (c) => {
 };
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
-  const W = WORKSHOPS[room.workshop];
+  const W = titled(room);
   return { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
-  if (!room.begun) { const W = WORKSHOPS[room.workshop]; return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
-  const s = sceneAt(room), shown = room.shown.has(s.id), W = WORKSHOPS[room.workshop];
+  if (!room.begun) { const W = titled(room); return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
+  const s = sceneAt(room), shown = room.shown.has(s.id), W = titled(room);
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
@@ -353,7 +361,7 @@ export function phoneView(room, p) {
   return v;
 }
 export function screenView(room, now) {
-  const s = sceneAt(room), W = WORKSHOPS[room.workshop];
+  const s = sceneAt(room), W = titled(room);
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
   return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
@@ -376,4 +384,31 @@ export function statusSummary(room, now) {
     days, uptime90: days.reduce((a, b) => a + b, 0) / days.length, sampleHistory: true,
     incidents: room.incidents.slice().reverse(),
   };
+}
+
+// ---- after the room: the recap and the follow-up ---------------------------------------------------
+export const TAKEAWAYS = new Set(SCENES.filter((s) => s.type === "takeaway").map((s) => s.id));
+/** The run that starts at event `r`: its events up to the next start or reset, folded into a room. */
+export function runOf(events, r) {
+  const run = [];
+  for (const ev of events) {
+    if (ev.id < r) continue;
+    if (ev.id > r && ev.kind === "control" && ["start", "reset"].includes(ev.data?.op)) break;
+    run.push(ev);
+  }
+  return run[0]?.id === r && run[0].kind === "control" ? run.reduce(reduce, fresh()) : null;
+}
+/** What stays public after the room closes: the plan, the room's numbers, and (with the phone's link) your own. */
+export function recapView(room, p) {
+  const W = titled(room), all = room.chat.map(waited).filter((x) => x != null);
+  const take = room.path.map((id) => SCENE[id]).find((s) => s && s.type === "takeaway");
+  const picks = take ? [...room.phones.values()].map((x) => x.answers[take.id]).filter((a) => a !== undefined) : [];
+  const cases = room.path.map((id) => SCENE[id]?.case).filter((c) => c?.source).map(({ who, what, source }) => ({ who, what, source }));
+  const v = { title: W.title, promise: W.promise, parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map(({ name, q, remember }) => ({ name, q, remember })),
+    terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })), cases,
+    room: { people: room.phones.size, messages: room.chat.length, p95: pct(all, 0.95) },
+    monday: take ? { items: take.items, counts: take.items.map((_, i) => picks.filter((a) => a === i).length) } : null };
+  if (p) { const ms = room.chat.filter((c) => c.id === p.id).map(waited).filter((x) => x != null);
+    v.mine = { sent: ms.length, p95: pct(ms, 0.95), pick: take ? take.items[p.answers[take.id]] : undefined }; }
+  return v;
 }

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { createHandler, hmac } from "./handler.mjs";
 import { memoryStore, supabaseStore } from "./store.mjs";
 
-const PAGES = { "/": "phone.html", "/status": "status.html", "/screen": "screen.html", "/hub": "hub.html" };
+const PAGES = { "/": "phone.html", "/status": "status.html", "/screen": "screen.html", "/hub": "hub.html", "/recap": "recap.html", "/followup": "followup.html" };
 
 // Locally the room is open from the start, with a fresh join code (printed below). Hosted, the
 // presenter's console opens it.

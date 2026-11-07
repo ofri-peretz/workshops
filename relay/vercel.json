@@ -1,17 +1,89 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "public",
-  "regions": ["fra1"],
-  "functions": { "api/relay.mjs": { "maxDuration": 60 } },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/relay?path=:path*" },
-    { "source": "/", "has": [{ "type": "host", "value": "status.workshop.ofriperetz.dev" }], "destination": "/status.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "screen.workshop.ofriperetz.dev" }], "destination": "/screen.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "screen.signals.workshop.ofriperetz.dev" }], "destination": "/screen.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "workshop.ofriperetz.dev" }], "destination": "/hub.html" },
-    { "source": "/", "destination": "/phone.html" },
-    { "source": "/status", "destination": "/status.html" },
-    { "source": "/screen", "destination": "/screen.html" }
+  "regions": [
+    "fra1"
   ],
-  "headers": [{ "source": "/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }]
+  "functions": {
+    "api/relay.mjs": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/relay?path=:path*"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "status.workshop.ofriperetz.dev"
+        }
+      ],
+      "destination": "/status.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "screen.workshop.ofriperetz.dev"
+        }
+      ],
+      "destination": "/screen.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "screen.signals.workshop.ofriperetz.dev"
+        }
+      ],
+      "destination": "/screen.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "workshop.ofriperetz.dev"
+        }
+      ],
+      "destination": "/hub.html"
+    },
+    {
+      "source": "/",
+      "destination": "/phone.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/status.html"
+    },
+    {
+      "source": "/screen",
+      "destination": "/screen.html"
+    },
+    {
+      "source": "/recap",
+      "destination": "/recap.html"
+    },
+    {
+      "source": "/followup",
+      "destination": "/followup.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ]
 }
