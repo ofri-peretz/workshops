@@ -88,11 +88,11 @@ export async function closeRoom(jwt: string) {
 }
 
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */
-export async function readStage(): Promise<{ begun: boolean; people: number } | null> {
+export async function readStage(): Promise<{ begun: boolean; people: number; title: string } | null> {
   const r = await fetch(`${env.relayUrl()}/api/screen?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
   if (!r?.ok) return null;
   const v = await r.json();
-  return { begun: v.begun !== false, people: v.people };
+  return { begun: v.begun !== false, people: v.people, title: v.workshop ?? "" };
 }
 
 /** Across every session: who picked one thing to do, and who said they did it a week later. */
