@@ -63,11 +63,24 @@ built (✅), partly built (◐) or still open (☐). Change this file when a req
 - ✅ Gentle animation only: once per slide, never looping, off for reduced motion.
 - ✅ The presenter's photo on the intro, waiting page and home page; brand logos on the link buttons.
 
+## The game (spec: .sdlc/intents/relay-engagement)
+
+- ✅ Anonymous or named per session (console); named phones give a first name; the presenter can show
+  who voted what (big screen only).
+- ✅ Points like a quiz (right + fast), a top-5 leaderboard after each reveal, each phone's points and
+  rank; Eyes up (E) pauses phones; Close & continue (Enter) reveals, holds 3 s, moves on.
+- ✅ A returning phone is offered its last session for 3 hours; device marks give a reconnection rate.
+- ◐ PostHog: wired on phones (scan, join, rejoin, step_view, answer, vote, cta_click, leave), off until
+  `POSTHOG_KEY` is set in the Vercel project.
+
 ## Data and learning
 
 - ✅ Every answer is stored; the room's learning curve, each person's score, the hardest questions
   across sessions (console), picks and follow-through (console Impact).
 - ✅ A recap page per session at workshop.ofriperetz.dev/recap.
+- ✅ A run report per session (console): scanned, joined, presence over time, churn, reconnection,
+  answered per poll, learning before/after (the average question asked twice), weakest concepts,
+  clicks.
 
 ## Constraints
 
