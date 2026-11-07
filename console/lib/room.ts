@@ -1,5 +1,7 @@
 import "server-only";
 import { createHmac, randomInt } from "node:crypto";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { env } from "./env";
 
 export type RoomState = {
@@ -14,7 +16,16 @@ const LIVE_MS = 2 * 3600_000;
 const JOIN_MS = 60 * 60_000;
 
 // The plain code exists only here, in this laptop's console process. Supabase keeps its HMAC.
-let current: { code: string; openedAt: string } | null = null;
+// It also sits in a file on this laptop (gitignored, never in Supabase or git), so a console
+// restart doesn't lose the code that participants need.
+const CODE_FILE = join(process.cwd(), ".console-code.json");
+let current: { code: string; openedAt: string } | null = (() => {
+  try { return JSON.parse(readFileSync(CODE_FILE, "utf8")); } catch { return null; }
+})();
+const remember = (c: { code: string; openedAt: string } | null) => {
+  current = c;
+  try { if (c) writeFileSync(CODE_FILE, JSON.stringify(c)); else rmSync(CODE_FILE, { force: true }); } catch {}
+};
 
 const rest = async (jwt: string, path: string, init: RequestInit = {}) => {
   const r = await fetch(`${env.supabaseUrl()}/rest/v1/${path}`, {
@@ -39,7 +50,7 @@ async function update(jwt: string, fields: Record<string, unknown>) {
 export async function readRoom(jwt: string): Promise<RoomState> {
   const [a] = await rest(jwt, "relay_access?id=eq.1&select=opened_at,live_until,join_until,locked");
   const live = a && a.live_until && Date.parse(a.live_until) > Date.now();
-  if (!live) current = null;
+  if (!live && current) remember(null);
   const code = current && a && current.openedAt === a.opened_at && Date.parse(a.join_until) > Date.now() ? current.code : null;
   return {
     status: !live ? "closed" : a.locked ? "locked" : "live",
@@ -61,19 +72,19 @@ export async function goLive(jwt: string, workshop: string, { intro, audience, c
     code_hmac: hmac(code),
     locked: false,
   });
-  current = { code, openedAt: row.opened_at };
+  remember({ code, openedAt: row.opened_at });
 }
 
 /** A new code for the same room: phones already in stay; the 60 minutes restart; a lock lifts. */
 export async function newJoinCode(jwt: string) {
   const code = newCode();
   const row = await update(jwt, { join_until: new Date(Date.now() + JOIN_MS).toISOString(), code_hmac: hmac(code), locked: false });
-  current = { code, openedAt: row.opened_at };
+  remember({ code, openedAt: row.opened_at });
 }
 
 export async function closeRoom(jwt: string) {
   await update(jwt, { live_until: new Date().toISOString(), code_hmac: null });
-  current = null;
+  remember(null);
 }
 
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */
