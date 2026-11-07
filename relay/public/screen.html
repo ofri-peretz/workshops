@@ -768,6 +768,24 @@
           return `<div class="grid2"><div style="display:grid;gap:18px">${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(28px,2.6vw,40px);font-weight:600">${esc(v.promise)}</span></div>
       <div class="series"><span class="label">The series</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
         },
+        why(v) {
+          const w = v.why;
+          return `<span class="label">Why this matters</span><h1 style="font-size:clamp(48px,6vw,96px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p><p class="case"><span class="label">Case</span> <b>${esc(w.case.who)}</b> · ${esc(w.case.what)}</p>`;
+        },
+        cases(v, s, r) {
+          if (!v.study) return `<span class="label">Case studies · real, different root causes</span><h1>${esc(s.title)}</h1>${bars(s.options, r.counts)}<p class="muted">${r.total} voted · Reveal tells the winner</p>`;
+          const c = v.study;
+          return `<span class="label">Case study · the room picked</span><h1>${esc(c.who)}</h1><div class="checks">
+      <div class="row"><span class="label">What happened</span><span>${esc(c.happened || c.what)}</span></div>
+      ${c.why ? `<div class="row"><span class="label">Why</span><span>${esc(c.why)}</span></div>` : ""}
+      ${c.lesson ? `<div class="row"><span class="label">The lesson</span><b>${esc(c.lesson)}</b></div>` : ""}</div>
+      <p class="muted">Source: ${esc(new URL(c.source).hostname)}</p>`;
+        },
+        outro(v) {
+          return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">Next · ${esc(v.next.track)}</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(v.next.what)}</h1>
+      <div class="series">${v.series.map((x) => `<div class="g ${x.status === "Today" ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div>
+      <div style="display:grid;gap:14px;align-content:start"><div class="g"><span class="label">Follow · track · review</span><span style="font-size:clamp(24px,2.2vw,34px);font-weight:600">Scan: the series, your recap, my links</span></div>${findMe(v)}</div></div>`;
+        },
         today(v) {
           const t = v.today;
           return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">Today</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>

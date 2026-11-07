@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { SCENES, SCENE, POLL_TYPES, PRESENTER } from "./scenes.mjs";
 import { CONCEPTS, GLOSSARY } from "./concepts.mjs";
+import { CASES } from "./cases.mjs";
 import { WORKSHOPS, SERIES, CHAPTERS } from "./workshops.mjs";
 import { GROUPS, fresh, reduce, sceneAt, checkTrace, buildTrace, SPAN_NAMES } from "./core.mjs";
 import { createServer } from "./server.mjs";
@@ -35,11 +36,16 @@ assert.deepEqual(written.filter((k) => !allowedKinds(schemaSql.replace(",'curiou
 for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
   assert.equal(ids[0], "intro", `workshop ${w} opens with the intro`);
-  assert.equal(ids[1], "today", `workshop ${w} says what it covers right after the intro`);
+  // The arc every workshop follows: who I am, why it matters, what we'll cover; hands-on chapters;
+  // then the case studies the room picks, the one thing for Monday, questions, and the outro.
+  assert.deepEqual(ids.slice(0, 3), ["intro", "why", "today"], `workshop ${w} opens: who I am, why, what we'll cover`);
+  assert.deepEqual([ids.at(-4), ids.at(-2), ids.at(-1)], ["cases", "qa", "outro"], `workshop ${w} closes: case studies, Monday, questions, outro`);
+  assert.ok(W.why?.title && W.why.lead && W.why.abt && CASES[W.why.case]?.source, `workshop ${w}: a why with a real case`);
+  assert.ok(W.studies.length >= 3 && W.studies.every((c) => CASES[c]?.source), `workshop ${w}: at least 3 real case studies for the room to pick from`);
   const taught = new Set([...ids, ...forks.flatMap((f) => f.detours.flatMap((d) => d.scenes))].flatMap((id) => SCENE[id].terms));
   for (const t of W.terms) assert.ok(taught.has(t), `workshop ${w}: "Today" promises the term "${t}", which no scene on its path teaches`);
   assert.ok(W.terms.length <= 10 && W.parts.length >= 2 && W.parts.length <= 5, `workshop ${w}: 2-5 parts, at most 10 terms on "Today"`);
-  assert.equal(ids.at(-1), "qa", `workshop ${w} closes with questions`);
+
   for (const f of forks) for (const d of f.detours) for (const id of [...d.scenes, ...d.after]) assert.ok(SCENE[id], `${w}/${f.fork}: unknown scene ${id}`);
   for (const id of ids) assert.ok(SCENE[id], `workshop ${w}: unknown scene ${id}`);
   const base = ids.reduce((t, id) => t + SCENE[id].min, 0);
@@ -145,14 +151,14 @@ await ctl("next");
 assert.equal(here(), "impact");
 await ctl("next");
 assert.equal(here(), "requests", "back on the spine after the detour");
-assert.equal((await screen()).total, 30, "the chosen path is still 30 minutes");
+assert.equal((await screen()).total, WORKSHOPS[1].minutes, "the chosen path keeps the workshop's length");
 
 // A library jump plays any scene now, costs its minutes, and names the flex scenes to skip.
 await ctl("detour", { id: "n1" });
 assert.equal(here(), "n1");
 const jumped = await screen();
 assert.equal(jumped.over, 2);
-assert.equal(jumped.total, 32);
+assert.equal(jumped.total, WORKSHOPS[1].minutes + 2, "the jump adds its minutes");
 assert.ok(jumped.flexAhead.includes(SCENE.aws.title));
 await ctl("next");
 assert.equal(here(), "aws", "back to the spine after a jump: on to the next spine scene");
@@ -207,9 +213,9 @@ assert.equal(room().audience, "jewish-community", "reset keeps the event's audie
 assert.equal(room().path.length, WORKSHOPS[1].spine.length, "reset restores the spine");
 
 // Each workshop is its own session: Next stops at its end; Start switches with an empty room.
-await go("qa");
+await go("outro");
 await ctl("next");
-assert.equal(here(), "qa", "Next stops at the end of the workshop");
+assert.equal(here(), "outro", "Next stops at the end of the workshop");
 assert.equal((await ctl("start", { w: 9 })).status, 400, "an unknown workshop is refused");
 assert.equal((await ctl("start", { w: 2, intro: "maybe" })).status, 400, "an unknown intro is refused");
 assert.equal((await ctl("start", { w: 2, a: "nobody" })).status, 400, "an unknown audience is refused");
@@ -244,7 +250,7 @@ await go("fork:w2");
 await ctl("next");
 assert.equal(here(), "graphql", "Next without a vote takes the default detour");
 await ctl("start", { w: 3 });
-assert.equal((await screen()).total, 30);
+assert.equal((await screen()).total, WORKSHOPS[3].minutes);
 
 // ---- Signals: 60 minutes; its live demos read the room's own messages ---------------------------
 await ctl("start", { w: 5 });
@@ -332,7 +338,7 @@ assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<sc
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
 const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
-assert.ok(lib.find((c) => c.id === "sig-logs").min === 12 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.ok(lib.find((c) => c.id === "sig-logs").min === 11 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
 assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });
@@ -352,6 +358,16 @@ await ctl("start", { w: 5 });
 const runId = room().runId;
 const closer = await phone(), other = await phone();
 await closer("/send", {});
+await go("why");
+assert.equal((await screen()).why.case.who, CASES[WORKSHOPS[5].why.case].who, "why it matters opens on a real case");
+await go("cases");
+assert.deepEqual((await closer.view()).options, WORKSHOPS[5].studies.map((c) => CASES[c].who), "the room votes among the workshop's case studies");
+await closer("/answer", { value: 2 }); await other("/answer", { value: 2 });
+assert.equal((await screen()).study, undefined, "the story waits for the vote");
+await ctl("reveal");
+assert.equal((await screen()).study.who, CASES[WORKSHOPS[5].studies[2]].who, "Reveal tells the case the room picked");
+await go("outro");
+assert.equal((await closer.view()).next.status, "Next", "the outro teases the next workshop");
 await go("sig-monday");
 assert.equal((await closer.view()).followup, undefined, "no follow-up before a pick");
 assert.equal((await closer("/answer", { value: 1 })).status, 200);

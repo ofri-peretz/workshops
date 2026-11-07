@@ -15,13 +15,21 @@ the explanation is spoken, from the speaker notes.
 - **What is, what could be** (Nancy Duarte): open on a wait the room felt on its own phones, close
   on what they'll check on Monday.
 
-## Every workshop opens the same way
+## Every workshop follows the same arc
 
-1. **Who I am** (`intro`): the presenter, for this audience, with the links.
-2. **Today** (`today`): the topic and tagline; the parts, each as the question it answers; up to 8
-   key terms; and the cases, real outages and everyday apps. Parts and terms are set per workshop
-   in `workshops.mjs`; cases come from the scenes on the path (`case` in `scenes.mjs`), so the slide
-   only promises what the workshop tells. Each case also shows on its own scene.
+1. **Who I am** (`intro`): the presenter for this audience, with the links.
+2. **Why it matters** (`why`): one claim and one real number (`why` in `workshops.mjs`).
+3. **What we'll cover** (`today`): the parts as questions, the key terms, the real cases.
+4. **Hands-on chapters**: the room does it on their phones (below).
+5. **Case studies** (`cases`): the room votes among real cases with different root causes, from
+   the case bank (`relay/cases.mjs`); Reveal tells the winner in three beats: what happened, why,
+   the lesson.
+6. **Monday**: each phone picks one thing to do this week; a week later its link asks "did you?".
+7. **Questions**, then the **outro** (`outro`): tease the next workshop, then follow, track and
+   review: the series, your recap, the presenter's links. Leave it up while people leave.
+
+Cases are real and verified against their primary source, safe to say (facts as the official
+report states them; no blame, no politics, no casualties), and easy to explain in three beats.
 
 ## Every chapter is told the same way
 

@@ -650,6 +650,20 @@
         return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
       }
       const R = {
+        why(v) {
+          return `<span class="label">Why this matters</span><h1>${esc(v.why.title)}</h1><p class="lead">${esc(v.why.lead)}</p><p class="card"><span class="label">Case</span> <b>${esc(v.why.case.who)}</b> · ${esc(v.why.case.what)}</p>`;
+        },
+        cases(v) {
+          if (!v.study) return `<span class="label">Case studies</span><h1>${esc(v.title)}</h1><div class="opts">${v.options.map((o, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(o)}</button>`).join("")}</div>${v.mine !== undefined ? "<p>Voted. Watch the screen.</p>" : ""}`;
+          const c = v.study;
+          return `<span class="label">Case study</span><h1>${esc(c.who)}</h1><div class="card"><p><b>What happened:</b> ${esc(c.happened || c.what)}</p>${c.why ? `<p><b>Why:</b> ${esc(c.why)}</p>` : ""}${c.lesson ? `<p><b>The lesson:</b> ${esc(c.lesson)}</p>` : ""}<a href="${esc(c.source)}" rel="noopener">The source</a></div>`;
+        },
+        outro(v) {
+          const li = v.presenter.links.find((l) => l.label === "LinkedIn");
+          return `<span class="label">Next · ${esc(v.next.track)}</span><h1>${esc(v.next.what)}</h1>
+      <nav class="findme" aria-label="Stay with the series"><a href="${esc(li.href)}">Follow on LinkedIn</a><a href="${esc(v.presenter.home)}">Track the series</a>${v.recap ? `<a data-testid="recap-link" href="${esc(v.recap)}">Your recap</a>` : ""}</nav>
+      <div class="card"><span class="label">The series</span>${v.series.map((x) => `<div class="row"><b>${esc(x.track)}</b><span>${esc(x.status)}</span></div><p>${esc(x.what)}</p>`).join("")}</div>`;
+        },
         today(v) {
           const t = v.today;
           return `<span class="label">Today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
@@ -824,7 +838,7 @@
       }
       const findMe = (v) =>
         `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</nav>`;
-      const NO_DEEPER = new Set(["intro", "today", "qa", "waiting", "fork", "next", "takeaway"]);
+      const NO_DEEPER = new Set(["intro", "why", "today", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
         let kept = {};

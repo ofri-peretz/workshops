@@ -19,7 +19,7 @@ const JOIN = {
 
 // The close's links: this session's recap, and (once you've picked) your follow-up.
 const withLinks = (v, room, p, k) => {
-  if (v.type !== "takeaway" && v.type !== "qa") return v;
+  if (!["takeaway", "qa", "outro"].includes(v.type)) return v;
   const home = "https://workshop.ofriperetz.dev";
   return { ...v, recap: room.runId ? `${home}/recap?r=${room.runId}&p=${p.id}&k=${k}` : undefined,
     followup: v.mine !== undefined || Object.keys(p.answers).some((s) => TAKEAWAYS.has(s)) ? `/api/followup.ics?p=${p.id}&k=${k}` : undefined };

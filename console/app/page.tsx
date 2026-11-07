@@ -20,10 +20,10 @@ export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
   { id: "5", title: "Signals", minutes: 60, summary: "See what your users feel" },
-  { id: "1", title: "Relay is slow", minutes: 30, summary: "Turn a wait into a target" },
-  { id: "2", title: "Relay breaks", minutes: 30, summary: "Find the break, prove the fix" },
-  { id: "3", title: "GraphQL measured", minutes: 30, summary: "One endpoint hides every slow query" },
-  { id: "4", title: "Follow one request", minutes: 30, summary: "Follow one request end to end" },
+  { id: "1", title: "Relay is slow", minutes: 32, summary: "Turn a wait into a target" },
+  { id: "2", title: "Relay breaks", minutes: 33, summary: "Find the break, prove the fix" },
+  { id: "3", title: "GraphQL measured", minutes: 33, summary: "One endpoint hides every slow query" },
+  { id: "4", title: "Follow one request", minutes: 32, summary: "Follow one request end to end" },
 ];
 
 // Mirrors relay/scenes.mjs INTROS and AUDIENCES; the relay refuses anything else.

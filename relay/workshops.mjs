@@ -20,14 +20,14 @@ export const SERIES = [
 // without (the bookends) isn't listed. Workshops are lists of chapters; the console can compose any
 // list (core.mjs validates it), so a chapter is the unit you mix, reorder and remember per group.
 export const CHAPTERS = {
-  welcome: { name: "Welcome", scenes: ["intro", "today"] },
+  welcome: { name: "Welcome", scenes: ["intro", "why", "today"] },
 
   "sig-feel": { name: "Feel it", q: "Who's waiting?", remember: "Dashboards say fine. Users still wait", terms: ["metric", "log", "trace"], scenes: ["join", "felt", "signals"] },
   "sig-metrics": { name: "Metrics", q: "Are users OK?", remember: "Watch the p95, not the average", terms: ["p95", "histogram"], scenes: ["sig-metrics", "sig-dash", "sig-metrics-room", "two", "dots", "mean", "histogram", "impact"] },
   "sig-logs": { name: "Logs", q: "Who exactly?", remember: "Every log line carries a trace id", terms: ["structured log"], scenes: ["sig-statement", "sig-logs", "sig-logs-room", "sig-road"] },
   "sig-traces": { name: "Traces", q: "Where did the time go?", remember: "If time has no span, nobody owns it", terms: ["span", "traceparent"], scenes: ["yourtrace", "spanparts", "gap", "propagate", "browser"] },
   "sig-outage": { name: "The outage", q: "What broke?", remember: "Metrics say that, logs who, traces where", terms: ["exemplar"], scenes: ["outage", "first", "update", "spike", "exemplar"] },
-  "sig-close": { name: "Wrap up", scenes: ["sig-monday", "sig-next", "qa"] },
+  "sig-close": { name: "Wrap up", scenes: ["cases", "sig-monday", "qa", "outro"] },
 
   "slow-feel": { name: "Feel it", q: "Who's waiting?", remember: "A late answer is a failed one", terms: ["latency", "timeout"], scenes: ["join", "felt", "timeout", "journey"] },
   "slow-measure": { name: "Measure it", q: "What do users feel?", remember: "Measure the tail, not the average", terms: ["percentile", "p99"], scenes: ["two", "mean", "dots",
@@ -38,7 +38,7 @@ export const CHAPTERS = {
     ]),
     "requests"] },
   "slow-promise": { name: "Promise it", q: "How fast, how often?", remember: "Promise what %, how fast, over how long", terms: ["SLA", "SLO", "error budget"], scenes: ["aws", "nines", "slo"] },
-  "slow-close": { name: "Wrap up", scenes: ["monday1", "next1", "qa"] },
+  "slow-close": { name: "Wrap up", scenes: ["cases", "monday1", "qa", "outro"] },
 
   "breaks-break": { name: "Break it", q: "What do users see?", remember: "Tell users what they see, and when", terms: ["incident", "status page", "error rate"], scenes: ["join2", "two2", "outage", "first", "update", "spike"] },
   "breaks-find": { name: "Find it", q: "Where did it break?", remember: "Every gap is time nobody owns", terms: ["trace", "span"], scenes: ["signals", "gantt",
@@ -48,7 +48,7 @@ export const CHAPTERS = {
       { title: "Your own service, live", scenes: ["flagship"], after: ["spike", "two2"] },
     ])] },
   "breaks-prove": { name: "Prove it", q: "Will the fix hold?", remember: "Test at a fixed rate, not fixed users", terms: ["open model", "Little's Law"], scenes: ["closed", "open"] },
-  "breaks-close": { name: "Wrap up", scenes: ["monday", "qa"] },
+  "breaks-close": { name: "Wrap up", scenes: ["cases", "monday", "qa", "outro"] },
 
   "gql-endpoint": { name: "One endpoint", q: "What does a 200 hide?", remember: "Measure the operation, not the endpoint", terms: ["GraphQL", "operation", "blended percentile", "parse"], scenes: ["join", "two2", "blend", "operation", "graphql", "errors", "phases"] },
   "gql-find": { name: "Find it", q: "Which query is slow?", remember: "Count the calls behind one request", terms: ["span"], scenes: ["gantt",
@@ -58,7 +58,7 @@ export const CHAPTERS = {
       { title: "Your own service, live", scenes: ["flagship"], after: ["graphql", "errors"] },
     ])] },
   "gql-prove": { name: "Prove it", q: "Will it hold under load?", remember: "Load-test the real mix of operations", terms: ["open model"], scenes: ["loadop", "open"] },
-  "gql-close": { name: "Wrap up", scenes: ["monday3", "qa"] },
+  "gql-close": { name: "Wrap up", scenes: ["cases", "monday3", "qa", "outro"] },
 
   "follow-follow": { name: "Follow it", q: "Where did the time go?", remember: "One trace id follows the request", terms: ["trace", "span", "root span", "traceparent"], scenes: ["join", "journey", "signals", "yourtrace", "spanparts", "propagate"] },
   "follow-find": { name: "Find it", q: "Which span is slow?", remember: "Every gap is time nobody owns", terms: ["TTFB"], scenes: ["gap",
@@ -69,7 +69,7 @@ export const CHAPTERS = {
     ]),
     "browser"] },
   "follow-keep": { name: "Keep it", q: "Which traces do we keep?", remember: "Keep the slow and failed traces", terms: ["sampling", "exemplar"], scenes: ["sampling", "exemplar"] },
-  "follow-close": { name: "Wrap up", scenes: ["monday4", "next4", "qa"] },
+  "follow-close": { name: "Wrap up", scenes: ["cases", "monday4", "qa", "outro"] },
 };
 
 // The spine and the parts follow from the chapters; nothing lists scenes twice.
@@ -79,14 +79,24 @@ export const termsOf = (chapters) => [...new Set(chapters.flatMap((c) => CHAPTER
 const workshop = (w) => ({ ...w, spine: spineOf(w.chapters), parts: partsOf(w.chapters), terms: termsOf(w.chapters) });
 
 export const WORKSHOPS = {
-  5: workshop({ title: "Signals", minutes: 60, promise: "See what your users feel",
+  5: workshop({ why: { title: "Your dashboards are green. Users still wait", lead: "Google slowed search 0.4 s. People searched less, for weeks.", case: "google-2009",
+      abt: "Your service is up, and the dashboards are green, but users still wait, therefore we measure what they feel." },
+    studies: ["aws-s3-2017", "knight-2012", "twitter-2018"], title: "Signals", minutes: 60, promise: "See what your users feel",
     chapters: ["welcome", "sig-feel", "sig-metrics", "sig-logs", "sig-traces", "sig-outage", "sig-close"] }),
-  1: workshop({ title: "Relay is slow", promise: "Turn a wait into a target",
+  1: workshop({ minutes: 32, why: { title: "Slow is the new down", lead: "Amazon promises its slowest 1 in 1,000, not its average.", case: "amazon-dynamo-2007",
+      abt: "Relay answers, and most messages are fast, but some people wait seconds, therefore we turn the wait into a target." },
+    studies: ["aws-2021", "tail-at-scale-2013", "aws-timeouts"], title: "Relay is slow", promise: "Turn a wait into a target",
     chapters: ["welcome", "slow-feel", "slow-measure", "slow-promise", "slow-close"] }),
-  2: workshop({ title: "Relay breaks", promise: "Find the break, prove the fix",
+  2: workshop({ minutes: 33, why: { title: "Everything breaks. Trust breaks on how you answer", lead: "Atlassian's customers waited up to 14 days, mostly in silence.", case: "atlassian-2022",
+      abt: "Relay will fail, and users will notice first, but the fix starts with what you see and say, therefore we find it, say it, prove it." },
+    studies: ["aws-s3-2017", "knight-2012", "azul-2012"], title: "Relay breaks", promise: "Find the break, prove the fix",
     chapters: ["welcome", "breaks-break", "breaks-find", "breaks-prove", "breaks-close"] }),
-  3: workshop({ title: "GraphQL measured", promise: "One endpoint hides every slow query",
+  3: workshop({ minutes: 33, why: { title: "One endpoint hides every slow query", lead: "A GraphQL 200 OK can still carry errors.", case: "shopify-graphql-200",
+      abt: "GraphQL gives one endpoint, and its numbers look fine, but each operation is its own service, therefore we measure per operation." },
+    studies: ["shopify-graphql-200", "sre-workbook-5xx", "wrk2"], title: "GraphQL measured", promise: "One endpoint hides every slow query",
     chapters: ["welcome", "gql-endpoint", "gql-find", "gql-prove", "gql-close"] }),
-  4: workshop({ title: "Follow one request", promise: "Follow one request end to end",
+  4: workshop({ minutes: 32, why: { title: "One slow request crosses five teams", lead: "Google traced its requests as trees of timed steps.", case: "dapper-2010",
+      abt: "A request crosses many services, and each team sees only its part, but users feel the whole, therefore we follow one request end to end." },
+    studies: ["dapper-2010", "twitter-2018", "deloitte-2020"], title: "Follow one request", promise: "Follow one request end to end",
     chapters: ["welcome", "follow-follow", "follow-find", "follow-keep", "follow-close"] }),
 };

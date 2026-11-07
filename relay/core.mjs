@@ -4,6 +4,7 @@
 import { SCENES, SCENE, POLL_TYPES, AUDIENCES, PRESENTER, INTROS } from "./scenes.mjs";
 import { WORKSHOPS, SERIES, CHAPTERS, spineOf, partsOf, termsOf } from "./workshops.mjs";
 import { GLOSSARY } from "./concepts.mjs";
+import { CASES } from "./cases.mjs";
 
 export const GROUPS = [100, 1000, 3000, 7000]; // ms per chat message, hidden until revealed
 export const NINES = [99, 99.9, 99.95, 99.99, 99.999];
@@ -72,6 +73,7 @@ const partsAlong = (chapters) => chapters.flatMap((c) => CHAPTERS[c].scenes.map(
 const insertSteps = (room, at, ids) => { room.path.splice(at, 0, ...ids); room.part.splice(at, 0, ...ids.map(() => room.part[at - 1])); };
 export function sceneAt(room, k = room.pos) {
   const id = room.path[k];
+  if (SCENE[id]?.type === "cases") return { ...SCENE[id], options: studiesOf(room).map((c) => c.who) }; // the room picks a case
   if (!id.startsWith("fork:")) return SCENE[id];
   const f = forkOf(room.workshop, id.slice(5)), order = room.forkOrder[f.fork] || f.detours.map((_, i) => i);
   return { id: f.fork, type: "fork", act: "Your call", min: 0, title: f.title, options: order.map((i) => f.detours[i].title), order, slot: f.slot,
@@ -193,7 +195,7 @@ export function validControl({ op, i, w, a, id, intro, c, title }) {
   return (op === "goto" || op === "choose") && Number.isInteger(i) && i >= 0 && i < 100;
 }
 export function validAnswer(s, value) {
-  if (POLL_TYPES.has(s.type)) return Number.isInteger(value) && value >= 0 && value < s.options.length;
+  if (POLL_TYPES.has(s.type) || s.type === "cases") return Number.isInteger(value) && value >= 0 && value < s.options.length;
   if (s.type === "nines") return NINES.includes(value);
   if (s.type === "slo") return !!value && SLO_MS.includes(value.ms) && SLO_PCT.includes(value.pct);
   if (s.type === "takeaway") return Number.isInteger(value) && value >= 0 && value < s.items.length; // "the one I'll do this week"
@@ -204,6 +206,7 @@ export function validAnswer(s, value) {
 export function results(room, s, now) {
   const answers = [...room.phones.values()].map((p) => [p.group, p.answers[s.id]]).filter(([, a]) => a !== undefined);
   switch (s.type) {
+    case "cases": return results(room, { ...s, type: "poll" }, now);
     case "takeaway": return { counts: s.items.map((_, i) => answers.filter(([, a]) => a === i).length), total: answers.length };
     case "fork": return { ...results(room, { ...s, type: "poll" }, now), curious: s.order.map((d) => curiosity(room, s.detours[d])) };
     case "gantt": { const tr = traced(room); return { ...results(room, { ...s, type: "poll" }, now), real: tr.length ? buildTrace(tr.at(-1)) : null }; }
@@ -307,9 +310,19 @@ function outage(room, now) {
   return { mins, uptime: room.chat.length ? ok / room.chat.length : null };
 }
 
-const ALWAYS_LEAD = new Set(["intro", "today", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
+const ALWAYS_LEAD = new Set(["intro", "why", "today", "outro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
+// The case studies the room picks from: the workshop's own, or every studied case of a composed program's workshops.
+const studiesOf = (room) => {
+  const ids = room.title ? [...new Set(Object.values(WORKSHOPS).filter((W) => W.chapters.some((c) => room.chapters.includes(c) && CHAPTERS[c].q)).flatMap((W) => W.studies))].slice(0, 4) : WORKSHOPS[room.workshop].studies;
+  return ids.map((id) => ({ id, ...CASES[id] }));
+};
+const winnerOf = (room, s) => {
+  const counts = s.options.map((_, i) => [...room.phones.values()].filter((p) => p.answers[s.id] === i).length);
+  return studiesOf(room)[counts.indexOf(Math.max(...counts))];
+};
+const nextTrack = () => SERIES.find((x) => x.status === "Next");
 // A composed program may carry its own title; its promise is its parts' questions.
 const titled = (room) => (room.title ? { ...WORKSHOPS[room.workshop], title: room.title, promise: partsOf(room.chapters).map(([n]) => n).join(" · ") } : WORKSHOPS[room.workshop]);
 // The chapter library, for the console's Compose view.
@@ -324,6 +337,11 @@ const leadCase = (c) => {
   const k = cases.find((x) => x.source) ?? cases[0];
   return k && { who: k.who, what: k.what, real: !!k.source };
 };
+const storyOf = (c) => c && { who: c.who, what: c.what, happened: c.happened, why: c.why, lesson: c.lesson, source: c.source, tell: c.tell };
+// Why it matters: the workshop's own hook (a composed program uses its first workshop's).
+const whyOf = (room) => { const w = WORKSHOPS[room.workshop].why; const c = CASES[w.case]; return { title: w.title, lead: w.lead, case: { who: c.who, what: c.what } }; };
+// The outro: tease the next workshop, and the three ways to stay with the series.
+const outroOf = (room) => ({ next: nextTrack(), series: SERIES, presenter: PRESENTER });
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);
@@ -342,6 +360,9 @@ export function phoneView(room, p) {
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (s.type === "today") v.today = todayOf(room);
+  if (s.type === "why") v.why = whyOf(room);
+  if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
+  if (s.type === "outro") Object.assign(v, outroOf(room));
   if (s.case) v.case = { who: s.case.who, what: s.case.what, real: !!s.case.source };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
@@ -370,6 +391,9 @@ export function screenView(room, now) {
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
     today: s.type === "today" ? todayOf(room) : undefined,
+    why: s.type === "why" ? whyOf(room) : undefined,
+    study: s.type === "cases" && room.shown.has(s.id) ? storyOf(winnerOf(room, s)) : undefined,
+    ...(s.type === "outro" ? outroOf(room) : {}),
     clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead };
 }
 export function statusSummary(room, now) {
