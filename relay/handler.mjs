@@ -2,7 +2,7 @@
 // function both call it; only the store differs.
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { SCENES } from "./scenes.mjs";
-import { TAKEAWAYS, runOf, recapView, chapterList, promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
+import { reportOf, validName, TAKEAWAYS, runOf, recapView, chapterList, promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
 
 const ID = /^[0-9a-f-]{36}$/;
 const TRACEPARENT = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/; // W3C Trace Context
@@ -17,6 +17,7 @@ const JOIN = {
   closed: [403, "This workshop isn't running right now."],
 };
 
+const titledName = (room) => room.title || ({ 5: "Signals", 1: "Relay is slow", 2: "Relay breaks", 3: "GraphQL measured", 4: "Follow one request" })[room.workshop];
 // The close's links: this session's recap, and (once you've picked) your follow-up.
 // Links use the address the phone came in on: localhost locally, the real domain on Vercel.
 const withLinks = (v, room, p, k, home) => {
@@ -52,12 +53,14 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       const append = async (kind, data = {}) => { const ev = await store.append({ phone: p?.id ?? null, kind, data: { t: Date.now(), ...data } }); room = store.room(); p = p && room.phones.get(p.id); return ev; };
 
       if (method === "GET" && path === "/chapters") return presenter ? json(200, { chapters: chapterList() }) : json(403, { error: "presenter link needed" });
+      if (method === "GET" && path === "/config") // what the pages may know: PostHog only when its key is set
+        return json(200, { posthog: process.env.POSTHOG_KEY ? { key: process.env.POSTHOG_KEY, host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" } : null });
       if (method === "GET" && path === "/screen") return presenter ? json(200, screenView(room, Date.now())) : json(403, { error: "presenter link needed" });
       if (method === "POST" && path === "/control") {
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true, names: body.names, voters: body.voters });
         return json(200, screenView(room, Date.now()));
       }
       // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).
@@ -95,6 +98,15 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           return json(200, { ok: true });
         }
       }
+      if (method === "GET" && path === "/run-report") { // the presenter's per-run report (latest run unless ?r=)
+        if (!presenter) return json(403, { error: "presenter link needed" });
+        const r = Number(url.searchParams.get("r")) || room.runId;
+        if (!r) return json(404, { error: "no run yet" });
+        const events = (await store.events({ from: r })), run = runOf(events, r);
+        if (!run) return json(404, { error: "no such run" });
+        const cut = events.findIndex((e, i) => i > 0 && e.kind === "control" && ["start", "reset"].includes(e.data?.op));
+        return json(200, { run: r, title: titledName(run), ...reportOf(run, cut < 0 ? events : events.slice(0, cut)) });
+      }
       if (method === "GET" && path === "/impact") {
         if (!presenter) return json(403, { error: "presenter link needed" });
         const ans = await store.events({ kind: "answer" });
@@ -129,6 +141,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       }
       // Everything below is for phones, and only while the presenter has the room open.
       if (!(await store.gate()).live) return json(403, { error: JOIN.closed[1], closed: true });
+      if (method === "POST" && path === "/scan") { await store.append({ phone: null, kind: "answer", data: { t: Date.now(), scene: "_scan", value: 1 } }); return json(200, { ok: true }); }
       if (method === "POST" && path === "/join") {
         let rid = phoneId;
         if (!p) {
@@ -137,7 +150,9 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           const ip = (request.headers.get("x-forwarded-for") || "local").split(",")[0].trim();
           const outcome = await store.tryJoin(hmac(codeSecret, code), hmac(codeSecret, "ip:" + ip).slice(0, 16)); // never store an IP
           if (outcome !== "ok") { const [status, error] = JOIN[outcome] ?? JOIN.closed; return json(status, { error, needCode: outcome === "wrong" || outcome === "expired" }); }
-          rid = randomUUID(); await store.append({ phone: rid, kind: "join", data: { t: Date.now() } }); room = store.room(); p = room.phones.get(rid); }
+          // a device mark (never the raw IP or user agent): two sessions from one phone count as a reconnection
+          const dev = hmac(codeSecret, "dev:" + ip + "|" + (request.headers.get("user-agent") || "")).slice(0, 16);
+          rid = randomUUID(); await store.append({ phone: rid, kind: "join", data: { t: Date.now(), dev } }); room = store.room(); p = room.phones.get(rid); }
         return json(200, phoneView(room, p), { "set-cookie": `rid=${rid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${url.protocol === "https:" ? "; Secure" : ""}` });
       }
 
@@ -185,7 +200,21 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         await append("rtt", spans ? { ms, trace, spans, phases } : { ms }); // ponytail: server spans come back through the phone; shape-checked, not signed
         return json(200, { ok: true });
       }
+      if (method === "POST" && path === "/name") { // named sessions: a first name for the leaderboard
+        if (room.names !== "named") return json(409, { error: "This session is anonymous." });
+        const { name } = await read(request);
+        if (!validName(name)) return json(400, { error: "Use 1 to 24 letters or digits." });
+        await append("answer", { scene: "_name", value: name.trim() });
+        return json(200, { ok: true });
+      }
+      if (method === "POST" && path === "/event") { // presence and calls to action, for the run report
+        const { type, target } = await read(request);
+        if (type === "beat") { await append("answer", { scene: "_beat", value: 1 }); return json(200, { ok: true }); }
+        if (type === "cta" && ["linkedin", "github", "devto", "blog", "recap"].includes(target)) { await append("answer", { scene: "_cta", value: target }); return json(200, { ok: true }); }
+        return json(400, { error: "unknown event" });
+      }
       if (method === "POST" && path === "/answer") {
+        if (room.eyes) return json(423, { error: "Eyes on the screen for a moment." });
         const s = sceneAt(room), { value } = await read(request);
         if (!validAnswer(s, value)) return json(400, { error: "not an answer for this scene" });
         if ((room.shown.has(s.id) && s.answer !== undefined) || s.chosen !== undefined) return json(409, { error: "answers are closed" });

@@ -443,6 +443,49 @@ assert.ok(road.mine?.line?.trace_id && road.counts[0] >= 1, "the phone sees its 
 await go("sig-trace-road");
 assert.equal((await listener.view()).road.mode, "traces", "the trace road follows the same message's spans");
 
+// The game: named or anonymous, points for right and fast, a leaderboard, voters, eyes up.
+store.setAccess({ liveUntil: Infinity, joinUntil: Infinity, locked: false, openedAt: Date.now() });
+assert.equal((await ctl("start", { w: 5, names: "loud" })).status, 400, "an unknown name mode is refused");
+await ctl("start", { w: 5, names: "named", voters: true });
+const fast = await phone(), slow = await phone(), miss = await phone();
+assert.equal((await fast.view()).needName, true, "a named session asks for a first name");
+assert.equal((await fast("/name", { name: "<b>" })).status, 400, "names are plain words");
+assert.equal((await fast("/name", { name: "  Dana " })).status, 200);
+await slow("/name", { name: "Noa" });
+await go("mean");
+await fast("/answer", { value: SCENE.mean.answer });
+await slow("/answer", { value: SCENE.mean.answer });
+room().phones.get(slow.cookie.split("=")[1]).at.mean += 30_000; // that answer came 30 s in
+await miss("/answer", { value: (SCENE.mean.answer + 1) % SCENE.mean.options.length });
+await ctl("reveal");
+const lb = (await screen()).leaderboard;
+assert.deepEqual(lb.map((x) => x.name), ["Dana", "Noa", "Player 3"], "the leaderboard orders by points; unnamed phones are players");
+assert.ok(lb[0].points > lb[1].points && lb[1].points >= 500 && lb[2].points === 0, "right and fast beats right and slow; wrong scores 0");
+assert.deepEqual((await screen()).who[SCENE.mean.answer], ["Dana", "Noa"], "show voters lists who chose each option");
+assert.equal((await fast.view()).who, undefined, "voters never reach phones");
+assert.equal((await fast.view()).rank, 1, "each phone knows its rank");
+await ctl("mode", { voters: false });
+assert.equal((await screen()).who, undefined, "voters can be switched off");
+await ctl("start", { w: 5 });
+const anon = await phone();
+assert.equal((await anon("/name", { name: "Dana" })).status, 409, "an anonymous session never takes names");
+await ctl("eyes");
+await go("mean");
+assert.equal((await anon("/answer", { value: 0 })).status, 423, "eyes up pauses input");
+assert.equal((await anon.view()).eyes, true, "phones know to look up");
+await ctl("eyes");
+assert.equal((await anon("/answer", { value: 0 })).status, 200);
+assert.ok([...room().devs].every((d) => /^[0-9a-f]{16}$/.test(d)), "joins carry a device mark, never an IP");
+await phone(); // the same device (same address and browser) joins again
+assert.ok(room().reconnects >= 1, "a second session from the same device counts as a reconnection");
+
+// The run report: reach, presence, engagement, learning, conversion, reconnection.
+const rep = await (await fetch(base + "/run-report?t=t")).json();
+assert.ok(rep.reach.joined >= 1 && rep.presence[0].minute === 0, "the report has reach and a presence curve");
+assert.ok(rep.polls.some((x) => x.id === "mean" && x.answered >= 1 && x.rate > 0), "the report has answered/present per poll");
+assert.ok(rep.reconnectionRate > 0 && rep.churnRate >= 0, "the report has reconnection and churn rates");
+assert.equal((await fetch(base + "/run-report")).status, 403, "the run report is for the presenter");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

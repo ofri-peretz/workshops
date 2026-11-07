@@ -525,6 +525,12 @@
       .scard em { position: absolute; top: 20px; right: 20px; font: 700 14px/1 var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary-fg); background: var(--primary); padding: 8px 12px; border-radius: 999px; }
       @keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
       @media (prefers-reduced-motion: reduce) { .scard { animation: none; } }
+      .board { position: fixed; right: 36px; top: 120px; width: min(420px, 32vw); display: grid; gap: 10px; padding: 24px; border-radius: 24px; background: color-mix(in oklab, var(--card) 92%, transparent); border: 1px solid var(--primary); box-shadow: 0 30px 80px -40px var(--primary); animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      .board .row { display: flex; justify-content: space-between; font-size: clamp(20px, 1.6vw, 28px); }
+      .board .row b { color: var(--primary); margin-right: 10px; }
+      .board em { font: 700 1em/1 var(--mono); font-style: normal; }
+      .who-voted { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; color: var(--muted); font-size: clamp(16px, 1.2vw, 20px); }
+      body.eyes .top { box-shadow: inset 0 -4px 0 var(--primary); }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -565,6 +571,7 @@
         ><button type="button" data-op="instrument">Add span (A)</button>
         <button type="button" id="notesBtn" aria-pressed="false">
           Notes (N)</button
+        ><button type="button" data-op="eyes">Eyes up (E)</button
         ><button type="button" id="keysBtn" aria-haspopup="dialog">Keys (?)</button
         ><button type="button" id="reset">Reset room</button>
         <label class="aud" for="aud">Audience <select id="aud"></select></label>
@@ -576,7 +583,7 @@
 
     <dialog id="keys" aria-labelledby="keysTitle">
       <h2 id="keysTitle">Keyboard shortcuts</h2>
-      <table><tr><th scope="row"><kbd>→ or PageDown</kbd></th><td>Next scene (a clicker works)</td></tr><tr><th scope="row"><kbd>← or PageUp</kbd></th><td>Back</td></tr><tr><th scope="row"><kbd>R</kbd></th><td>Reveal the answer</td></tr><tr><th scope="row"><kbd>G</kbd></th><td>Reveal the speed groups</td></tr><tr><th scope="row"><kbd>B</kbd></th><td>Break Relay</td></tr><tr><th scope="row"><kbd>F</kbd></th><td>Fix Relay</td></tr><tr><th scope="row"><kbd>A</kbd></th><td>Add span</td></tr><tr><th scope="row"><kbd>N</kbd></th><td>Speaker notes (the room sees them)</td></tr><tr><th scope="row"><kbd>? or ⌘/</kbd></th><td>This list</td></tr><tr><th scope="row"><kbd>Esc</kbd></th><td>Close this list</td></tr></table>
+      <table><tr><th scope="row"><kbd>→ or PageDown</kbd></th><td>Next scene (a clicker works)</td></tr><tr><th scope="row"><kbd>← or PageUp</kbd></th><td>Back</td></tr><tr><th scope="row"><kbd>R</kbd></th><td>Reveal the answer</td></tr><tr><th scope="row"><kbd>G</kbd></th><td>Reveal the speed groups</td></tr><tr><th scope="row"><kbd>B</kbd></th><td>Break Relay</td></tr><tr><th scope="row"><kbd>F</kbd></th><td>Fix Relay</td></tr><tr><th scope="row"><kbd>A</kbd></th><td>Add span</td></tr><tr><th scope="row"><kbd>E</kbd></th><td>Eyes up: phones pause and look at the screen</td></tr><tr><th scope="row"><kbd>Enter</kbd></th><td>Close & continue: reveal, 3 s, next</td></tr><tr><th scope="row"><kbd>N</kbd></th><td>Speaker notes (the room sees them)</td></tr><tr><th scope="row"><kbd>? or ⌘/</kbd></th><td>This list</td></tr><tr><th scope="row"><kbd>Esc</kbd></th><td>Close this list</td></tr></table>
     </dialog>
     <script>
       const T = new URLSearchParams(location.search).get("t");
@@ -966,9 +973,12 @@
           if (want && k >= 0 && k !== v.i) return control("goto", { i: k });
         }
         if (v.begun && v.path[v.i] && location.hash.slice(1) !== v.path[v.i]) history.replaceState(null, "", "#" + v.path[v.i]);
+        const board = v.leaderboard?.length ? `<aside class="board" data-testid="leaderboard"><span class="label">Leaderboard</span>${v.leaderboard.map((x, i) => `<div class="row"><span><b>${i + 1}</b> ${esc(x.name)}</span><em>${x.points.toLocaleString()}</em></div>`).join("")}</aside>` : "";
+        const who = v.who ? `<div class="who-voted">${v.who.map((names, i) => names.length ? `<div><span class="label">${esc(s.options[i])}</span>${esc(names.slice(0, 6).join(", "))}${names.length > 6 ? ` +${names.length - 6}` : ""}</div>` : "").join("")}</div>` : "";
+        document.body.classList.toggle("eyes", !!v.eyes);
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}</b> · ${esc(s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "");
+        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}</b> · ${esc(s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who + board;
         const big = $("qrbig");
         if (big) qr(big, 240);
       }
@@ -1028,6 +1038,10 @@
         else if (k === "f") control("fix");
         else if (k === "a") control("instrument");
         else if (k === "n") toggleNotes();
+        else if (k === "e") control("eyes");
+        else if (e.key === "Enter" && !e.target.closest("button, select, input")) { // close & continue: reveal, hold 3 s, next
+          control("reveal").then(() => setTimeout(() => control("next"), 3000));
+        }
       });
       (async function poll() {
         try {

@@ -70,6 +70,7 @@ export const SCENES = [
   { id: "cases", act: "Business use cases", min: 3, type: "cases", title: "Which one do we take apart?", phone: "Pick the case we take apart.", concepts: [], terms: [],
     notes: "The room votes among real cases with different root causes. Reveal shows the winner in three beats: what happened, why, the lesson. Tell it from the notes; offer the others in the recap." },
   { id: "outro", act: "What's next", min: 1, type: "outro", title: "This was one of four", phone: "Follow along: the next one, your recap, my links.", concepts: [], terms: [],
+    options: ["API latency", "Database queries", "Load testing", "GraphQL"], // "What should Step 2 cover?": feeds the next session
     notes: "Tease the next workshop with its question, then point at the QR: the series, your recap, my links. Leave this up while people leave." },
   { id: "series", act: "The series", min: 1, type: "series", title: "One series, four parts", phone: "Today is part 1.", concepts: [], terms: [],
     notes: "Walk the four cards in one breath each, then land on today's: 'Today we cover only part 1.'" },

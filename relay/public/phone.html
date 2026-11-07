@@ -530,6 +530,12 @@
       .small { font-size: 13px; }
       @media (prefers-reduced-motion: reduce) { .road li, .road li::before { transition: none; } }
       .pcard { opacity: 0.6; } .pcard.today { opacity: 1; box-shadow: 0 0 0 2px var(--primary) inset; } .pcard b { font-size: 20px; }
+      .eyesup { position: fixed; inset: 0; z-index: 20; display: none; place-content: center; justify-items: center; gap: 12px; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 26px; }
+      .eyesup span { font-size: 64px; }
+      body.eyes .eyesup { display: grid; }
+      #nameform input { font: 600 20px var(--sans); padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+      a.cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font-weight: 600; text-decoration: none; }
+      a.cta.primary-cta { min-height: 64px; font-size: 18px; background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
       @media (prefers-reduced-motion: reduce) { body.enter #rest > *, body.enter #top > * { animation: none; } button, .findme a { transition: none; } }
     </style>
   </head>
@@ -543,6 +549,7 @@
       <span class="live" aria-hidden="true"></span><span id="where">Joining…</span><span class="score" id="score" hidden title="Right answers"></span><span class="timer" id="timer" hidden aria-live="off"></span>
       <div class="progress" aria-hidden="true"><i id="progress"></i></div>
     </header>
+    <div class="eyesup" aria-live="assertive"><span>👀</span><b>Look at the screen</b></div>
     <main>
       <section id="gate" class="card" hidden aria-labelledby="gateTitle">
         <h1 id="gateTitle">Join the workshop</h1>
@@ -729,6 +736,7 @@
         post("/api/answer", { value }).then((r) => {
           if (r.ok) {
             try { navigator.vibrate?.(12); } catch {}
+            track(view?.type === "cases" ? "vote" : "answer", { step: view?.id });
             view.mine = value;
             render();
           }
@@ -747,10 +755,14 @@
           return `<span class="label">Case study</span><h1>${esc(c.who)}</h1><div class="card"><p><b>What happened:</b> ${esc(c.happened || c.what)}</p>${c.why ? `<p><b>Why:</b> ${esc(c.why)}</p>` : ""}${c.lesson ? `<p><b>The lesson:</b> ${esc(c.lesson)}</p>` : ""}<a href="${esc(c.source)}" rel="noopener">The source</a></div>`;
         },
         outro(v) {
-          const li = v.presenter.links.find((l) => l.label === "LinkedIn");
+          const L = Object.fromEntries(v.presenter.links.map((l) => [l.icon, l]));
+          const a = (k, text, cls = "") => `<a class="cta ${cls}" href="${esc(L[k].href)}" target="_blank" rel="noopener" data-cta="${k}">${ICON[k] || ""}<span>${text}</span></a>`;
           return `<span class="label">Now you can answer</span><div class="card">${(v.answers || []).map((q) => `<p>→ ${esc(q)}</p>`).join("")}</div>
-      <span class="label">Next · ${esc(v.next.track)}</span><h1>${esc(v.next.what)}</h1>
-      <nav class="findme" aria-label="Stay with the series"><a href="${esc(li.href)}">Follow on LinkedIn</a><a href="${esc(v.presenter.home)}">Track the series</a>${v.recap ? `<a data-testid="recap-link" href="${esc(v.recap)}">Your recap</a>` : ""}</nav>`;
+      ${a("linkedin", "Follow on LinkedIn", "primary-cta")}
+      <div class="findme">${a("github", "Star on GitHub")}${a("devto", "Read the dev.to series")}</div>
+      <p class="muted">Stuck on something at work? Ask me after, or message me on LinkedIn.</p>
+      <span class="label">What should Step 2 cover?</span><div class="opts">${(v.options || []).map((o, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(o)}</button>`).join("")}</div>
+      ${v.recap ? `<a class="cta" data-testid="recap-link" data-cta="recap" href="${esc(v.recap)}">Your recap</a>` : ""}`;
         },
         road(v) {
           const r = v.road, m = r.mine;
@@ -776,6 +788,10 @@
           const t = v.today;
           return `<span class="label">What we'll cover today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
       <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span>${x.terms.length ? `<span class="chips">${x.terms.map((term) => `<i>${esc(term)}</i>`).join("")}</span>` : ""}</li>`).join("")}</ol>`;
+        },
+        name(v) {
+          return `<span class="label">One thing first</span><h1>What should we call you?</h1><p class="lead">Your first name shows on the leaderboard.</p>
+      <form id="nameform" class="card"><input id="nameinput" name="name" maxlength="24" autocomplete="given-name" placeholder="First name" required /><button type="submit" class="primary">That's me</button></form>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
@@ -947,14 +963,15 @@
         setTimer(v.timer);
         $("where").textContent = v.act;
         $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
-        $("score").hidden = !v.score?.answered;
-        if (v.score?.answered) $("score").textContent = `★ ${v.score.right}`;
+        $("score").hidden = !v.points;
+        if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()} · #${v.rank}`;
+        document.body.classList.toggle("eyes", !!v.eyes);
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
         lastKey = key;
-        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
+        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";
@@ -964,6 +981,13 @@
         }
         if (!NO_DEEPER.has(v.type))
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
+        const nf = $("nameform");
+        if (nf) nf.onsubmit = async (e) => {
+          e.preventDefault();
+          const r = await post("/api/name", { name: $("nameinput").value });
+          if (r.ok) { try { const k = JSON.parse(localStorage.getItem("relay-session") || "{}"); localStorage.setItem("relay-session", JSON.stringify({ ...k, name: $("nameinput").value.trim() })); } catch {} const x = await fetch("/api/view", { cache: "no-store" }); if (x.ok) { view = await x.json(); render(); } }
+          else nf.insertAdjacentHTML("beforeend", `<p class="err">${esc(r.body.error || "Try again.")}</p>`);
+        };
         const rs = $("roadsend");
         if (rs) rs.onclick = async () => {
           rs.disabled = true;
@@ -982,7 +1006,7 @@
         blog: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
       };
       const findMe = (v) =>
-        `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${ICON[l.icon] || ""}<span>${esc(l.cta || l.label)}</span></a>`).join("")}</nav>`;
+        `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener" data-cta="${esc(l.icon)}">${ICON[l.icon] || ""}<span>${esc(l.cta || l.label)}</span></a>`).join("")}</nav>`;
       const NO_DEEPER = new Set(["intro", "series", "scan", "why", "today", "road", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
@@ -1093,17 +1117,48 @@
         $("chat").hidden = true;
         $("where").textContent = askCode ? "Code needed" : "Closed";
       };
+      // ---- Measurement: our own event log always; PostHog too when the deployment has a key. Never a name or an IP.
+      let ph = null;
+      const track = (event, props = {}) => { try { ph?.capture(event, props); } catch {} };
+      fetch("/api/config").then((r) => r.json()).then((c) => {
+        if (!c.posthog) return;
+        const sc = document.createElement("script");
+        sc.src = "https://cdn.jsdelivr.net/npm/posthog-js@1.200.2/dist/array.full.js";
+        sc.onload = () => { window.posthog.init(c.posthog.key, { api_host: c.posthog.host, person_profiles: "identified_only", autocapture: false, capture_pageview: false, persistence: "localStorage" }); ph = window.posthog; track("scan"); };
+        document.head.appendChild(sc);
+      }).catch(() => {});
+      post("/api/scan", {}).catch(() => {});
+      setInterval(() => { if (document.visibilityState === "visible" && view) { post("/api/event", { type: "beat" }).catch(() => {}); } }, 30_000);
+      addEventListener("pagehide", () => track("leave", { step: view?.id }));
+      document.addEventListener("click", (e) => { // calls to action: counted, then followed
+        const a = e.target.closest("a[data-cta]");
+        if (!a) return;
+        post("/api/event", { type: "cta", target: a.dataset.cta }).catch(() => {});
+        track("cta_click", { target: a.dataset.cta });
+      });
+      // Coming back: the last session is offered for 3 hours (this browser only).
+      const SESSION_TTL = 3 * 3600_000;
+      const savedSession = () => { try { const x = JSON.parse(localStorage.getItem("relay-session") || "null"); return x && x.until > Date.now() ? x : null; } catch { return null; } };
+      const saveSession = (patch) => { try { localStorage.setItem("relay-session", JSON.stringify({ ...savedSession(), ...patch, until: Date.now() + SESSION_TTL })); } catch {} };
       let joinCode = new URLSearchParams(location.search).get("c") || (() => { try { return sessionStorage.getItem("relay-code"); } catch { return null; } })();
       const join = (code) =>
         post("/api/join", code ? { code } : {}).then((r) => {
           if (r.ok) {
             if (code) { joinCode = code; try { sessionStorage.setItem("relay-code", code); } catch {} }
+            const back = !!savedSession();
+            saveSession({ code: joinCode, workshop: r.body.workshop });
+            track(back ? "rejoin" : "join", { workshop: r.body.workshop });
             $("gate").hidden = true;
             $("chat").hidden = false;
             if (location.search) history.replaceState(null, "", location.pathname);
             return enter(r);
           }
           gate(r.body.error || "Couldn't join. Reload to try again.", r.body.needCode === true);
+          const prev = savedSession();
+          if (r.body.needCode && prev?.code && prev.code !== code) { // offer the session this phone was in
+            $("gateMsg").insertAdjacentHTML("afterend", `<button type="button" class="primary" id="rejoin">Rejoin ${esc(prev.workshop || "your workshop")}${prev.name ? ` as ${esc(prev.name)}` : ""}</button>`);
+            $("rejoin").onclick = () => join(prev.code);
+          }
           if (r.body.needCode) $("code").focus();
         });
       $("gateForm").addEventListener("submit", (e) => {
@@ -1123,7 +1178,7 @@
               clearInterval(local.load.timer);
               local.load.on = false;
             }
-            if (view && next.id !== view.id) { window.scrollTo(0, 0); local.span = 0; }
+            if (view && next.id !== view.id) { window.scrollTo(0, 0); local.span = 0; track("step_view", { step: next.id, type: next.type }); }
             view = next;
             render();
           };
