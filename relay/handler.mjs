@@ -57,7 +57,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true });
         return json(200, screenView(room, Date.now()));
       }
       // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).

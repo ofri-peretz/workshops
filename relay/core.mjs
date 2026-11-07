@@ -144,17 +144,17 @@ export function reduce(room, ev) {
   }
 }
 
-function control(room, { op, i, w, a, id, t, intro, c, title, ev }) {
+function control(room, { op, i, w, a, id, t, intro, c, title, ev, wait }) {
   const before = room.pos, begunBefore = room.begun;
-  const out = control1(room, { op, i, w, a, id, t, intro, c, title, ev });
+  const out = control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait });
   if (out.pos !== before || out.begun !== begunBefore || op === "detour") out.since = t; // the countdown restarts on every new step
   out.seq = (room.seq || 0) + 1; // every presenter action: what /api/stream pushes to phones
   return out;
 }
-function control1(room, { op, i, w, a, id, t, intro, c, title, ev }) {
+function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait }) {
   const s = sceneAt(room);
   if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, audience: room.audience, intro: room.intro }; // stay in this workshop
-  if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), title: c ? title : undefined, runId: ev, audience: a ?? room.audience, intro: intro ?? "first", begun: false }; // an empty room; phones wait until "begin"
+  if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), title: c ? title : undefined, runId: ev, audience: a ?? room.audience, intro: intro ?? "first", begun: !wait }; // the presenter leads the opening; phones join at the Scan slide // an empty room; phones wait until "begin"
   if (op === "begin" || (op === "next" && !room.begun)) { room.begun = true; return room; }
   if (op === "goto" || op === "detour") room.begun = true; // jumping to a scene starts the workshop
   if (op === "audience") { room.audience = a; return room; } // who's in the room decides the intro
@@ -318,7 +318,7 @@ function outage(room, now) {
 }
 
 // Hands-on steps get a countdown: the scene's minutes, from the moment the room arrived.
-export const TIMED = new Set([...POLL_TYPES, "cases", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway"]);
+export const TIMED = new Set([...POLL_TYPES, "cases", "road", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway"]);
 const timerOf = (room, s, now = Date.now()) => (room.begun && room.since && TIMED.has(s.type) && s.min ? { left: Math.max(0, room.since + s.min * 60_000 - now), total: s.min * 60_000 } : undefined);
 const ALWAYS_LEAD = new Set(["intro", "why", "today", "outro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
@@ -361,7 +361,7 @@ const outroOf = (room) => {
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);
-  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, concept: c.concept, asks: c.asks, terms: c.terms ?? [] })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
+  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, hook: c.hook, concept: c.concept, asks: c.asks, terms: (c.terms ?? []).filter((t) => !c.name.toLowerCase().includes(t.toLowerCase())) })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
@@ -377,6 +377,9 @@ export function phoneView(room, p) {
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
   if (s.type === "today") v.today = todayOf(room);
+  if (s.type === "series") Object.assign(v, { series: SERIES, part: partOf(room) });
+  if (s.type === "scan") v.people = room.phones.size;
+  if (s.type === "road") v.road = roadOf(room, s, p, Date.now());
   v.timer = timerOf(room, s);
   if (p) v.score = scoreOf(room, p);
   v.part = partOf(room);
@@ -414,6 +417,7 @@ export function screenView(room, now) {
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
     path: room.path, // the presenter's deep links: /screen?t=…#<step id>
     today: s.type === "today" ? todayOf(room) : undefined,
+    road: s.type === "road" ? roadOf(room, s, null, now) : undefined,
     timer: timerOf(room, s, now),
     learning: s.type === "qa" ? learningOf(room) : undefined,
     why: s.type === "why" ? whyOf(room) : undefined,
@@ -444,6 +448,28 @@ export const learningOf = (room) => room.path.slice(0, room.pos + 1).map((id) =>
     return { id: s.id, q: s.title, a: s.takeaway ?? s.options[s.answer], right: a.filter((x) => x === s.answer).length, total: a.length }; });
 const scoreOf = (room, p) => { const qs = room.path.map((id) => SCENE[id]).filter((s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined && p.answers[s.id] !== undefined);
   return { right: qs.filter((s) => p.answers[s.id] === s.answer).length, answered: qs.length }; };
+
+// The road a message's telemetry travels. Delays are typical, not measured; the room's counts are
+// how many messages have reached each stage by now.
+export const ROADS = {
+  logs: [
+    { at: 0, name: "Written", what: "Relay prints one line to stdout" },
+    { at: 1000, name: "Shipped", what: "A shipper sends it on: Fluent Bit, OTel Collector" },
+    { at: 2500, name: "Stored", what: "Loki, CloudWatch or Elastic indexes it" },
+    { at: 4000, name: "Searchable", what: "Anyone can find it by its id" },
+  ],
+  traces: [
+    { at: 0, name: "Started", what: "Your phone starts the trace and sends traceparent" },
+    { at: 300, name: "Spanned", what: "Relay times each step as a span" },
+    { at: 1500, name: "Batched", what: "The SDK sends spans to the OTel Collector" },
+    { at: 4000, name: "Visible", what: "Tempo or Jaeger shows the whole trace" },
+  ],
+};
+const roadOf = (room, s, p, now) => {
+  const stages = ROADS[s.mode], mine = p && room.chat.findLast((c) => c.id === p.id);
+  return { mode: s.mode, stages, now, mine: mine ? { t: mine.t, line: logLine(mine), trace: mine.trace ?? null } : null,
+    counts: stages.map((st) => room.chat.filter((c) => now - c.t >= st.at).length) };
+};
 
 // ---- after the room: the recap and the follow-up ---------------------------------------------------
 export const TAKEAWAYS = new Set(SCENES.filter((s) => s.type === "takeaway").map((s) => s.id));

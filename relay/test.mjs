@@ -37,8 +37,9 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
   // The arc every workshop follows: who I am, why it matters, what we'll cover; hands-on chapters;
   // then the case studies the room picks, the one thing for Monday, questions, and the outro.
-  assert.equal(ids[0], "today", `workshop ${w} opens on what we'll cover (the host is on the waiting screen)`);
-  assert.ok(ids.indexOf("why") > 1 && ids.indexOf("why") < 5, `workshop ${w}: why it matters comes right after the room's first hands-on moment`);
+  assert.deepEqual(ids.slice(0, 4), ["intro", "series", "today", "scan"], `workshop ${w} opens: who I am, the series, what we'll cover, then the one QR`);
+  assert.ok(ids.indexOf("why") > 4 && ids.indexOf("why") < 9, `workshop ${w}: why it matters comes right after the room's first hands-on moment`);
+  assert.equal(ids.filter((x) => x === "scan").length, 1, `workshop ${w}: one QR, once`);
   assert.deepEqual([ids.at(-4), ids.at(-2), ids.at(-1)], ["cases", "qa", "outro"], `workshop ${w} closes: case studies, Monday, questions, outro`);
   assert.ok(W.why?.title && W.why.lead && W.why.abt && CASES[W.why.case]?.source, `workshop ${w}: a why with a real case`);
   assert.ok(W.studies.length >= 3 && W.studies.every((c) => CASES[c]?.source), `workshop ${w}: at least 3 real case studies for the room to pick from`);
@@ -77,6 +78,7 @@ for (const [id, c] of Object.entries(CHAPTERS)) {
   assert.ok(ids.some((x) => HANDS_ON.has(SCENE[x].type)), `${id}: the room tries it on their phones`);
   assert.ok(c.remember && c.remember.split(/\s+/).length <= 8 && !/\.$/.test(c.remember), `${id}: one line to remember, 8 words at most, no period`);
   assert.ok(c.name.split(/\s+/).length <= 3 && c.q.split(/\s+/).length <= 8, `${id}: name 3 words, question 8`);
+  assert.ok(c.hook && c.hook.split(/\s+/).length <= 6 && !/\.$/.test(c.hook), `${id}: a hook, what you'll do, in 6 words`);
   assert.ok(c.concept?.split(/\s+/).length <= 5 && c.asks?.endsWith("?") && c.asks.split(/\s+/).length <= 10, `${id}: a concept (5 words) and the business question it answers (10 words)`);
   const taught = new Set(ids.flatMap((x) => SCENE[x].terms));
   assert.ok(c.scenes.some((x) => typeof x === "string" && SCENE[x].case?.source?.startsWith("https://")), `${id}: tells at least one real, sourced case on its main line`);
@@ -235,18 +237,18 @@ await ctl("start", { w: 2, a: "tech", intro: "returning" });
 assert.deepEqual([room().intro, room().audience], ["returning", "tech"], "the console sets the intro and audience as it opens the room");
 await ctl("reset");
 assert.equal(room().intro, "returning", "a reset keeps the intro");
-await ctl("start", { w: 2 });
-assert.equal(here(), "today");
+await ctl("start", { w: 2, wait: true });
+assert.equal(here(), "intro");
 const waiter = await phone();
 assert.equal((await waiter.view()).type, "waiting", "after Go live, phones wait for the presenter");
 assert.equal((await screen()).scene.type, "waiting", "the big screen waits too, with the join code");
 await ctl("begin");
-assert.equal((await waiter.view()).type, "today", "Begin starts every phone on what we'll cover");
-await ctl("start", { w: 2 });
+assert.equal((await waiter.view()).type, "intro", "Begin starts every phone where the presenter is");
+await ctl("start", { w: 2, wait: true });
 await ctl("next");
-assert.equal([here(), (await screen()).scene.type].join(), "today,today", "Next from the waiting room begins on what we'll cover");
+assert.equal([here(), (await screen()).scene.type].join(), "intro,intro", "Next from the waiting room begins on the intro");
 await ctl("prev");
-assert.equal(here(), "today", "Back stops at the start");
+assert.equal(here(), "intro", "Back stops at the start");
 
 // Workshop 2: the room's incident update is posted, fix resolves; Next at a fork takes the default.
 phones = await Promise.all([1, 2].map(phone));
@@ -350,7 +352,7 @@ assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<sc
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
 const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
-assert.ok(lib.find((c) => c.id === "sig-logs").min === 11 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
+assert.ok(lib.find((c) => c.id === "sig-logs").min === 9 && lib.every((c) => c.q), "the console reads the chapter library with minutes");
 assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });
@@ -431,6 +433,15 @@ const at = await Promise.race([heard, new Promise((r) => setTimeout(() => r(null
 assert.ok(at && at - sentAt < 1000, `the phone hears Next within a second (took ${at ? at - sentAt : "never"} ms)`);
 await reader.cancel();
 assert.equal((await fetch(base + "/stream")).status, 401, "the stream is for joined phones and the presenter");
+
+// The road: a phone sees its own message travel into the logging and tracing systems.
+await go("sig-road");
+await listener("/send", {});
+const road = (await listener.view()).road;
+assert.deepEqual(road.stages.map((x) => x.name), ["Written", "Shipped", "Stored", "Searchable"], "the log road has its four stages");
+assert.ok(road.mine?.line?.trace_id && road.counts[0] >= 1, "the phone sees its own log line, and the room's count");
+await go("sig-trace-road");
+assert.equal((await listener.view()).road.mode, "traces", "the trace road follows the same message's spans");
 
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");

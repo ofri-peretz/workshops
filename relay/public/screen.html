@@ -503,10 +503,28 @@
       .path li:first-child { border-top-color: var(--primary); }
       .path li::before { content: counter(s); font: 700 clamp(20px, 1.6vw, 28px)/1 var(--mono); color: var(--primary); }
       .path li b { font-size: clamp(30px, 2.6vw, 46px); }
+      .path .hook { font-size: clamp(20px, 1.6vw, 28px); color: var(--muted); line-height: 1.25; }
       .path .chips span { font-size: clamp(16px, 1.2vw, 22px); }
       .asks.big { font-size: clamp(30px, 2.8vw, 50px); gap: 24px; }
       .brands { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
       .brands .ico { width: 1.1em; height: 1.1em; margin-right: 6px; vertical-align: -0.15em; }
+      .road-h { list-style: none; margin: 28px 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+      .road-h li { display: grid; gap: 8px; padding: 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); position: relative; }
+      .road-h li:not(:last-child)::after { content: "→"; position: absolute; right: -18px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 28px; }
+      .road-h em { font: 700 clamp(40px, 4vw, 72px)/1 var(--mono); font-style: normal; color: var(--primary); }
+      .road-h b { font-size: clamp(24px, 2vw, 34px); }
+      .road-h span { color: var(--muted); font-size: clamp(16px, 1.3vw, 22px); }
+      .series-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 28px; }
+      .scard { display: grid; gap: 12px; align-content: start; padding: 28px; min-height: 300px; border: 1px solid var(--line); border-radius: 24px; background: var(--card); position: relative; opacity: 0.55;
+        animation: card-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 140ms); }
+      .scard .num { font: 600 clamp(14px, 1.1vw, 18px)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+      .scard b { font-size: clamp(28px, 2.4vw, 42px); line-height: 1.05; }
+      .scard span:last-child, .scard > span:not(.num) { color: var(--muted); font-size: clamp(18px, 1.4vw, 24px); }
+      .scard.today { opacity: 1; border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), 0 24px 60px -30px var(--primary); }
+      .scard.today .num { color: var(--primary); }
+      .scard em { position: absolute; top: 20px; right: 20px; font: 700 14px/1 var(--mono); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--primary-fg); background: var(--primary); padding: 8px 12px; border-radius: 999px; }
+      @keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
+      @media (prefers-reduced-motion: reduce) { .scard { animation: none; } }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -565,7 +583,12 @@
       // Phones join on the chat host; the projector may be on its own (screen.) host. The presenter's
       // console passes the public address and the join code (?join=…&c=…); the QR carries both.
       const Q = new URLSearchParams(location.search);
-      const JOIN = Q.get("join") || location.origin.replace("//screen.", "//chat.") + "/";
+      // Where phones join: the console's ?join= wins; on localhost, this machine; through the practice
+      // tunnel, the tunnel; anywhere else, the real deployment (never a preview or screen.* host).
+      const LIVE = "https://signals.workshop.ofriperetz.dev/";
+      const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+      const TUNNEL = location.hostname.endsWith(".trycloudflare.com"); // npm run tunnel: practice with real phones
+      const JOIN = Q.get("join") || (LOCAL || TUNNEL ? location.origin + "/" : LIVE);
       const CODE = /^\d{6}$/.test(Q.get("c") || "") ? Q.get("c") : "";
       const JOIN_QR = CODE ? JOIN + "?c=" + CODE : JOIN;
       const $ = (id) => document.getElementById(id);
@@ -857,10 +880,28 @@
       <ul class="clean asks big">${(v.answers || []).map((q) => `<li>${esc(q)}</li>`).join("")}</ul></div>
       <div style="display:grid;gap:18px;justify-items:start"><span class="label">Next · ${esc(v.next.track)}</span><b style="font-size:clamp(28px,2.6vw,44px)">${esc(v.next.what)}</b>${findMe(v)}</div></div>`;
         },
+        road(v, s) {
+          const r = v.road;
+          return `<span class="label">${r.mode === "logs" ? "Logs · the road" : "Traces · the road"}</span><h1>${esc(s.title)}</h1>
+      <ol class="road-h">${r.stages.map((st, i) => `<li><em>${r.counts[i]}</em><b>${esc(st.name)}</b><span>${esc(st.what)}</span></li>`).join("")}</ol>
+      <p class="lead">${esc(s.lead)}</p><p class="muted">Messages that reached each stage · typical delays</p>`;
+        },
+        series(v, s) {
+          const k = v.part ? v.part.n - 1 : -1;
+          return `<span class="label">The monitoring series</span><h1>${esc(s.title)}</h1>
+      <div class="series-cards">${v.series.map((x, i) => { const [n, name] = x.track.split(" · ");
+        return `<div class="scard ${i === k ? "today" : ""}" style="--i:${i}"><span class="num">Part ${esc(n)}</span><b>${esc(name)}</b><span>${esc(x.what)}</span>${i === k ? `<em>Today</em>` : ""}</div>`; }).join("")}</div>`;
+        },
+        scan(v, s) {
+          return `<div class="welcome"><div style="display:grid;gap:18px;align-content:center"><span class="label">Join from your phone</span><h1>${esc(s.title)}</h1>
+        <div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}
+        <span class="here" data-testid="joined"><span id="herecount">${v.people}</span> joined</span></div>
+      <div class="joinbox"><div class="qrbig" id="qrbig"></div></div></div>`;
+        },
         today(v) {
           const t = v.today;
-          return `<div class="focus"><span class="label">${v.part ? `${esc(v.part.series)} · Part ${v.part.n} of ${v.part.of}` : "What we'll cover"}</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
-      <ol class="path">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><div class="chips">${x.terms.map((term) => `<span>${esc(term)}</span>`).join("")}</div></li>`).join("")}</ol></div>`;
+          return `<div class="focus"><span class="label">What we'll cover today</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
+      <ol class="path">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span>${x.terms.length ? `<div class="chips">${x.terms.map((term) => `<span>${esc(term)}</span>`).join("")}</div>` : ""}</li>`).join("")}</ol></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
@@ -896,7 +937,7 @@
         const s = v.scene;
         setTimer(v.timer);
         $("where").textContent =
-          `${v.part ? `Part ${v.part.n} of ${v.part.of} · ` : ""}${v.workshop} · ${v.act}`;
+          `${v.workshop} · ${v.act}`;
         if (v.people > lastPeople) bumpEl($("people"));
         lastPeople = v.people;
         $("people").textContent = v.people;
