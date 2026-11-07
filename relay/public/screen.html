@@ -519,8 +519,9 @@
       .road-h b { font-size: clamp(24px, 2vw, 34px); }
       .road-h span { color: var(--muted); font-size: clamp(16px, 1.3vw, 22px); }
       .series-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 28px; }
-      .scard { display: grid; gap: 12px; align-content: start; padding: 28px; min-height: 300px; border: 1px solid var(--line); border-radius: 24px; background: var(--card); position: relative; opacity: 0.55;
-        animation: card-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 140ms); }
+      .scard { display: grid; gap: 12px; align-content: start; padding: 28px; min-height: 300px; border: 1px solid var(--line); border-radius: 24px; background: var(--card); position: relative; opacity: 0.55; }
+      /* Entrances run once, when the slide changes (#stage.enter), never on the every-second redraw. */
+      #stage.enter .scard { animation: card-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 140ms); }
       .scard .num { font: 600 clamp(14px, 1.1vw, 18px)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
       .scard b { font-size: clamp(28px, 2.4vw, 42px); line-height: 1.05; }
       .scard span:last-child, .scard > span:not(.num) { color: var(--muted); font-size: clamp(18px, 1.4vw, 24px); }
@@ -532,7 +533,8 @@
       .withboard { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); gap: 36px; align-items: start; }
       .withboard .main { display: grid; gap: 22px; min-width: 0; }
       .who-voted .label { display: block; margin-bottom: 4px; }
-      .board { display: grid; gap: 10px; padding: 24px; border-radius: 24px; background: color-mix(in oklab, var(--card) 92%, transparent); border: 1px solid var(--primary); box-shadow: 0 30px 80px -40px var(--primary); animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      .board { display: grid; gap: 10px; padding: 24px; border-radius: 24px; background: color-mix(in oklab, var(--card) 92%, transparent); border: 1px solid var(--primary); box-shadow: 0 30px 80px -40px var(--primary); }
+      #stage.enter .board { animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
       .board .row { display: flex; justify-content: space-between; font-size: clamp(20px, 1.6vw, 28px); }
       .board .row b { color: var(--primary); margin-right: 10px; }
       .board em { font: 700 1em/1 var(--mono); font-style: normal; }
@@ -548,8 +550,9 @@
       .bubble { justify-self: end; max-width: 85%; padding: 12px 14px; border-radius: 18px 18px 4px 18px; background: var(--primary); color: var(--primary-fg); font-size: 16px; opacity: 0.6; }
       .sending { justify-self: end; color: var(--muted); font-size: 15px; } .sending b { color: var(--bad); }
       .beats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 12px; }
-      .beats > div { display: grid; gap: 10px; align-content: start; padding: 26px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-      .beats > div:nth-child(2) { animation-delay: 160ms; } .beats > div:nth-child(3) { animation-delay: 320ms; }
+      .beats > div { display: grid; gap: 10px; align-content: start; padding: 26px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); }
+      #stage.enter .beats > div { animation: card-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      #stage.enter .beats > div:nth-child(2) { animation-delay: 160ms; } #stage.enter .beats > div:nth-child(3) { animation-delay: 320ms; }
       .beats p { margin: 0; font-size: clamp(24px, 2vw, 36px); line-height: 1.3; }
       .beats .lesson { border-color: var(--primary); } .beats .lesson p { font-weight: 700; }
       /* The waiting screen, designed for the room. */
