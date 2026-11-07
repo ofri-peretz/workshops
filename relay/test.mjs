@@ -359,10 +359,10 @@ assert.equal((await screen()).scene.title, SCENE.mean.title, "a poll opens on it
 await ctl("reveal");
 assert.equal((await screen()).scene.title, SCENE.mean.takeaway, "on reveal, the answer becomes the headline");
 
-// Interlace is described the brand's way, with the brand's numbers (relay/brand.json, synced).
+// The presenter and Interlace are described the brand's way (relay/brand.json, synced).
 const BRAND = JSON.parse(readFileSync(new URL("./brand.json", import.meta.url), "utf8"));
 const techItems = (await import("./scenes.mjs")).AUDIENCES.tech.items.join(" | ");
-assert.ok(techItems.includes(`${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`), "the intro carries the brand's numbers");
+for (const fact of BRAND.author.facts) assert.ok(techItems.includes(fact), `the intro carries the brand's line: ${fact}`);
 assert.ok(!/\b\d+ ESLint plugins\b|750k/i.test(readFileSync(new URL("./scenes.mjs", import.meta.url), "utf8")), "no hand-typed Interlace numbers in scenes.mjs");
 // The close: each phone picks one thing for the week, gets a signed follow-up and the session's recap.
 store.setAccess({ liveUntil: Infinity, joinUntil: Infinity, locked: false, openedAt: Date.now() }); // a fresh room
