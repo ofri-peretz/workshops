@@ -650,6 +650,13 @@
         return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
       }
       const R = {
+        today(v) {
+          const t = v.today;
+          return `<span class="label">Today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
+      <div class="card">${t.parts.map((x, i) => `<div class="row"><b>${i + 1} · ${esc(x.name)}</b></div><p>${esc(x.q)}</p>`).join("")}</div>
+      <div class="card"><span class="label">Terms</span><p>${t.terms.map((x) => esc(x.term)).join(" · ")}</p></div>
+      ${t.cases.length ? `<div class="card"><span class="label">Cases</span>${t.cases.map((c) => `<p><b>${esc(c.who)}</b> · ${esc(c.what)}</p>`).join("")}</div>` : ""}<p>${esc(v.phone)}</p>`;
+        },
         waiting(v) {
           return `<span class="label">${esc(v.workshop)}</span><h1>Starting soon</h1><p class="card">${esc(v.promise)}</p><p data-testid="waiting-people">${v.people} here</p>${findMe(v)}`;
         },
@@ -803,7 +810,7 @@
         $("where").textContent = `${v.workshopId === 5 ? "Signals" : "Workshop " + v.workshopId} · ${v.act}`;
         terms(v.terms);
         $("chat").classList.toggle("on", v.type === "chat");
-        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v);
+        const html = (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">Case</span> <b>${esc(v.case.who)}</b> · ${esc(v.case.what)}</p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";
@@ -817,7 +824,7 @@
       }
       const findMe = (v) =>
         `<nav class="findme" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("")}</nav>`;
-      const NO_DEEPER = new Set(["intro", "qa", "fork", "next", "takeaway"]);
+      const NO_DEEPER = new Set(["intro", "today", "qa", "fork", "next", "takeaway"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
         let kept = {};

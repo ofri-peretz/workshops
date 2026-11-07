@@ -293,9 +293,15 @@ function outage(room, now) {
   return { mins, uptime: room.chat.length ? ok / room.chat.length : null };
 }
 
-const ALWAYS_LEAD = new Set(["intro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
+const ALWAYS_LEAD = new Set(["intro", "today", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
 const WAITING = { act: "Starting soon", type: "waiting", min: 0, notes: "Phones wait here. Begin from the console, or press Next." };
+// What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
+const todayOf = (room) => {
+  const W = WORKSHOPS[room.workshop];
+  return { parts: W.parts.map(([name, q]) => ({ name, q })), terms: W.terms.map((term) => ({ term, ...GLOSSARY[term] })),
+    cases: room.path.map((id) => SCENE[id]?.case).filter(Boolean).map(({ who, what }) => ({ who, what })) };
+};
 export function phoneView(room, p) {
   if (!room.begun) { const W = WORKSHOPS[room.workshop]; return { ...WAITING, i: 0, n: room.path.length, id: "waiting", workshopId: room.workshop, title: W.title, workshop: W.title, promise: W.promise, people: room.phones.size, presenter: PRESENTER, terms: [] }; }
   const s = sceneAt(room), shown = room.shown.has(s.id), W = WORKSHOPS[room.workshop];
@@ -307,6 +313,8 @@ export function phoneView(room, p) {
     group: room.groupsShown ? p?.group : undefined, broken: room.broken };
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
   if (s.type === "intro" || s.type === "qa") v.presenter = PRESENTER;
+  if (s.type === "today") v.today = todayOf(room);
+  if (s.case) v.case = { who: s.case.who, what: s.case.what };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
@@ -333,6 +341,7 @@ export function screenView(room, now) {
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
+    today: s.type === "today" ? todayOf(room) : undefined,
     clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead };
 }
 export function statusSummary(room, now) {

@@ -15,6 +15,14 @@ the explanation is spoken, from the speaker notes.
 - **What is, what could be** (Nancy Duarte): open on a wait the room felt on its own phones, close
   on what they'll check on Monday.
 
+## Every workshop opens the same way
+
+1. **Who I am** (`intro`): the presenter, for this audience, with the links.
+2. **Today** (`today`): the topic and tagline; the parts, each as the question it answers; up to 8
+   key terms; and the cases, real outages and everyday apps. Parts and terms are set per workshop
+   in `workshops.mjs`; cases come from the scenes on the path (`case` in `scenes.mjs`), so the slide
+   only promises what the workshop tells. Each case also shows on its own scene.
+
 ## The rules
 
 | Level              | Shape                                         | Max words | Example                                 |
@@ -27,6 +35,8 @@ the explanation is spoken, from the speaker notes.
 | Takeaway headline  | The answer as a claim; no period              | 8         | The average describes nobody            |
 | Subline            | The evidence or the why, one sentence         | 12        | Two people waited 5 s, and it hid them  |
 | Phone line, item   | One instruction or one check                  | 12 / 8    | Keep these three                        |
+| Part               | A noun, then its question                     | 3 / 8     | Logs · Who exactly?                     |
+| Case               | Who and when, then what happened              | 4 / 8     | AWS S3, 2017 · Its status page ran on S3 too |
 | Everything else    | Speaker notes                                 | —         | —                                       |
 
 Also: sentence case; digits for numbers; people before systems ("two people waited", not "tail

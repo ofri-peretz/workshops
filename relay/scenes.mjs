@@ -57,8 +57,11 @@ export const SCENES = [
   // ---- shared bookends -------------------------------------------------------------------------
   { id: "intro", act: "Welcome", min: 1, type: "intro", title: "Ofri Peretz", phone: "Today's slides, terms and my links stay at workshop.ofriperetz.dev.", concepts: [], terms: [],
     notes: "One minute, same in every workshop. Pick the audience on the projector before the event; its notes say what to tell. Then today's promise, and straight into Relay." },
-  { id: "qa", act: "Questions", min: 4, type: "qa", title: "Questions", phone: "Ask out loud.", concepts: [], terms: [],
-    notes: "Four minutes inside the 30. The Library menu can answer a question with any scene, but it costs time." },
+  { id: "qa", act: "Questions", min: 3, type: "qa", title: "Questions", phone: "Ask out loud.", concepts: [], terms: [],
+    notes: "Three minutes inside the 30. The Library menu can answer a question with any scene, but it costs time." },
+
+  { id: "today", act: "Welcome", min: 1, type: "today", title: "Today", phone: "New terms collect on your phone as we go.", concepts: [], terms: [],
+    notes: "Say: the topic in one line, then each part as its question. Point at the terms: nobody needs them yet, they land on every phone as we go. Name the cases: real outages, and apps everyone uses." },
 
   // ---- feel it ---------------------------------------------------------------------------------
   { id: "join", act: "Feel it", min: 2, type: "chat", title: "Send Dana a few messages", lead: "You're a Relay user now.", phone: "Send Dana a few messages.",
@@ -97,7 +100,7 @@ export const SCENES = [
     lead: "Two numbers per request. Error rate, uptime and every percentile are computed from them — today we'll use them to find a failure.",
     concepts: ["two-numbers"], terms: ["status code", "duration"],
     notes: "The one idea this workshop needs from Workshop 1. Relay's target for today: 99.9% of messages within 1 s." },
-  { id: "mean", act: "Measure it", min: 1, type: "poll", title: "98 took 50 ms, 2 took 5 s. The average?", takeaway: "The average describes nobody",
+  { id: "mean", case: { who: "A ride app", what: "The average pickup looked fine all day", tell: "Say: in a ride app the average pickup time looks fine all day, while 1 rider in 20 waits long enough to switch apps. Only the p95 shows them." }, act: "Measure it", min: 1, type: "poll", title: "98 took 50 ms, 2 took 5 s. The average?", takeaway: "The average describes nobody",
     options: ["50 ms", "149 ms", "2.5 s", "5 s"], answer: 1,
     lead: "149 ms. Two people waited 5 s, and it hid them.",
     concepts: ["averages-lie"], terms: ["mean"],
@@ -167,7 +170,7 @@ export const SCENES = [
   { id: "outage", act: "Relay breaks", min: 3, type: "chat", breaks: true, title: "Relay is having a bad day", lead: "Keep chatting with Dana.", phone: "Keep chatting with Dana.",
     concepts: ["uptime"], terms: ["incident"],
     notes: "Press Break Relay as the scene opens. Messages start failing. Wait for the room to notice before speaking." },
-  { id: "first", act: "Relay breaks", min: 2, type: "poll", title: "Relay is failing. Where do you look first?", takeaway: "Check the status page first",
+  { id: "first", case: { who: "AWS S3, 2017", what: "Its status page ran on S3 too", tell: "Say: on 2017-02-28 S3 in us-east-1 went down, and AWS could not update its own status page, because the page depended on S3. Monitoring has to see what users see, from outside." }, act: "Relay breaks", min: 2, type: "poll", title: "Relay is failing. Where do you look first?", takeaway: "Check the status page first",
     options: ["Restart the app", "Relay's status page", "Ask a friend", "Write to support"], answer: 1,
     lead: "Components, today's state, 90 days of uptime, incidents.", phone: "Then open Relay's status page.", link: "/status",
     concepts: ["status-page"], terms: ["status page"],
@@ -177,7 +180,7 @@ export const SCENES = [
     lead: "What users see, since when, what's next, next update.",
     concepts: ["incident-update"], terms: ["incident update"],
     notes: "Say: Good updates say what users see, since when, what's next, and when you'll speak again. On reveal the winning update is posted to the status page. Then press Fix Relay." },
-  { id: "spike", act: "Relay breaks", min: 2, type: "stat", stat: "outage", flex: true, title: "What the metrics saw",
+  { id: "spike", case: { who: "Knight Capital, 2012", what: "Ignored alerts, $460M lost in 45 minutes", tell: "Say: on 2012-08-01, automated emails warned Knight Capital before the market opened, and nobody acted. In about 45 minutes the firm lost more than $460 million. An alert nobody watches is not monitoring." }, act: "Relay breaks", min: 2, type: "stat", stat: "outage", flex: true, title: "What the metrics saw",
     lead: "Errors per minute and uptime, from two numbers per request.", phone: "Your messages are on this chart.",
     concepts: ["error-budget"], terms: ["error rate", "error budget"],
     notes: "Say: Failed messages per minute and uptime, from the same two numbers per request. The error budget burned in minutes. Compare uptime before, during and after. Tie back to the room's SLO sentence." },
@@ -265,7 +268,7 @@ export const SCENES = [
     phone: "Keep this list.", concepts: [], terms: [],
     notes: "Each phone keeps the list. Ask the room to pick the first item for their flagship service." },
   // ---- traces (edition 4.1): every message is a real, measured trace ------------------------------
-  { id: "yourtrace", act: "Follow it", min: 3, type: "trace", mode: "mine", title: "Your message, as a trace",
+  { id: "yourtrace", case: { who: "A slow checkout", what: "One trace: payment, stock or database?", tell: "Say: online checkout is slow. The trace shows whether the time went to payment, stock or the database, so you call one team instead of all of them." }, act: "Follow it", min: 3, type: "trace", mode: "mine", title: "Your message, as a trace",
     lead: "Spans that share one trace id. Each bar is a span.",
     phone: "This was your last message. Tap a bar.", concepts: ["trace-anatomy"], terms: ["trace id", "root span", "parent span", "span"],
     notes: "Say: A trace is one request's story: a tree of spans that share one trace id. Each bar is a span — a timed step with a name, a start, a duration and a parent. Phones see their own trace. The projector puts the room's slowest and typical messages on one time axis: same spans, very different relay.deliver." },
@@ -313,7 +316,7 @@ export const SCENES = [
     lead: "Counter: only goes up. Gauge: right now. Histogram: your p95.",
     concepts: ["counter-gauge", "bucket-quantile"], terms: ["counter", "gauge", "scrape"],
     notes: "Say: A counter only goes up: read its rate. A gauge goes up and down: read it now. A histogram turns every wait into a p95. Explain (1 min): the car dashboard — odometer is a counter, fuel gauge is a gauge. Try (3 min): everyone sends 10. Together (2 min): the room's counter rate and gauge rise; open /api/metrics on the big screen and point at _bucket lines. Wrap (1 min): watch the p95 and the error rate, not the average. Go deeper: rate() over a counter reset; p95 flat on a bucket edge." },
-  { id: "sig-logs", act: "Logs", min: 12, type: "logs", title: "Find your slowest line in the log",
+  { id: "sig-logs", case: { who: "A failed bank transfer", what: "Found in seconds by its id", tell: "Say: a customer calls the bank: my transfer failed at 14:02. With the transaction id, support finds it in seconds; without it, someone scrolls a million lines." }, act: "Logs", min: 12, type: "logs", title: "Find your slowest line in the log",
     phone: "Find your slowest message in the log, using your client id.",
     lead: "A trace id on every line: seconds, not scrolling.",
     concepts: ["logs-road", "log-ids"], terms: ["structured log", "stdout", "log shipper"],

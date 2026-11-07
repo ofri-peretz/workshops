@@ -35,6 +35,10 @@ assert.deepEqual(written.filter((k) => !allowedKinds(schemaSql.replace(",'curiou
 for (const [w, W] of Object.entries(WORKSHOPS)) {
   const ids = W.spine.filter((x) => typeof x === "string"), forks = W.spine.filter((x) => typeof x !== "string");
   assert.equal(ids[0], "intro", `workshop ${w} opens with the intro`);
+  assert.equal(ids[1], "today", `workshop ${w} says what it covers right after the intro`);
+  const taught = new Set([...ids, ...forks.flatMap((f) => f.detours.flatMap((d) => d.scenes))].flatMap((id) => SCENE[id].terms));
+  for (const t of W.terms) assert.ok(taught.has(t), `workshop ${w}: "Today" promises the term "${t}", which no scene on its path teaches`);
+  assert.ok(W.terms.length <= 8 && W.parts.length >= 2 && W.parts.length <= 4, `workshop ${w}: 2-4 parts, at most 8 terms on "Today"`);
   assert.equal(ids.at(-1), "qa", `workshop ${w} closes with questions`);
   for (const f of forks) for (const d of f.detours) for (const id of [...d.scenes, ...d.after]) assert.ok(SCENE[id], `${w}/${f.fork}: unknown scene ${id}`);
   for (const id of ids) assert.ok(SCENE[id], `workshop ${w}: unknown scene ${id}`);
@@ -274,6 +278,7 @@ const words = (t = "") => t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).
 const within = (what, text, max) => assert.ok(words(text) <= max, `${what}: "${text}" is ${words(text)} words, max ${max}`);
 for (const [k, W] of Object.entries(WORKSHOPS)) { within(`workshop ${k} name`, W.title, 3); within(`workshop ${k} tagline`, W.promise, 8); assert.ok(!/\.$/.test(W.promise), `workshop ${k} tagline ends without a period`); }
 for (const x of SERIES) within(`series ${x.track}`, x.what, 8);
+for (const [k, W] of Object.entries(WORKSHOPS)) for (const [name, q] of W.parts) { within(`workshop ${k} part`, name, 3); within(`workshop ${k} part question`, q, 8); }
 for (const id of WORKSHOPS[5].spine.filter((id) => typeof id === "string" && !["intro", "qa"].includes(id))) {
   const s = SCENE[id];
   within(`${id} headline`, s.title, 10);
@@ -282,9 +287,15 @@ for (const id of WORKSHOPS[5].spine.filter((id) => typeof id === "string" && !["
   within(`${id} phone line`, s.phone, 12);
   for (const it of s.items || []) within(`${id} item`, it, 8);
   for (const h of [s.title, s.takeaway].filter(Boolean)) assert.ok(!/\.$/.test(h), `${id}: a headline has no closing period: "${h}"`);
+  if (s.case) { within(`${id} case`, s.case.who, 4); within(`${id} case line`, s.case.what, 8); }
   if (s.type === "poll" && s.answer !== undefined) assert.ok(s.takeaway, `${id}: a question with an answer reveals a takeaway headline`);
 }
 
+await ctl("start", { w: 5 });
+await go("today");
+const today = (await screen()).today;
+assert.deepEqual(today.parts.map((x) => x.name), ["Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
+assert.deepEqual(today.cases.map((c) => c.who), ["A ride app", "A failed bank transfer", "A slow checkout", "AWS S3, 2017", "Knight Capital, 2012"], "Today names every case the path tells, in order");
 await ctl("start", { w: 5 });
 await go("mean");
 assert.equal((await screen()).scene.title, SCENE.mean.title, "a poll opens on its question");

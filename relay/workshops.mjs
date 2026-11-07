@@ -15,10 +15,12 @@ export const SERIES = [
 
 export const WORKSHOPS = {
   5: {
+    parts: [["Metrics", "Are users OK?"], ["Logs", "Who exactly?"], ["Traces", "Where did the time go?"], ["The outage", "What broke?"]],
+    terms: ["metric", "log", "trace", "p95", "histogram", "span", "traceparent", "exemplar"],
     title: "Signals",
     minutes: 60,
     promise: "See what your users feel",
-    spine: ["intro", "join", "felt", "signals",
+    spine: ["intro", "today", "join", "felt", "signals",
       "sig-metrics", "two", "dots", "mean", "histogram", "impact",
       "sig-logs",
       "yourtrace", "spanparts", "gap", "propagate", "browser",
@@ -26,9 +28,11 @@ export const WORKSHOPS = {
       "sig-monday", "next4", "qa"],
   },
   1: {
+    parts: [["Feel it", "Who's waiting?"], ["Measure it", "What do users feel?"], ["Promise it", "How fast, how often?"]],
+    terms: ["latency", "timeout", "percentile", "p99", "SLA", "SLO", "error budget"],
     title: "Relay is slow",
     promise: "Turn a wait into a target",
-    spine: ["intro", "join", "felt", "timeout", "journey", "two", "mean", "dots",
+    spine: ["intro", "today", "join", "felt", "timeout", "journey", "two", "mean", "dots",
       fork("w1", [
         { title: "The tail reaches everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
         { title: "What a slow tail costs", scenes: ["again", "impact"], after: ["felt", "journey"] },
@@ -37,9 +41,11 @@ export const WORKSHOPS = {
       "requests", "aws", "nines", "slo", "monday1", "next1", "qa"],
   },
   2: {
+    parts: [["Break it", "What do users see?"], ["Find it", "Where did it break?"], ["Prove it", "Will the fix hold?"]],
+    terms: ["incident", "status page", "error rate", "trace", "span", "open model", "Little's Law"],
     title: "Relay breaks",
     promise: "Find the break, prove the fix",
-    spine: ["intro", "join2", "two2", "outage", "first", "update", "spike", "signals", "gantt",
+    spine: ["intro", "today", "join2", "two2", "outage", "first", "update", "spike", "signals", "gantt",
       fork("w2", [
         { title: "GraphQL: 200 OK with errors inside", scenes: ["graphql"], after: ["first", "update", "spike"] },
         { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gantt", "signals"] },
@@ -48,9 +54,11 @@ export const WORKSHOPS = {
       "closed", "open", "monday", "qa"],
   },
   3: {
+    parts: [["One endpoint", "What does a 200 hide?"], ["Find it", "Which query is slow?"], ["Prove it", "Will it hold under load?"]],
+    terms: ["GraphQL", "operation", "blended percentile", "parse", "execute", "span", "open model"],
     title: "GraphQL measured",
     promise: "One endpoint hides every slow query",
-    spine: ["intro", "join", "two2", "blend", "operation", "graphql", "errors", "phases", "gantt",
+    spine: ["intro", "today", "join", "two2", "blend", "operation", "graphql", "errors", "phases", "gantt",
       fork("w3", [
         { title: "Count the calls, measure the cost", scenes: ["n1", "cost"], after: ["gantt", "phases"] },
         { title: "Who's calling? Per consumer, by name", scenes: ["perconsumer", "names"], after: ["operation", "blend"] },
@@ -59,9 +67,11 @@ export const WORKSHOPS = {
       "loadop", "open", "monday3", "qa"],
   },
   4: {
+    parts: [["Follow it", "Where did the time go?"], ["Find it", "Which span is slow?"], ["Keep it", "Which traces do we keep?"]],
+    terms: ["trace", "span", "root span", "traceparent", "sampling", "exemplar", "TTFB"],
     title: "Follow one request",
     promise: "Follow one request end to end",
-    spine: ["intro", "join", "journey", "signals", "yourtrace", "spanparts", "propagate", "gap", "sampling", "exemplar",
+    spine: ["intro", "today", "join", "journey", "signals", "yourtrace", "spanparts", "propagate", "gap", "sampling", "exemplar",
       fork("w4", [
         { title: "Inside one GraphQL request", scenes: ["phases", "n1"], after: ["gap", "yourtrace"] },
         { title: "When a span fails", scenes: ["spanerror"], after: ["spanparts", "sampling"] },
