@@ -42,6 +42,7 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   assert.deepEqual([ids.at(-4), ids.at(-2), ids.at(-1)], ["cases", "qa", "outro"], `workshop ${w} closes: case studies, Monday, questions, outro`);
   assert.ok(W.why?.title && W.why.lead && W.why.abt && CASES[W.why.case]?.source, `workshop ${w}: a why with a real case`);
   assert.ok(W.studies.length >= 3 && W.studies.every((c) => CASES[c]?.source), `workshop ${w}: at least 3 real case studies for the room to pick from`);
+  assert.equal(new Set(W.studies.map((c) => CASES[c].cause)).size, W.studies.length, `workshop ${w}: its case studies each have a different root cause`);
   const taught = new Set([...ids, ...forks.flatMap((f) => f.detours.flatMap((d) => d.scenes))].flatMap((id) => SCENE[id].terms));
   for (const t of W.terms) assert.ok(taught.has(t), `workshop ${w}: "Today" promises the term "${t}", which no scene on its path teaches`);
   assert.ok(W.terms.length <= 10 && W.parts.length >= 2 && W.parts.length <= 5, `workshop ${w}: 2-5 parts, at most 10 terms on "Today"`);
@@ -54,6 +55,15 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
     const total = base + c.reduce((t, d) => t + d.scenes.reduce((u, id) => u + SCENE[id].min, 0), 0);
     assert.equal(total, W.minutes ?? 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is ${W.minutes ?? 30} min`);
   }
+}
+
+// The case bank: every case is easy to tell in three beats, and every real one names its source.
+for (const [id, c] of Object.entries(CASES)) {
+  assert.ok(["company", "government", "research", "example"].includes(c.kind), `${id}: kind`);
+  assert.ok(c.kind === "example" ? c.who.startsWith("Example:") : c.source?.startsWith("https://"), `${id}: a real case has its source; an example says so`);
+  for (const [k, max] of [["who", 4], ["what", 8], ["happened", 20], ["why", 15], ["lesson", 10]])
+    assert.ok(c[k] && c[k].split(/\s+/).length <= max, `${id}: ${k} in ${max} words or fewer`);
+  assert.ok(c.tell.startsWith("Say: ") && c.cause, `${id}: a tell for the notes and a root cause`);
 }
 
 // Every chapter is told the same way: a question; it opens on a question, a case or the room doing
@@ -318,7 +328,7 @@ await ctl("start", { w: 5 });
 await go("today");
 const today = (await screen()).today;
 assert.deepEqual(today.parts.map((x) => x.name), ["Feel it", "Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
-assert.deepEqual(today.cases.map((c) => c.who), ["Google Search, 2009", "Amazon, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
+assert.deepEqual(today.cases.map((c) => c.who), ["Google, 2009", "Amazon Dynamo, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
 await go("signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");
