@@ -459,6 +459,44 @@
         font-size: 15px;
         color: var(--muted);
       }
+      /* Motion: one gentle entrance per slide, never looping; off when the viewer asks for less. */
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+      #stage.enter > *, #stage.enter .grid2 > *, #stage.enter .series > *, #stage.enter .checks > * { animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+      #stage.enter > *:nth-child(2), #stage.enter .grid2 > *:nth-child(2), #stage.enter .series > *:nth-child(2), #stage.enter .checks > *:nth-child(2) { animation-delay: 70ms; }
+      #stage.enter > *:nth-child(3), #stage.enter .series > *:nth-child(3), #stage.enter .checks > *:nth-child(3) { animation-delay: 140ms; }
+      #stage.enter > *:nth-child(n + 4), #stage.enter .series > *:nth-child(n + 4), #stage.enter .checks > *:nth-child(n + 4) { animation-delay: 210ms; }
+      .bump { display: inline-block; animation: bump 600ms ease-out; }
+      /* The audience sees content: the control bar fades away when the mouse is still. */
+      .bottom, #notes { transition: opacity 300ms ease; }
+      body.idle .bottom { opacity: 0; pointer-events: none; }
+      body.idle { cursor: none; }
+      @media (prefers-reduced-motion: reduce) {
+        #stage.enter *, .bump { animation: none !important; }
+        .bottom, #notes { transition: none; }
+      }
+      /* One idea per slide: big title, a few big lines. */
+      .focus { display: grid; gap: 14px; max-width: 1400px; }
+      .focus h1 { font-size: clamp(64px, 8vw, 132px); line-height: 0.95; margin: 0; }
+      .focus .tag { font-size: clamp(28px, 2.6vw, 44px); margin: 0 0 18px; color: var(--muted); }
+      .parts { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(10px, 1.4vh, 20px); counter-reset: p; }
+      .parts li { counter-increment: p; display: grid; grid-template-columns: clamp(44px, 3.4vw, 64px) clamp(240px, 17vw, 360px) 1fr; align-items: baseline; gap: 16px; font-size: clamp(28px, 2.6vw, 46px); }
+      .parts li::before { content: counter(p); font-weight: 700; color: var(--primary); }
+      .parts li span { color: var(--muted); }
+      /* The waiting screen, designed for the room. */
+      .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
+      .welcome .who { display: flex; gap: 20px; align-items: center; }
+      .welcome .who img { width: clamp(88px, 7vw, 128px); height: auto; border-radius: 50%; }
+      .welcome .who b { font-size: clamp(24px, 2vw, 34px); display: block; }
+      .welcome h1 { font-size: clamp(64px, 8vw, 132px); line-height: 0.95; margin: 8px 0; }
+      .welcome .tag { font-size: clamp(26px, 2.4vw, 40px); margin: 0; }
+      .welcome ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; counter-reset: p; }
+      .welcome ol li { counter-increment: p; display: grid; grid-template-columns: 40px 1fr; font-size: clamp(20px, 1.6vw, 28px); }
+      .welcome ol li::before { content: counter(p); font-weight: 700; color: var(--primary); }
+      .welcome ol li span { color: var(--muted); }
+      .welcome ol li b { color: var(--fg); }
+      .welcome .joinbox { display: grid; gap: 16px; justify-items: center; text-align: center; }
+      .welcome .here { font-size: clamp(28px, 2.6vw, 44px); font-weight: 700; }
     </style>
   </head>
   <body>
@@ -768,8 +806,8 @@
           const head = v.intro === "returning"
             ? `<h1 style="font-size:clamp(44px,5.6vw,88px)">Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
             : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
-          return `<div class="grid2"><div style="display:grid;gap:18px"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="160" height="160" style="width:clamp(120px,10vw,180px);height:auto;border-radius:50%" />${head}${findMe(v)}</div><div style="display:grid;gap:14px;align-self:center"><div class="g"><span class="label">Today</span><span style="font-size:clamp(28px,2.6vw,40px);font-weight:600">${esc(v.promise)}</span></div>
-      <div class="series"><span class="label">The series</span>${v.series.map((x) => `<div class="g ${(x.w || []).includes(v.workshopId) ? "on" : ""}"><span class="label">${esc(x.track)} · ${esc(x.status)}</span><span>${esc(x.what)}</span></div>`).join("")}</div></div></div>`;
+          return `<div class="grid2" style="align-items:center"><div style="display:grid;gap:18px"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="180" height="180" style="width:clamp(140px,12vw,220px);height:auto;border-radius:50%" />${head}</div>
+      <div style="display:grid;justify-items:start">${findMe(v)}</div></div>`;
         },
         why(v) {
           const w = v.why;
@@ -791,10 +829,8 @@
         },
         today(v) {
           const t = v.today;
-          return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">Today</span><h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
-      <div class="series">${t.parts.map((x, i) => `<div class="g"><span class="label">${i + 1} · ${esc(x.name)}</span><span>${esc(x.q)}</span></div>`).join("")}</div></div>
-      <div style="display:grid;gap:22px;align-content:start"><div class="g"><span class="label">Terms</span><div class="chips">${t.terms.map((x) => `<span>${esc(x.term)}</span>`).join("")}</div></div>
-      ${t.cases.length ? `<div class="g"><span class="label">Real cases</span>${t.cases.map((c) => `<div class="row"><b>${esc(c.who)}</b><span class="muted">${esc(c.what)}</span></div>`).join("")}</div>` : ""}</div></div>`;
+          return `<div class="focus"><span class="label">Today · ${t.parts.length} parts</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
+      <ol class="parts">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span>${esc(x.q)}</span></li>`).join("")}</ol></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
@@ -805,18 +841,34 @@
           return `<div class="grid2"><div style="display:grid;gap:18px;align-content:start"><span class="label">${esc(v.workshop)}</span><h1 style="font-size:clamp(56px,7vw,110px)">${esc(s.title)}</h1>${findMe(v)}</div>${learned}</div>`;
         },
         waiting(v, s) {
-          return `<div class="grid2"><div style="display:grid;gap:22px"><span class="label">Starting soon</span><h1>${esc(s.title)}</h1><p class="lead">${esc(v.promise)}</p><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}<p class="lead" data-testid="waiting-people">${v.people} here</p></div><div class="qrbig" id="qrbig"></div></div>`;
+          const w = v.waiting;
+          return `<div class="welcome"><div style="display:grid;gap:22px">
+        <div class="who"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" /><div><span class="label">Your host</span><b>${esc(v.presenter.name)}</b><span class="muted">${esc(w.lead)}</span></div></div>
+        <div><span class="label">Workshop · ${w.minutes} min · on your phone</span><h1>${esc(s.title)}</h1><p class="tag">${esc(v.promise)}</p></div>
+        <div class="g"><span class="label">What we'll do</span><ol>${w.parts.map((p) => `<li><span><b>${esc(p.name)}</b> · ${esc(p.q)}</span></li>`).join("")}</ol></div></div>
+      <div class="joinbox"><span class="label">Scan to join</span><div class="qrbig" id="qrbig"></div><div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : ""}
+        <span class="here" data-testid="waiting-people"><span id="herecount">${v.people}</span> here · starting soon</span></div></div>`;
         },
         takeaway(v, s, r) {
           return `<h1>${esc(s.title)}</h1><div class="checks">${s.items.map((i, k) => `<div class="row"><span>${esc(i)}</span><b>${r.counts[k]}</b></div>`).join("")}</div><p class="lead">${r.total} picked one to do this week. In a week, their phones ask: did you?</p>`;
         },
       };
 
+      let lastKey = "", lastPeople = 0, deepLinked = false;
+      const bumpEl = (el) => { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); };
+      // Hide the controls when the mouse rests; any movement or a focused control brings them back.
+      let idleTimer;
+      const wake = () => { document.body.classList.remove("idle"); clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (!document.querySelector(".bottom:focus-within")) document.body.classList.add("idle"); }, 3000); };
+      addEventListener("mousemove", wake);
+      addEventListener("focusin", wake);
+      wake();
       function render(v) {
         const s = v.scene;
         setTimer(v.timer);
         $("where").textContent =
           `${v.workshop} · ${v.act} · ${v.i + 1}/${v.n}`;
+        if (v.people > lastPeople) bumpEl($("people"));
+        lastPeople = v.people;
         $("people").textContent = v.people;
         $("deeper").textContent = v.curious;
         $("clock").textContent =
@@ -833,6 +885,16 @@
           const acts = [...new Set(v.library.map((x) => x.act))];
           lib.innerHTML = `<option value="">Play a scene…</option>` + acts.map((a) => `<optgroup label="${esc(a)}">${v.library.filter((x) => x.act === a).map((x) => `<option value="${esc(x.id)}">${esc(x.title)} · ${x.min} min</option>`).join("")}</optgroup>`).join("");
         }
+        const key = `${v.begun}:${s.id}:${v.shown}:${v.study ? v.study.who : ""}`, changed = key !== lastKey;
+        lastKey = key;
+        $("stage").classList.toggle("enter", changed);
+        // Deep link: the address names the step (#mean); opening it jumps the room there once.
+        if (!deepLinked) {
+          deepLinked = true;
+          const want = decodeURIComponent(location.hash.slice(1)), k = v.path.indexOf(want);
+          if (want && k >= 0 && k !== v.i) return control("goto", { i: k });
+        }
+        if (v.begun && v.path[v.i] && location.hash.slice(1) !== v.path[v.i]) history.replaceState(null, "", "#" + v.path[v.i]);
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
         )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}</b> · ${esc(s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "");

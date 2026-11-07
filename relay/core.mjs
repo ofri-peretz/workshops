@@ -395,12 +395,13 @@ export function phoneView(room, p) {
 export function screenView(room, now) {
   const s = sceneAt(room), W = titled(room);
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
-  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
+  return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, begun: room.begun, waiting: room.begun ? undefined : { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), minutes: minutes(room, room.path.length), lead: AUDIENCES.tech.lead }, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
+    path: room.path, // the presenter's deep links: /screen?t=…#<step id>
     today: s.type === "today" ? todayOf(room) : undefined,
     timer: timerOf(room, s, now),
     learning: s.type === "qa" ? learningOf(room) : undefined,

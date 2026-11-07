@@ -10,6 +10,8 @@ import { memoryStore, supabaseStore } from "./store.mjs";
 
 const PAGES = { "/": "phone.html", "/status": "status.html", "/screen": "screen.html", "/hub": "hub.html", "/recap": "recap.html", "/followup": "followup.html" };
 
+const STATIC = { jpg: "image/jpeg", png: "image/png", svg: "image/svg+xml", ico: "image/x-icon", css: "text/css", js: "text/javascript" };
+
 // Locally the room is open from the start, with a fresh join code (printed below). Hosted, the
 // presenter's console opens it.
 export function createServer({ store = memoryStore(), token = randomBytes(6).toString("hex"), codeSecret = randomBytes(16).toString("hex"), code = String(randomInt(1e6)).padStart(6, "0"), scale = 1, random } = {}) {
@@ -20,6 +22,11 @@ export function createServer({ store = memoryStore(), token = randomBytes(6).toS
     if (req.method === "GET" && PAGES[url.pathname]) {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       return res.end(await readFile(new URL(`./public/${PAGES[url.pathname]}`, import.meta.url)));
+    }
+    const type = STATIC[url.pathname.match(/\.(\w+)$/)?.[1]];
+    if (req.method === "GET" && type && /^\/[\w.-]+$/.test(url.pathname)) { // public/ files, as Vercel serves them (flat names only)
+      try { const body = await readFile(new URL(`./public${url.pathname}`, import.meta.url)); res.writeHead(200, { "content-type": type }); return res.end(body); }
+      catch { res.writeHead(404); return res.end(); }
     }
     if (!url.pathname.startsWith("/api/")) { res.writeHead(404); return res.end(); }
     const body = req.method === "GET" ? undefined : Readable.toWeb(req);
