@@ -3,3 +3,4 @@
 node_modules/
 next-env.d.ts
 .groups.json
+.next-e2e/

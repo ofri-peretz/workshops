@@ -26,6 +26,7 @@ export default defineConfig({
       command: "npm --prefix console run dev -- -p 4181",
       url: "http://127.0.0.1:4181/signin",
       env: {
+        NEXT_DIST_DIR: ".next-e2e",
         SUPABASE_URL: "http://127.0.0.1:9", SUPABASE_ANON_KEY: "e2e", OWNER_EMAIL: "presenter@example.com",
         CODE_SECRET: "e2e", PRESENTER_TOKEN: "e2e", RELAY_URL: "http://127.0.0.1:8098", PHONE_URL: "http://127.0.0.1:8098/",
       },
