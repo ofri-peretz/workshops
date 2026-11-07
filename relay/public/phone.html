@@ -757,7 +757,7 @@
         outro(v) {
           const L = Object.fromEntries(v.presenter.links.map((l) => [l.icon, l]));
           const a = (k, text, cls = "") => `<a class="cta ${cls}" href="${esc(L[k].href)}" target="_blank" rel="noopener" data-cta="${k}">${ICON[k] || ""}<span>${text}</span></a>`;
-          return `<span class="label">Now you can answer</span><div class="card">${(v.answers || []).map((q) => `<p>→ ${esc(q)}</p>`).join("")}</div>
+          return `<span class="label">Thanks for playing</span><h1>Now you can answer</h1><div class="card">${(v.answers || []).map((q) => `<p>→ ${esc(q)}</p>`).join("")}</div>
       ${a("linkedin", "Follow on LinkedIn", "primary-cta")}
       <div class="findme">${a("github", "Star on GitHub")}${a("devto", "Read the dev.to series")}</div>
       <p class="muted">Stuck on something at work? Ask me after, or message me on LinkedIn.</p>

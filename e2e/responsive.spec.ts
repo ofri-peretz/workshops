@@ -105,8 +105,9 @@ test.describe("relay", () => {
     const n = (await (await page.request.get(`${RELAY}/api/screen?t=e2e`)).json()).n as number;
     await control(page, { op: "goto", i: n - 1 });
     await page.reload();
-    await expect(page.getByRole("navigation", { name: "Stay with the series" }).getByRole("link", { name: "Follow on LinkedIn" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Track the series" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Follow on LinkedIn" })).toBeVisible(); // one primary call to action
+    await expect(page.getByRole("link", { name: "Star on GitHub" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "API latency" })).toBeVisible(); // what should Step 2 cover?
     await expectFits(page, "outro");
   });
 
