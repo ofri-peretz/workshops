@@ -61,6 +61,9 @@ No scene runs longer than 3 minutes. `relay/test.mjs` checks all of it.
 | Case               | Who and when, then what happened              | 4 / 8     | AWS S3, 2017 · Its status page ran on S3 too |
 | Everything else    | Speaker notes                                 | —         | —                                       |
 
+Terms on "What we'll cover" are plain words a junior engineer already half-knows (latency, uptime,
+error rate). Jargon such as p95 or traceparent is taught inside the demo, never promised up front.
+
 Also: sentence case; digits for numbers; people before systems ("two people waited", not "tail
 latency increased"); one idea per headline.
 

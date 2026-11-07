@@ -853,7 +853,7 @@
       <div class="cover3">
         <section><span class="label">Concepts</span><ol class="clean">${t.parts.map((x) => `<li>${esc(x.concept)}</li>`).join("")}</ol></section>
         <section><span class="label">Terms</span><div class="chips">${t.terms.map((x) => `<span>${esc(x.term)}</span>`).join("")}</div></section>
-        <section><span class="label">Business questions you'll answer</span><ul class="clean asks">${t.parts.map((x) => `<li>${esc(x.asks)}</li>`).join("")}</ul></section>
+        <section><span class="label">By the end, you'll answer</span><ul class="clean asks">${t.parts.map((x) => `<li>${esc(x.asks)}</li>`).join("")}</ul></section>
       </div></div>`;
         },
         next(v, s) {

@@ -709,7 +709,7 @@
           return `<span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
       <div class="card"><span class="label">Concepts</span>${t.parts.map((x, i) => `<p><b>${i + 1}.</b> ${esc(x.concept)}</p>`).join("")}</div>
       <div class="card"><span class="label">Terms</span><p>${t.terms.map((x) => esc(x.term)).join(" · ")}</p></div>
-      <div class="card"><span class="label">Business questions you'll answer</span>${t.parts.map((x) => `<p>→ ${esc(x.asks)}</p>`).join("")}</div>`;
+      <div class="card"><span class="label">By the end, you'll answer</span>${t.parts.map((x) => `<p>→ ${esc(x.asks)}</p>`).join("")}</div>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
