@@ -10,11 +10,10 @@ import { CASES } from "./cases.mjs";
 // version. Phones always get the tech version: the phone page is public, and military and personal
 // background stay off public pages (say them out loud, from the notes).
 // Interlace lines come from brand.json (npm run sync:brand), never typed here.
-const ME = BRAND.author.facts; // role, tenure, experience, the team
+const ME = BRAND.author.facts; // role, tenure, experience, the team, the open-source work
 const TECH = [
   ...ME,
   `${BRAND.name}: tools that ${BRAND.does[0].toLowerCase()}${BRAND.does.slice(1)}`,
-  `${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`,
 ];
 const UNIT =
   "Mamram · Unit 8200, 2015–2020";
