@@ -3,13 +3,17 @@
 // (concepts.mjs); `flex` marks a spine scene to skip when a free jump runs over time.
 // The projector renders the same scene with the room's live results. Edit content here.
 
+import BRAND from "./brand.json" with { type: "json" };
+
 // Who I am, per event. The presenter picks the audience on the projector; the projector shows that
 // version. Phones always get the tech version: the phone page is public, and military and personal
 // background stay off public pages (say them out loud, from the notes).
+// Interlace lines come from brand.json (npm run sync:brand), never typed here.
 const TECH = [
   "Tel Aviv → U.S., building the first U.S. team",
   "8 engineers, 5 time zones",
-  "32 ESLint plugins · 750k+ npm downloads",
+  `${BRAND.name}: tools that ${BRAND.does[0].toLowerCase()}${BRAND.does.slice(1)}`,
+  `${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`,
 ];
 const UNIT =
   "Mamram · Unit 8200, 2015–2020";

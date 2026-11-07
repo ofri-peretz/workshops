@@ -1,0 +1,10 @@
+{
+  "source": "interlace brand-messages.json + eslint interlace-numbers.json + profile README (scripts/sync-brand.mjs)",
+  "syncedAt": "2026-11-07",
+  "name": "Interlace",
+  "hub": "https://interlace.tools",
+  "does": "Check what coding agents ship",
+  "rules": 495,
+  "plugins": 31,
+  "downloads": "1M+"
+}

@@ -9,7 +9,8 @@
     "test": "node scripts/scrub.mjs && node relay/test.mjs",
     "prepare": "git config core.hooksPath .githooks",
     "relay": "node relay/server.mjs",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "sync:brand": "node scripts/sync-brand.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1"

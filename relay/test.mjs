@@ -302,6 +302,11 @@ assert.equal((await screen()).scene.title, SCENE.mean.title, "a poll opens on it
 await ctl("reveal");
 assert.equal((await screen()).scene.title, SCENE.mean.takeaway, "on reveal, the answer becomes the headline");
 
+// Interlace is described the brand's way, with the brand's numbers (relay/brand.json, synced).
+const BRAND = JSON.parse(readFileSync(new URL("./brand.json", import.meta.url), "utf8"));
+const techItems = (await import("./scenes.mjs")).AUDIENCES.tech.items.join(" | ");
+assert.ok(techItems.includes(`${BRAND.rules} ESLint rules · ${BRAND.downloads} npm downloads`), "the intro carries the brand's numbers");
+assert.ok(!/\b\d+ ESLint plugins\b|750k/i.test(readFileSync(new URL("./scenes.mjs", import.meta.url), "utf8")), "no hand-typed Interlace numbers in scenes.mjs");
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);
