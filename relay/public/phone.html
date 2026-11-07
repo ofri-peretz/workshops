@@ -971,7 +971,7 @@
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
         lastKey = key;
-        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}</b> · ${esc(v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
+        const html = v.needName ? R.name(v) : (R[v.type] || ((x) => `<h1>${esc(x.title)}</h1>`))(v) + (v.case ? `<p class="card" data-testid="case"><span class="label">${v.case.real ? "Case" : "Example"}</span> <b>${esc(v.case.who.replace(/^Example: /, ""))}:</b> ${esc(v.case.happened || v.case.what)}</p>` : "") + (v.remember ? `<p class="card" data-testid="remember"><span class="label">Remember</span> <b>${esc(v.remember)}</b></p>` : "");
         if (v.type === "chat") {
           $("top").innerHTML = html;
           $("rest").innerHTML = "";

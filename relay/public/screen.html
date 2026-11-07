@@ -76,7 +76,7 @@
         display: flex;
         align-items: center;
         gap: 18px;
-        padding: 14px 36px;
+        padding: 8px 36px;
         border-bottom: 2px solid var(--strand);
       }
       .top .mark {
@@ -174,7 +174,11 @@
         color: var(--muted);
       }
       #stage {
-        padding: 28px 36px;
+        box-sizing: border-box;
+        width: min(100%, 1720px);
+        margin-inline: auto;
+        align-content: safe center;
+        padding: 28px 48px;
         display: grid;
         align-content: start;
         gap: 22px;
@@ -531,6 +535,15 @@
       .board em { font: 700 1em/1 var(--mono); font-style: normal; }
       .who-voted { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; color: var(--muted); font-size: clamp(16px, 1.2vw, 20px); }
       body.eyes .top { box-shadow: inset 0 -4px 0 var(--primary); }
+      .hook { display: grid; grid-template-columns: 1.6fr 1fr; gap: 40px; align-items: center; margin-bottom: 18px; }
+      .dash { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .tile { position: relative; display: grid; gap: 6px; padding: 22px; border-radius: 18px; background: var(--card); border: 1px solid color-mix(in oklab, var(--good) 45%, var(--line)); }
+      .tile span { color: var(--muted); font-size: clamp(16px, 1.2vw, 20px); }
+      .tile b { font: 700 clamp(30px, 2.6vw, 46px)/1 var(--mono); }
+      .tile i { position: absolute; top: 16px; right: 18px; color: var(--good); font-style: normal; font-size: 22px; }
+      .phonemock { justify-self: center; width: min(300px, 100%); aspect-ratio: 9 / 16; border-radius: 36px; border: 10px solid #2a2622; background: var(--bg); display: grid; align-content: end; gap: 10px; padding: 18px; }
+      .bubble { justify-self: end; max-width: 85%; padding: 12px 14px; border-radius: 18px 18px 4px 18px; background: var(--primary); color: var(--primary-fg); font-size: 16px; opacity: 0.6; }
+      .sending { justify-self: end; color: var(--muted); font-size: 15px; } .sending b { color: var(--bad); }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -866,7 +879,10 @@
         },
         why(v) {
           const w = v.why;
-          return `<span class="label">Why this matters</span><h1 style="font-size:clamp(48px,6vw,96px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p>`;
+          const tiles = [["Avg latency", "120 ms"], ["Errors", "0.1%"], ["CPU", "40%"], ["Uptime", "99.98%"]];
+          return `<div class="hook"><div class="dash">${tiles.map(([k, x]) => `<div class="tile"><span>${k}</span><b>${x}</b><i>✓</i></div>`).join("")}</div>
+      <div class="phonemock"><div class="bubble">Running late, start without me</div><div class="sending">Sending… <b>4.8 s</b></div></div></div>
+      <h1 style="font-size:clamp(44px,5vw,84px)">${esc(w.title)}</h1><p class="lead">${esc(w.lead)}</p>`;
         },
         cases(v, s, r) {
           if (!v.study) {
@@ -978,7 +994,7 @@
         document.body.classList.toggle("eyes", !!v.eyes);
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}</b> · ${esc(s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who + board;
+        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who + board;
         const big = $("qrbig");
         if (big) qr(big, 240);
       }

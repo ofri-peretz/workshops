@@ -51,8 +51,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title }: { intro: string; audience: string; chapters?: string[]; title?: string }) {
-  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience, ...(chapters ? { c: chapters, title } : {}) });
+export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, voters }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; voters?: boolean }) {
+  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience, names, voters, ...(chapters ? { c: chapters, title } : {}) });
   const code = newCode(), now = Date.now();
   const row = await update(jwt, {
     opened_at: new Date(now).toISOString(),
@@ -88,6 +88,22 @@ export async function readStage(): Promise<{ begun: boolean; people: number } | 
 export type Impact = { picked: number; followedUp: number; did: number; questions: { id: string; q: string; right: number; total: number }[] };
 export async function readImpact(): Promise<Impact | null> {
   const r = await fetch(`${env.relayUrl()}/api/impact?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  return r?.ok ? r.json() : null;
+}
+
+export type RunReport = {
+  run: number; title: string;
+  reach: { scanned: number; joined: number; phones: number };
+  presence: { minute: number; present: number }[];
+  churnRate: number | null; reconnectionRate: number | null;
+  polls: { id: string; q: string; answered: number; present: number; rate: number }[];
+  concepts: Record<string, { right: number; total: number }>;
+  learning: { before: number; after: number } | null;
+  ctas: Record<string, number>;
+};
+/** The latest run's report: reach, presence, churn, engagement, learning, clicks. */
+export async function readRunReport(): Promise<RunReport | null> {
+  const r = await fetch(`${env.relayUrl()}/api/run-report?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
   return r?.ok ? r.json() : null;
 }
 

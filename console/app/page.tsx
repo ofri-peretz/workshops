@@ -3,10 +3,12 @@ import QRCode from "qrcode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
-import { readChapters, readImpact, readRoom, readStage } from "@/lib/room";
+import { readChapters, readImpact, readRoom, readRunReport, readStage } from "@/lib/room";
+import { RunReportCard } from "./run-report";
 import { readGroups } from "@/lib/groups";
 import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
@@ -32,6 +34,10 @@ const INTROS = [
   { id: "first", label: "First time", detail: "Who I am" },
   { id: "returning", label: "They know me", detail: "Welcome back" },
 ];
+const NAMES = [
+  { id: "anonymous", label: "Anonymous", detail: "Players are numbers" },
+  { id: "named", label: "Named", detail: "First names on the leaderboard" },
+];
 const AUDIENCES = [
   { id: "tech", label: "Tech", detail: "Career, open source" },
   { id: "israeli-tech", label: "Israeli tech", detail: "+ 8200, big screen only" },
@@ -46,6 +52,7 @@ export default async function Console() {
   const stage = room.status === "closed" ? null : await readStage();
   const waiting = stage?.begun === false;
   const impact = await readImpact();
+  const report = await readRunReport();
   const [chapters, groups] = room.status === "closed" ? await Promise.all([readChapters(), readGroups()]) : [[], []];
   const phone = env.phoneUrl();
   const joinLink = room.code ? `${phone}?c=${room.code}` : null;
@@ -79,6 +86,11 @@ export default async function Console() {
             <CardContent className="grid gap-6 sm:grid-cols-2">
               <Choice legend="This group" name="intro" options={INTROS} />
               <Choice legend="Who's in the room" name="audience" options={AUDIENCES} />
+              <Choice legend="Names" name="names" options={NAMES} />
+              <Label className="flex items-start gap-3 font-normal">
+                <Checkbox data-testid="voters" name="voters" className="mt-0.5" />
+                <span className="grid gap-0.5"><span className="font-medium">Show who voted what</span><span className="text-sm text-muted-foreground">Named sessions only, big screen only</span></span>
+              </Label>
             </CardContent>
           </Card>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -144,6 +156,8 @@ export default async function Console() {
           </CardContent>
         </Card>
       )}
+
+      {report ? <RunReportCard report={report} /> : null}
 
       {impact ? (
         <Card data-testid="impact-card">

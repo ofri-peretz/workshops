@@ -54,7 +54,7 @@ for (const [w, W] of Object.entries(WORKSHOPS)) {
   const combos = forks.reduce((acc, f) => acc.flatMap((c) => f.detours.map((d) => [...c, d])), [[]]);
   for (const c of combos) {
     const total = base + c.reduce((t, d) => t + d.scenes.reduce((u, id) => u + SCENE[id].min, 0), 0);
-    assert.equal(total, W.minutes ?? 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is ${W.minutes ?? 30} min`);
+    assert.equal(total + (W.buffer ?? 0), W.minutes ?? 30, `workshop ${w} via ${c.map((d) => d.title).join(" / ")} is ${W.minutes ?? 30} min (with its buffer)`);
   }
 }
 
@@ -268,7 +268,7 @@ assert.equal((await screen()).total, WORKSHOPS[3].minutes);
 
 // ---- Signals: 60 minutes; its live demos read the room's own messages ---------------------------
 await ctl("start", { w: 5 });
-assert.equal((await screen()).total, 60, "Signals is 60 minutes");
+assert.equal((await screen()).total + WORKSHOPS[5].buffer, 60, "Signals is 60 minutes, buffer included");
 const sig = [await phone(), await phone()];
 for (const ph of sig) for (let i = 0; i < 3; i++) await ph("/send", {});
 await go("sig-metrics");
@@ -337,7 +337,7 @@ await go("signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");
 assert.equal((await screen()).remember, undefined, "the line to remember waits for the chapter's last scene");
-await go("impact");
+await go("mean");
 assert.equal((await screen()).remember, CHAPTERS["sig-metrics"].remember, "the chapter's last scene shows its line to remember");
 
 // The console can compose a program from any chapters, and Today follows it.
@@ -485,6 +485,11 @@ assert.ok(rep.reach.joined >= 1 && rep.presence[0].minute === 0, "the report has
 assert.ok(rep.polls.some((x) => x.id === "mean" && x.answered >= 1 && x.rate > 0), "the report has answered/present per poll");
 assert.ok(rep.reconnectionRate > 0 && rep.churnRate >= 0, "the report has reconnection and churn rates");
 assert.equal((await fetch(base + "/run-report")).status, 403, "the run report is for the presenter");
+await ctl("start", { w: 5 });
+const learner = await phone();
+await go("mean"); await learner("/answer", { value: (SCENE.mean.answer + 1) % SCENE.mean.options.length });
+await go("mean-again"); await learner("/answer", { value: SCENE.mean.answer });
+assert.deepEqual((await (await fetch(base + "/run-report?t=t")).json()).learning, { before: 0, after: 1 }, "the learning check measures before and after");
 
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");

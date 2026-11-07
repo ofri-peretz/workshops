@@ -406,7 +406,7 @@ export function phoneView(room, p) {
   if (s.type === "why") v.why = whyOf(room);
   if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
   if (s.type === "outro") Object.assign(v, outroOf(room));
-  if (s.case) v.case = { who: s.case.who, what: s.case.what, real: !!s.case.source };
+  if (s.case) v.case = { who: s.case.who, what: s.case.what, happened: s.case.happened, real: !!s.case.source };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
