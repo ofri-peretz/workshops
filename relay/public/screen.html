@@ -1002,7 +1002,7 @@
         document.body.classList.toggle("eyes", !!v.eyes);
         $("stage").innerHTML = (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
-        )(v, s, v.results) + (s.case ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
+        )(v, s, v.results) + (s.case && !board ? `<p class="case" data-testid="case"><span class="label">${s.case.source ? "Case" : "Example"}</span> <b>${esc(s.case.who.replace(/^Example: /, ""))}:</b> ${esc(s.case.happened || s.case.what)}</p>` : "") + (v.remember ? `<p class="remember" data-testid="remember"><span class="label">Remember</span> ${esc(v.remember)}</p>` : "") + who;
         if (board) $("stage").innerHTML = `<div class="withboard"><div class="main">${$("stage").innerHTML}</div>${board}</div>`; // the board gets its own column
         const big = $("qrbig");
         if (big) qr(big, 240);
