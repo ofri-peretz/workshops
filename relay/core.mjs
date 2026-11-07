@@ -354,7 +354,7 @@ const outroOf = (room) => ({ next: nextTrack(), series: SERIES, presenter: PRESE
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);
-  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, terms: c.terms ?? [] })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
+  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, concept: c.concept, asks: c.asks, terms: c.terms ?? [] })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {

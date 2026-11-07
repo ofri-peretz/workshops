@@ -76,6 +76,7 @@ for (const [id, c] of Object.entries(CHAPTERS)) {
   assert.ok(ids.some((x) => HANDS_ON.has(SCENE[x].type)), `${id}: the room tries it on their phones`);
   assert.ok(c.remember && c.remember.split(/\s+/).length <= 8 && !/\.$/.test(c.remember), `${id}: one line to remember, 8 words at most, no period`);
   assert.ok(c.name.split(/\s+/).length <= 3 && c.q.split(/\s+/).length <= 8, `${id}: name 3 words, question 8`);
+  assert.ok(c.concept?.split(/\s+/).length <= 5 && c.asks?.endsWith("?") && c.asks.split(/\s+/).length <= 10, `${id}: a concept (5 words) and the business question it answers (10 words)`);
   const taught = new Set(ids.flatMap((x) => SCENE[x].terms));
   assert.ok(c.scenes.some((x) => typeof x === "string" && SCENE[x].case?.source?.startsWith("https://")), `${id}: tells at least one real, sourced case on its main line`);
   assert.ok((c.terms ?? []).length <= 4 && c.terms.every((t) => taught.has(t)), `${id}: up to 4 key terms, each taught inside the chapter`);

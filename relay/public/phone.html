@@ -706,10 +706,10 @@
         },
         today(v) {
           const t = v.today;
-          return `<span class="label">Today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
-      <div class="card">${t.parts.map((x, i) => `<div class="row"><b>${i + 1} · ${esc(x.name)}</b></div><p>${esc(x.q)}</p>`).join("")}</div>
+          return `<span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
+      <div class="card"><span class="label">Concepts</span>${t.parts.map((x, i) => `<p><b>${i + 1}.</b> ${esc(x.concept)}</p>`).join("")}</div>
       <div class="card"><span class="label">Terms</span><p>${t.terms.map((x) => esc(x.term)).join(" · ")}</p></div>
-      ${t.cases.length ? `<div class="card"><span class="label">Real cases</span>${t.cases.map((c) => `<p><b>${esc(c.who)}</b> · ${esc(c.what)}</p>`).join("")}</div>` : ""}<p>${esc(v.phone)}</p>`;
+      <div class="card"><span class="label">Business questions you'll answer</span>${t.parts.map((x) => `<p>→ ${esc(x.asks)}</p>`).join("")}</div>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">

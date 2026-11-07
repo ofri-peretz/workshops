@@ -492,6 +492,12 @@
       .votes { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
       .votes i { display: block; height: 10px; border-radius: 999px; background: var(--primary); transition: width 400ms ease; min-width: 4px; }
       .votes em { font: 700 clamp(26px, 2vw, 36px)/1 var(--mono); font-style: normal; }
+      .focus { max-width: none; }
+      .cover3 { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: clamp(20px, 3vw, 56px); align-items: start; }
+      .cover3 section { display: grid; gap: 14px; align-content: start; }
+      .clean { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: clamp(22px, 1.9vw, 34px); }
+      ol.clean { counter-reset: c; } ol.clean li { counter-increment: c; } ol.clean li::before { content: counter(c); color: var(--primary); font-weight: 700; display: inline-block; min-width: 1.4em; }
+      .asks li { color: var(--fg); } .asks li::before { content: "→ "; color: var(--primary); }
       /* The waiting screen, designed for the room. */
       .welcome { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(24px, 4vw, 64px); align-items: start; }
       .welcome .who { display: flex; gap: 20px; align-items: center; }
@@ -844,7 +850,11 @@
         today(v) {
           const t = v.today;
           return `<div class="focus"><span class="label">What we'll cover</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
-      <ol class="parts">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span>${esc(x.q)}${x.terms.length ? `<small class="terms">${x.terms.map(esc).join(" · ")}</small>` : ""}</span></li>`).join("")}</ol></div>`;
+      <div class="cover3">
+        <section><span class="label">Concepts</span><ol class="clean">${t.parts.map((x) => `<li>${esc(x.concept)}</li>`).join("")}</ol></section>
+        <section><span class="label">Terms</span><div class="chips">${t.terms.map((x) => `<span>${esc(x.term)}</span>`).join("")}</div></section>
+        <section><span class="label">Business questions you'll answer</span><ul class="clean asks">${t.parts.map((x) => `<li>${esc(x.asks)}</li>`).join("")}</ul></section>
+      </div></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
