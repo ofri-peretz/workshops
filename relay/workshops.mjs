@@ -25,11 +25,11 @@ export const CHAPTERS = {
   // matters. The "intro" slide stays in the library for a stage without a waiting screen.
   welcome: { name: "Welcome", scenes: ["intro", "series", "today", "scan"] }, // who I am, the series, today, the one QR
 
-  "sig-feel": { name: "Feel it", q: "Who's waiting?", hook: "Feel four different waits", concept: "What users actually feel", asks: "How many customers are waiting right now?", remember: "Dashboards say fine. Users still wait", terms: ["latency", "uptime"], scenes: ["join", "felt", "why", "step-request", "sig-basics", "step-signals", "signals"] },
-  "sig-metrics": { name: "Metrics", q: "Are users OK?", hook: "One number says something's wrong", concept: "Percentiles, not averages", asks: "Are we keeping our promise to customers?", remember: "Watch the p95, not the average", terms: ["latency", "percentile"], scenes: ["sig-metrics", "step-metric", "sig-metrics-room", "mean", "step-percentile", "sig-spread", "sig-histogram"] }, // dashboard, least-to-record, histogram, impact: library detours
-  "sig-logs": { name: "Logs", q: "Who exactly?", hook: "Find your message, then follow it", concept: "One id on every line", asks: "What happened to this customer's request?", remember: "Every log line carries a trace id", terms: ["structured log", "log shipper"], scenes: ["step-log", "step-anatomy", "step-severity", "sig-logs", "sig-logs-room", "step-stdout", "step-ship", "step-async", "sig-road", "step-cost", "step-habits"] }, // the bank-statement slide is a library detour
-  "sig-traces": { name: "Traces", q: "Where did the time go?", hook: "See where the time went", concept: "Where one request's time went", asks: "Which team owns this slowdown?", remember: "If time has no span, nobody owns it", terms: ["trace", "span", "OpenTelemetry"], scenes: ["step-journey", "step-span", "yourtrace", "step-code", "gap", "propagate", "sig-standards", "sig-otel", "sig-trace-road"] },
-  "sig-outage": { name: "The outage", q: "What broke?", hook: "Break it live, then fix it", concept: "Signals together in an outage", asks: "What broke, for whom, and since when?", remember: "Metrics say that, logs who, traces where", terms: ["SLO", "uptime", "error rate"], scenes: ["outage", "first", "spike"] },
+  "sig-feel": { name: "Feel it", q: "Who's waiting?", hook: "Feel six different waits", concept: "What users actually feel", asks: "How many customers are waiting right now?", remember: "Dashboards say fine. Users still wait", terms: ["latency", "uptime"], scenes: ["join", "felt", "why", "step-request", "sig-basics", "step-signals"] },
+  "sig-metrics": { name: "Metrics", q: "Are users OK?", hook: "One number says something's wrong", concept: "Percentiles, not averages", asks: "Are we keeping our promise to customers?", remember: "Watch the p95, not the average", terms: ["latency", "percentile"], scenes: ["step-metric", "sig-metrics", "mean", "step-percentile", "sig-spread", "sig-histogram", "sig-metrics-room"] }, // dashboard, least-to-record, histogram, impact: library detours
+  "sig-logs": { name: "Logs", q: "Who exactly?", hook: "Find your message, then follow it", concept: "One id on every line", asks: "What happened to this customer's request?", remember: "Every log line carries a trace id", terms: ["structured log", "log shipper"], scenes: ["step-log", "step-anatomy", "step-severity", "sev-quiz", "sig-logs", "step-stdout", "step-ship", "step-async", "sig-road", "step-cost", "step-habits"] }, // the bank-statement slide is a library detour
+  "sig-traces": { name: "Traces", q: "Where did the time go?", hook: "See where the time went", concept: "Where one request's time went", asks: "Which team owns this slowdown?", remember: "If time has no span, nobody owns it", terms: ["trace", "span", "OpenTelemetry"], scenes: ["step-journey", "step-span", "yourtrace", "step-code", "gap", "propagate", "sig-otel", "sig-trace-road"] },
+  "sig-outage": { name: "The outage", q: "What broke?", hook: "Break it live, then fix it", concept: "Signals together in an outage", asks: "What broke, for whom, and since when?", remember: "Metrics say that, logs who, traces where", terms: ["SLO", "uptime", "error rate"], scenes: ["outage", "first", "step-slo", "spike"] },
   "sig-close": { name: "Wrap up", scenes: ["mean-again", "cases", "sig-monday", "qa", "outro"] },
 
   "slow-feel": { name: "Feel it", q: "Who's waiting?", hook: "Feel the wait, then the timeout", concept: "Waits and timeouts", asks: "When does slow become broken for customers?", remember: "A late answer is a failed one", terms: ["latency", "timeout"], scenes: ["join", "felt", "why", "timeout", "journey"] },
@@ -82,16 +82,16 @@ export const termsOf = (chapters) => [...new Set(chapters.flatMap((c) => CHAPTER
 const workshop = (w) => ({ ...w, spine: spineOf(w.chapters), parts: partsOf(w.chapters), terms: termsOf(w.chapters) });
 
 export const WORKSHOPS = {
-  5: workshop({ why: { title: "Your dashboards are green. Users still wait", lead: "You just felt it: one app, four different waits.", case: "google-2009",
+  5: workshop({ why: { title: "Your dashboards are green. Users still wait", lead: "You just felt it: one app, six different waits.", case: "google-2009",
       abt: "Your service is up, and the dashboards are green, but users still wait, therefore we measure what they feel." },
-    studies: ["cloudflare-2025", "au-census-2016", "roblox-2021", "911-2014"], title: "Signals", minutes: 60, buffer: 1, promise: "See what your users feel",
+    studies: ["cloudflare-2025", "au-census-2016", "roblox-2021", "911-2014"], title: "Signals", minutes: 60, buffer: 4, promise: "See what your users feel",
     answers: ["sig-metrics", "sig-traces", "sig-outage"], // the 3 business questions the close says you can now answer
     chapters: ["welcome", "sig-feel", "sig-metrics", "sig-logs", "sig-traces", "sig-outage", "sig-close"] }),
   1: workshop({ minutes: 34, why: { title: "Slow is the new down", lead: "Amazon promises its slowest 1 in 1,000, not its average.", case: "amazon-dynamo-2007",
       abt: "Relay answers, and most messages are fast, but some people wait seconds, therefore we turn the wait into a target." },
     studies: ["gcp-2025", "us-ui-2020", "azul-2013"], title: "Relay is slow", promise: "Turn a wait into a target",
     chapters: ["welcome", "slow-feel", "slow-measure", "slow-promise", "slow-close"] }),
-  2: workshop({ minutes: 35, why: { title: "Everything breaks. Trust breaks on how you answer", lead: "Some Atlassian customers waited 14 days. Updates came late.", case: "atlassian-2022",
+  2: workshop({ minutes: 34, why: { title: "Everything breaks. Trust breaks on how you answer", lead: "Some Atlassian customers waited 14 days. Updates came late.", case: "atlassian-2022",
       abt: "Relay will fail, and users will notice first, but the fix starts with what you see and say, therefore we find it, say it, prove it." },
     studies: ["aws-dynamodb-dns-2025", "hawaii-2018", "knight-2012", "centurylink-2018"], title: "Relay breaks", promise: "Find the break, prove the fix",
     chapters: ["welcome", "breaks-break", "breaks-find", "breaks-prove", "breaks-close"] }),

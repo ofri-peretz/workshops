@@ -67,6 +67,18 @@ for (const [id, c] of Object.entries(CASES)) {
   assert.ok(c.tell.startsWith("Say: ") && c.cause, `${id}: a tell for the notes and a root cause`);
 }
 
+// Signals, one step at a time: no jargon on a slide before the scene that teaches it.
+{
+  const JARGON = ["percentile", "p50", "p95", "p99", "histogram", "SLO", "SLA", "error budget", "span", "trace id", "traceparent", "stdout", "log shipper", "structured log", "log level", "flush", "OpenTelemetry", "exemplar", "scrape", "gauge", "counter", "uptime", "error rate", "latency", "nines"];
+  const taught = new Set();
+  for (const id of WORKSHOPS[5].chapters.flatMap((c) => CHAPTERS[c].scenes)) {
+    const s = SCENE[id];
+    for (const t of s.terms || []) taught.add(t);
+    const text = [s.title, s.lead, s.phone, s.how, ...(s.items || [])].filter(Boolean).join(" | ");
+    for (const j of JARGON) assert.ok(taught.has(j) || !new RegExp(`\\b${j.replace(/ /g, "\\s")}s?\\b`, "i").test(text), `${id}: "${j}" appears before the scene that teaches it`);
+  }
+}
+
 // Every chapter is told the same way: a question; it opens on a question, a case or the room doing
 // something; the room tries it on their phones; one line to remember; its terms taught inside it.
 const HANDS_ON = new Set([...POLL_TYPES, "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines"]);
@@ -334,11 +346,11 @@ await go("today");
 const today = (await screen()).today;
 assert.deepEqual(today.parts.map((x) => x.name), ["Feel it", "Metrics", "Logs", "Traces", "The outage"], "Today lists Signals' parts");
 assert.deepEqual(today.cases.map((c) => c.who), ["Google, 2009", "Amazon Dynamo, 2007", "Twitter, 2018", "Google Dapper, 2010", "AWS S3, 2017"], "Today names each part's first real case");
-await go("signals");
+await go("step-signals");
 assert.equal((await screen()).act, "Feel it", "the header names the chapter, as Today does, not the scene's library label");
 await go("sig-metrics");
 assert.equal((await screen()).remember, undefined, "the line to remember waits for the chapter's last scene");
-await go("sig-histogram");
+await go("sig-metrics-room");
 assert.equal((await screen()).remember, CHAPTERS["sig-metrics"].remember, "the chapter's last scene shows its line to remember");
 
 // The console can compose a program from any chapters, and Today follows it.
@@ -489,7 +501,7 @@ assert.equal((await fetch(base + "/run-report")).status, 403, "the run report is
 await ctl("start", { w: 5 });
 const learner = await phone();
 await go("mean"); await learner("/answer", { value: (SCENE.mean.answer + 1) % SCENE.mean.options.length });
-await go("mean-again"); await learner("/answer", { value: SCENE.mean.answer });
+await go("mean-again"); await learner("/answer", { value: SCENE["mean-again"].answer });
 assert.deepEqual((await (await fetch(base + "/run-report?t=t")).json()).learning, { before: 0, after: 1 }, "the learning check measures before and after");
 
 // The home page outlives every room: it must list the same links and the same series.

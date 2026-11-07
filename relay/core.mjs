@@ -251,9 +251,14 @@ export function results(room, s, now) {
       }),
       outage: outage(room, now),
     };
+    case "why": { // the room's own "green dashboard": everything delivered, while one group waited seconds
+      const ok = room.chat.filter((c) => c.ok), slow = Math.max(0, ...ok.map(waited).filter((x) => x != null));
+      return { total: room.chat.length, failed: room.chat.length - ok.length, slowest: slow || null }; }
     case "step": { // the live example under an explainer: the latest line, the room's lines by level, their size
       const lines = room.chat.map(logLine), bytes = lines.reduce((a, l) => a + JSON.stringify(l).length + 1, 0);
-      return { line: lines.at(-1) ?? null, lines: lines.length, bytes, by: Object.fromEntries(LEVELS.map(([k]) => [k, lines.filter((l) => l.level === k.toLowerCase()).length])) }; }
+      const m = s.live === "buckets" ? metricsOf(room, now) : null;
+      if (m) return { buckets: BUCKETS.map((le, i) => ({ le, n: m.buckets[i] - (i ? m.buckets[i - 1] : 0) })), over: m.count - (m.buckets.at(-1) ?? 0), count: m.count, p95: m.p95, p95FromBuckets: m.p95FromBuckets };
+      return { people: room.phones.size, good: lines.filter((l) => l.status === 200 && l.duration_ms != null && l.duration_ms <= 1000).length, line: lines.at(-1) ?? null, lines: lines.length, bytes, by: Object.fromEntries(LEVELS.map(([k]) => [k, lines.filter((l) => l.level === k.toLowerCase()).length])) }; }
     case "basics": { const ms = room.chat.filter((c) => c.ok).map(waited).filter((x) => x != null);
       return { min: ms.length ? Math.round(Math.min(...ms)) : null, max: ms.length ? Math.round(Math.max(...ms)) : null, failed: room.chat.filter((c) => !c.ok).length, total: room.chat.length }; }
     case "spread": { // every message the room sent, and where the average and the percentiles land
@@ -374,7 +379,7 @@ const leadCase = (c) => {
   const k = cases.find((x) => x.source) ?? cases[0];
   return k && { who: k.who, what: k.what, real: !!k.source };
 };
-const storyOf = (c) => c && { who: c.who, what: c.what, happened: c.happened, why: c.why, lesson: c.lesson, source: c.source, tell: c.tell };
+const storyOf = (c) => c && { who: c.who, what: c.what, happened: c.happened, why: c.why, lesson: c.lesson, source: c.source, tell: c.tell, impact: c.impact, bridge: c.bridge };
 // Why it matters: the workshop's own hook (a composed program uses its first workshop's).
 const whyOf = (room) => { const w = WORKSHOPS[room.workshop].why; const c = CASES[w.case]; return { title: w.title, lead: w.lead, case: { who: c.who, what: c.what } }; };
 // The outro: tease the next workshop, and the three ways to stay with the series.
@@ -419,7 +424,7 @@ export function phoneView(room, p) {
   if (s.type === "why") v.why = whyOf(room);
   if (s.type === "cases" && shown) v.study = storyOf(winnerOf(room, s));
   if (s.type === "outro") Object.assign(v, outroOf(room));
-  if (s.case) v.case = { who: s.case.who, what: s.case.what, happened: s.case.happened, real: !!s.case.source, bridge: s.bridge };
+  if (s.case) v.case = { who: s.case.who, what: s.case.what, happened: s.case.happened, real: !!s.case.source, bridge: s.bridge, impact: s.case.impact };
   if (p && s.type === "journey" && p.last) v.last = p.last;
   if (p && s.type === "dots") {
     const all = room.chat.filter((c) => c.ok && c.rtt != null), mine = all.filter((c) => c.id === p.id).map((c) => c.rtt);
