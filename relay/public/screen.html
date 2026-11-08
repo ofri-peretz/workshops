@@ -347,6 +347,7 @@
       .timer.low { border-color: var(--primary, currentColor); }
       .timer.done { opacity: 0.7; }
       .brands { display: flex; flex-wrap: wrap; gap: 10px; } .brands a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; border: 1px solid transparent; transition: color 150ms ease, border-color 150ms ease, background 150ms ease; } .brands a:hover, .brands a:focus-visible { color: var(--fg); border-color: var(--line); background: var(--card); }
+      .codepill { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; padding: 6px 14px; border-radius: 999px; background: var(--primary); color: var(--primary-fg, #fff); font: 600 clamp(14px, 1vw, 18px)/1 var(--mono); letter-spacing: 0.04em; } .codepill b { font-size: 1.5em; letter-spacing: 0.12em; } .codepill.none { background: transparent; color: var(--bad, #ef4444); border: 1px solid currentColor; }
       .findme {
         display: grid;
         grid-template-columns: auto 1fr;
@@ -738,7 +739,13 @@
       const GMS = [100, 300, 500, 1000, 3000, 7000]; // mirrors core GROUPS
       const gname = (ms, shown, i) =>
         shown ? ms / 1000 + " s" : "Group " + "ABCDEF"[i];
-      $("joinurl").textContent = JOIN.replace(/^https?:\/\//, "") + (CODE ? "  ·  code " + CODE : "");
+      // The header always says how to get in: the code, or why there isn't one.
+      let doorsShown;
+      const joinHeader = (doors = true) => {
+        if (doors === doorsShown) return; doorsShown = doors;
+        $("joinurl").innerHTML = `${esc(JOIN.replace(/^https?:\/\//, ""))} ${!doors ? `<span class="codepill none" data-testid="doors-closed">Doors closed: Go live in the console</span>` : CODE ? `<span class="codepill" data-testid="header-code">Code <b>${CODE}</b></span>` : `<span class="codepill none">No join code: press New code in the console</span>`}`;
+      };
+      joinHeader();
       const qr = (el, size, text = JOIN_QR) => {
         try {
           new QRCode(el, {
@@ -1122,7 +1129,7 @@
         scan(v, s) {
           return `<div class="scan"><span class="label">Join from your phone</span><h1>${esc(s.title)}</h1>
       <div class="qrbig" id="qrbig"></div>
-      <div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : `<p class="muted">No join code on this screen: press New code in the console, then reload.</p>`}
+      <div class="url">${esc(JOIN.replace(/^https?:\/\//, ""))}</div>${CODE ? `<div class="url">Code <b>${CODE}</b></div>` : `<p class="muted">No join code on this screen: in the console, Go live or press New code. It appears here by itself.</p>`}
       <span class="here" data-testid="joined"><span id="herecount">${v.people}</span> joined</span></div>`;
         },
         basics(v, s, r) {
@@ -1300,7 +1307,7 @@
       (async function poll() {
         try {
           const r = await fetch("/api/screen?t=" + encodeURIComponent(T), { cache: "no-store" });
-          if (r.ok) render(await r.json());
+          if (r.ok) { const v = await r.json(); joinHeader(v.doors !== false); render(v); }
           else {
             const { error, closed } = await r.json().catch(() => ({}));
             const stage = document.getElementById("stage");
