@@ -545,6 +545,13 @@ const runLog = await (await fetch(base + `/run-events?r=${runs[1].r}&t=t`)).json
 assert.ok(runLog.events.length && runLog.events.every((e) => e.id >= runs[1].r && e.id < runs[0].r), "a run's export holds exactly its own events");
 assert.equal((await fetch(base + "/runs")).status, 403, "the history is the presenter's");
 
+// The contract (openapi.yaml) and the handler list the same routes.
+const spec = readFileSync(new URL("./openapi.yaml", import.meta.url), "utf8");
+const specPaths = new Set([...spec.matchAll(/^  (\/[a-z.-]+):$/gm)].map((m) => m[1]));
+const codePaths = new Set([...handlerSrc.matchAll(/path === "(\/[a-z.-]+)"/g)].map((m) => m[1]));
+assert.deepEqual([...codePaths].filter((x) => !specPaths.has(x)), [], "every route in handler.mjs is in openapi.yaml");
+assert.deepEqual([...specPaths].filter((x) => !codePaths.has(x)), [], "openapi.yaml lists no route the handler lacks");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

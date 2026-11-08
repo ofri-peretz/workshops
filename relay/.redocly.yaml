@@ -1,0 +1,3 @@
+extends: [recommended]
+rules:
+  no-server-example.com: off # the local relay is a documented server

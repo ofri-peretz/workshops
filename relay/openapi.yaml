@@ -1,0 +1,412 @@
+openapi: 3.1.0
+info:
+  title: Relay
+  version: 2026.11.8
+  summary: The workshop relay, a chat app that every demo measures, plus the room it runs in.
+  description: |
+    One serverless function (relay/handler.mjs) behind `/api/*`, an append-only event log in Supabase
+    (`relay_events`), and a room state rebuilt from that log (core.mjs `reduce`).
+
+    Who may call what:
+    - **Phones** hold a session cookie (`rid`), set by `POST /join` with the room's 6-digit code.
+      Every phone route answers 403 `{closed: true}` while the doors are shut (Close, or two hours
+      after Go live), and 401 `{error: "join first"}` without a session. `signedOut: true` means the
+      presenter signed everyone out: enter the new code, never retry the old one.
+    - **The presenter** passes `?t=<presenter token>` (the console adds it server-side; the token
+      never reaches a phone).
+    - **Signed links** (recap, follow-up) carry `p` (the phone id) and `k`, an HMAC of it.
+
+    The room's access rules (codes, sign-out, close, when answers count) are modelled in
+    `specs/relay.qnt` and unit-tested in `core.test.mjs`; `npm run verify` runs both.
+  contact: { name: Ofri Peretz, url: https://ofriperetz.dev }
+  license: { name: MIT, identifier: MIT }
+security: [{}] # public unless an operation says otherwise; phone and presenter routes declare theirs
+servers:
+  - url: https://signals.workshop.ofriperetz.dev/api
+    description: Production (Vercel, fra1)
+  - url: http://localhost:8099/api
+    description: Local (node relay/server.mjs)
+tags:
+  - { name: room, description: "Joining, the room's state, and the live push" }
+  - { name: play, description: What a phone does during the workshop }
+  - { name: presenter, description: "The big screen, the console and the reports" }
+  - { name: after, description: "Recap and follow-up, after the room closes" }
+
+paths:
+  /join:
+    post:
+      tags: [room]
+      operationId: join
+      summary: Join the room with its code; with a valid session cookie, rejoin without one.
+      description: |
+        The right code always gets in, even after typos from the same network (a venue shares one
+        IP). Wrong codes: 5 per network per 10 minutes, then 429; 30 across the room locks joining
+        until the presenter makes a new code.
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { code: { type: string, pattern: "^[0-9]{6}$" } } }
+      responses:
+        "200":
+          description: Joined (or rejoined). Sets the session cookie.
+          headers: { Set-Cookie: { schema: { type: string }, description: "rid=<uuid>; HttpOnly; SameSite=Lax; Max-Age=86400" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/PhoneView" } } }
+        "401": { $ref: "#/components/responses/NeedCode" }
+        "403": { $ref: "#/components/responses/Closed" }
+        "429": { description: "Rate-limited (this network) or locked (the room)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /view:
+    get:
+      tags: [room]
+      operationId: view
+      summary: This phone's view of the current step.
+      security: [{ phoneSession: [] }]
+      responses:
+        "200": { description: The view, content: { application/json: { schema: { $ref: "#/components/schemas/PhoneView" } } } }
+        "401": { $ref: "#/components/responses/JoinFirst" }
+        "403": { $ref: "#/components/responses/Closed" }
+  /stream:
+    get:
+      tags: [room]
+      operationId: stream
+      summary: Server-sent events; `step` whenever the presenter acts. Each stream lives ~50 s; EventSource reconnects.
+      security: [{ phoneSession: [] }, { presenterToken: [] }]
+      responses:
+        "200":
+          description: An event stream.
+          content: { text/event-stream: { schema: { type: string, examples: ["event: step\ndata: 42\n\n"] } } }
+        "401": { $ref: "#/components/responses/JoinFirst" }
+  /status:
+    get:
+      tags: [room]
+      operationId: status
+      summary: The public status page's numbers (uptime, latency). 403 while closed, which phones also use to notice the room reopening.
+      responses:
+        "200": { description: Status, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "403": { $ref: "#/components/responses/Closed" }
+  /config:
+    get:
+      tags: [room]
+      operationId: config
+      summary: What the pages may know (PostHog only when its key is set). Also the daily keep-alive cron.
+      responses:
+        "200":
+          description: Config
+          content: { application/json: { schema: { type: object, properties: { posthog: { type: [object, "null"], properties: { key: { type: string }, host: { type: string } } } }, required: [posthog] } } }
+  /scan:
+    post:
+      tags: [room]
+      operationId: scan
+      summary: The join page loaded (counted before a phone exists).
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "403": { $ref: "#/components/responses/Closed" } }
+  /name:
+    post:
+      tags: [play]
+      operationId: name
+      summary: The name this phone picked for the leaderboard (named rooms).
+      security: [{ phoneSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string, minLength: 1, maxLength: 24, pattern: "^[\\p{L}\\p{N} .'’-]{1,24}$" } } } } }
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "400": { $ref: "#/components/responses/Bad" }, "401": { $ref: "#/components/responses/JoinFirst" } }
+  /answer:
+    post:
+      tags: [play]
+      operationId: answer
+      summary: Answer the current step. A term check takes one `{k, a}` per term; only the first try per term counts.
+      security: [{ phoneSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [value], properties: { value: { $ref: "#/components/schemas/AnswerValue" } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Ok" }
+        "400": { description: Not an answer for this step, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/JoinFirst" }
+        "409": { description: "Answers are closed: the step was revealed (or the fork chosen)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "423": { description: "Eyes up: the presenter paused the phones", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /send:
+    post:
+      tags: [play]
+      operationId: send
+      summary: Send Dana a message. Waits this phone's group delay (0.1–7 s); fails half the time while Relay is "broken".
+      security: [{ phoneSession: [] }]
+      parameters:
+        - { name: traceparent, in: header, schema: { type: string, pattern: "^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$" }, description: W3C Trace Context from the phone }
+      requestBody: { content: { application/json: { schema: { type: object, properties: { again: { type: boolean, description: "a re-send of the same message" } } } } } }
+      responses:
+        "200": { description: Delivered, content: { application/json: { schema: { type: object, properties: { ok: { const: true }, ms: { type: number }, trace: { type: string }, spans: { type: array, items: { $ref: "#/components/schemas/Span" } } } } } } }
+        "429": { description: The per-phone cap (80), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { description: Relay is broken (the outage demo), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /rtt:
+    post:
+      tags: [play]
+      operationId: rtt
+      summary: What the phone measured for its last message, with the spans of its trace.
+      security: [{ phoneSession: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [ms], properties: { ms: { type: number, minimum: 0 }, trace: { type: string }, spans: { type: array, maxItems: 8, items: { $ref: "#/components/schemas/Span" } }, phases: { type: object, additionalProperties: { type: number } } } } } }
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "400": { $ref: "#/components/responses/Bad" } }
+  /curious:
+    post:
+      tags: [play]
+      operationId: curious
+      summary: '"I want more on this", once per phone per step.'
+      security: [{ phoneSession: [] }]
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "409": { description: Already counted } }
+  /event:
+    post:
+      tags: [play]
+      operationId: event
+      summary: Engagement signals for the run report.
+      security: [{ phoneSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - { type: object, required: [type], properties: { type: { const: beat }, target: { type: object, properties: { step: { type: string, maxLength: 40 }, vis: { type: boolean } } } }, description: "heartbeat: every 30 s while visible, and on every visibility change" }
+                - { type: object, required: [type, target], properties: { type: { const: cta }, target: { enum: [linkedin, github, devto, blog, recap, reminder] } } }
+                - { type: object, required: [type, target], properties: { type: { const: practice }, target: { type: object, required: [term, right], properties: { term: { type: string }, right: { type: boolean } } } } }
+                - { type: object, required: [type], properties: { type: { const: terms } }, description: the Terms panel opened }
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "400": { $ref: "#/components/responses/Bad" } }
+  /request:
+    post:
+      tags: [play]
+      operationId: request
+      summary: '"Be a request": one tap, one request; fails half the time while broken.'
+      security: [{ phoneSession: [] }]
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "429": { description: Per-phone cap }, "500": { description: Relay is broken } }
+  /job:
+    post:
+      tags: [play]
+      operationId: job
+      summary: A job of 100 calls, 1 in 100 slow (the fan-out demo).
+      security: [{ phoneSession: [] }]
+      responses: { "200": { description: The job, content: { application/json: { schema: { type: object, properties: { ms: { type: number }, slow: { type: boolean }, slowCalls: { type: integer } } } } } }, "401": { $ref: "#/components/responses/JoinFirst" }, "429": { description: Per-phone cap } }
+  /load:
+    post:
+      tags: [play]
+      operationId: load
+      summary: One request into a queue with fixed workers (the load demos).
+      security: [{ phoneSession: [] }]
+      responses: { "200": { description: Served, content: { application/json: { schema: { type: object, properties: { ms: { type: number } } } } } }, "401": { $ref: "#/components/responses/JoinFirst" }, "429": { description: Per-phone cap } }
+
+  /screen:
+    get:
+      tags: [presenter]
+      operationId: screen
+      summary: The big screen's view. `lib=1` adds the scene library (9 KB, once per page load).
+      security: [{ presenterToken: [] }]
+      parameters: [{ name: lib, in: query, schema: { enum: ["1"] } }]
+      responses:
+        "200": { description: The screen view, content: { application/json: { schema: { $ref: "#/components/schemas/ScreenView" } } } }
+        "403": { $ref: "#/components/responses/PresenterOnly" }
+  /control:
+    post:
+      tags: [presenter]
+      operationId: control
+      summary: Every presenter action.
+      security: [{ presenterToken: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Control" } } } }
+      responses:
+        "200": { description: The screen view after the action, content: { application/json: { schema: { $ref: "#/components/schemas/ScreenView" } } } }
+        "400": { $ref: "#/components/responses/Bad" }
+        "403": { $ref: "#/components/responses/PresenterOnly" }
+  /chapters:
+    get:
+      tags: [presenter]
+      operationId: chapters
+      summary: The chapter library, for composing a program.
+      security: [{ presenterToken: [] }]
+      responses: { "200": { description: Chapters, content: { application/json: { schema: { type: object, properties: { chapters: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string }, q: { type: string }, min: { type: number } } } } } } } } }, "403": { $ref: "#/components/responses/PresenterOnly" } }
+  /runs:
+    get:
+      tags: [presenter]
+      operationId: runs
+      summary: Every run ever, newest first.
+      security: [{ presenterToken: [] }]
+      responses:
+        "200": { description: Runs, content: { application/json: { schema: { type: object, required: [runs], properties: { runs: { type: array, items: { $ref: "#/components/schemas/Run" } } } } } } }
+        "403": { $ref: "#/components/responses/PresenterOnly" }
+  /run-report:
+    get:
+      tags: [presenter]
+      operationId: runReport
+      summary: One run's report (the latest unless `r`). Names appear only here, never on the screen.
+      security: [{ presenterToken: [] }]
+      parameters: [{ name: r, in: query, schema: { type: integer, minimum: 1 }, description: the run's start event id }]
+      responses:
+        "200": { description: The report, content: { application/json: { schema: { $ref: "#/components/schemas/RunReport" } } } }
+        "403": { $ref: "#/components/responses/PresenterOnly" }
+        "404": { description: No such run }
+  /run-events:
+    get:
+      tags: [presenter]
+      operationId: runEvents
+      summary: One run's raw event log, for export.
+      security: [{ presenterToken: [] }]
+      parameters: [{ name: r, in: query, required: true, schema: { type: integer, minimum: 1 } }]
+      responses:
+        "200": { description: Events, content: { application/json: { schema: { type: object, required: [r, events], properties: { r: { type: integer }, events: { type: array, items: { $ref: "#/components/schemas/Event" } } } } } } }
+        "400": { $ref: "#/components/responses/Bad" }
+        "403": { $ref: "#/components/responses/PresenterOnly" }
+  /impact:
+    get:
+      tags: [presenter]
+      operationId: impact
+      summary: Across every run, picks and follow-ups.
+      security: [{ presenterToken: [] }]
+      responses: { "200": { description: Impact, content: { application/json: { schema: { type: object, additionalProperties: true } } } }, "403": { $ref: "#/components/responses/PresenterOnly" } }
+  /metrics:
+    get:
+      tags: [presenter]
+      operationId: metrics
+      summary: What a Prometheus scrape of Relay would read (the metrics demo).
+      responses: { "200": { description: Prometheus text format, content: { text/plain: { schema: { type: string } } } } }
+  /screen-link:
+    post:
+      tags: [presenter]
+      operationId: screenLink
+      summary: Email the owner a sign-in link that unlocks the big screen on this device.
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "429": { description: A link was just sent }, "503": { description: Email sign-in isn't set up } }
+  /screen-unlock:
+    post:
+      tags: [presenter]
+      operationId: screenUnlock
+      summary: Trade the owner's Supabase session (from the emailed link) for the presenter token.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [access_token], properties: { access_token: { type: string } } } } } }
+      responses: { "200": { description: The token, content: { application/json: { schema: { type: object, properties: { t: { type: string } } } } } }, "403": { description: Not the owner } }
+
+  /recap:
+    get:
+      tags: [after]
+      operationId: recap
+      summary: A run's recap; with a signed link, this phone's own numbers too. Each signed open is logged.
+      parameters:
+        - { name: r, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: p, in: query, schema: { type: string } }
+        - { name: k, in: query, schema: { type: string } }
+      responses: { "200": { description: The recap, content: { application/json: { schema: { type: object, additionalProperties: true } } } }, "400": { $ref: "#/components/responses/Bad" }, "404": { description: No such run } }
+  /followup:
+    get:
+      tags: [after]
+      operationId: followup
+      summary: A week later, what this phone picked to do, and whether it said it did.
+      parameters: [{ $ref: "#/components/parameters/p" }, { $ref: "#/components/parameters/k" }]
+      responses: { "200": { description: The pick, content: { application/json: { schema: { type: object, properties: { pick: { type: string }, done: { type: [boolean, "null"] } } } } } }, "403": { description: Invalid link }, "404": { description: No pick } }
+    post:
+      tags: [after]
+      operationId: followupAnswer
+      summary: Did you do it?
+      parameters: [{ $ref: "#/components/parameters/p" }, { $ref: "#/components/parameters/k" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [did], properties: { did: { type: boolean } } } } } }
+      responses: { "200": { $ref: "#/components/responses/Ok" }, "403": { description: Invalid link } }
+  /followup.ics:
+    get:
+      tags: [after]
+      operationId: followupCalendar
+      summary: A calendar reminder a week after the workshop.
+      parameters: [{ $ref: "#/components/parameters/p" }, { $ref: "#/components/parameters/k" }]
+      responses: { "200": { description: iCalendar, content: { text/calendar: { schema: { type: string } } } }, "403": { description: Invalid link } }
+
+components:
+  securitySchemes:
+    phoneSession: { type: apiKey, in: cookie, name: rid, description: Set by POST /join }
+    presenterToken: { type: apiKey, in: query, name: t, description: The presenter token; the console adds it server-side }
+  parameters:
+    p: { name: p, in: query, required: true, schema: { type: string }, description: the phone id }
+    k: { name: k, in: query, required: true, schema: { type: string }, description: HMAC of the phone id }
+  responses:
+    Ok: { description: Done, content: { application/json: { schema: { type: object, properties: { ok: { const: true } } } } } }
+    Bad: { description: Invalid input, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    Closed: { description: "The doors are shut (Close, or the room timed out)", content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/Error" }, { properties: { closed: { const: true } } }] } } } }
+    NeedCode: { description: Enter the code (wrong or expired codes too), content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/Error" }, { properties: { needCode: { type: boolean } } }] } } } }
+    JoinFirst: { description: No session in this run; `signedOut` says the presenter signed everyone out, content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/Error" }, { properties: { signedOut: { type: boolean } } }] } } } }
+    PresenterOnly: { description: Needs the presenter token, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  schemas:
+    Error: { type: object, required: [error], properties: { error: { type: string } } }
+    AnswerValue:
+      oneOf:
+        - { type: integer, minimum: 0, description: "a poll, case or takeaway option" }
+        - { enum: [99, 99.9, 99.95, 99.99, 99.999], description: a nines choice }
+        - { type: object, required: [ms, pct], properties: { ms: { enum: [100, 300, 1000] }, pct: { enum: [99, 99.9, 99.99] } }, description: an SLO choice }
+        - { type: object, required: [k, a], properties: { k: { type: integer, minimum: 0, maximum: 59 }, a: { type: integer, minimum: 0, maximum: 3 } }, description: one term in a term check }
+    Span: { type: object, required: [n, s, d], properties: { n: { type: string, description: span name }, s: { type: number, description: "start, ms" }, d: { type: number, description: "duration, ms" } } }
+    Control:
+      type: object
+      required: [op]
+      properties:
+        op: { enum: [start, begin, next, prev, goto, choose, detour, reveal, groups, break, fix, instrument, eyes, mode, audience, reset, signout, close] }
+        w: { type: integer, description: "start: the workshop" }
+        wait: { type: boolean, description: "start: phones wait until begin" }
+        i: { type: integer, minimum: 0, maximum: 99, description: "goto/choose: the step or detour" }
+        id: { type: string, description: "detour: a scene from the library" }
+        a: { type: string, description: "start/audience: the audience" }
+        intro: { enum: [first, returning] }
+        names: { enum: [anonymous, named] }
+        c: { type: array, items: { type: string }, maxItems: 24, description: "start: a composed program (welcome first)" }
+        title: { type: string, maxLength: 40 }
+    PhoneView:
+      type: object
+      description: One phone's view; fields depend on the step's type. Answers and the right option appear only after the reveal.
+      required: [i, n, id, type, act, title]
+      properties:
+        i: { type: integer }
+        n: { type: integer }
+        id: { type: string, description: the step; the phone also puts it in its address (#id) }
+        type: { type: string }
+        act: { type: string }
+        title: { type: string }
+        how: { type: string, description: '"How it works": what the room is about to see' }
+        options: { type: array, items: { type: string } }
+        shown: { type: boolean, description: revealed }
+        answer: { type: integer, description: "the right option, after the reveal only" }
+        mine: { description: this phone's answer }
+        why: { type: string, description: "why the answer is right, after the reveal" }
+        quiz: { type: array, items: { type: object, properties: { term: { type: string }, options: { type: array, items: { type: string }, minItems: 4, maxItems: 4 }, answer: { type: integer } } } }
+        termScore: { type: object, properties: { n: { type: integer }, right: { type: integer }, before: { type: integer }, after: { type: integer } } }
+        points: { type: integer }
+        rank: { type: integer }
+        terms: { type: array, items: { type: object, properties: { term: { type: string }, def: { type: string }, example: { type: string } } } }
+        timer: { type: [object, "null"], properties: { left: { type: number }, total: { type: number } } }
+        recap: { type: string, format: uri }
+        needName: { type: boolean }
+      additionalProperties: true
+    ScreenView:
+      type: object
+      required: [i, n, workshop, people, path]
+      properties:
+        i: { type: integer }
+        n: { type: integer }
+        workshop: { type: string }
+        people: { type: integer, description: phones in this run }
+        present: { type: integer, description: phones that checked in within ~75 s }
+        doors: { type: boolean, description: the room is open (GET /screen only) }
+        path: { type: array, items: { type: string } }
+        results: { type: object, additionalProperties: true }
+        leaderboard: { type: array, maxItems: 5, items: { type: object, required: [name, points, move], properties: { name: { type: string }, points: { type: integer }, move: { type: integer, description: places gained on this question; the screen shows only gains } } } }
+        library: { type: array, items: { type: object, properties: { id: { type: string }, title: { type: string }, act: { type: string }, min: { type: number } } } }
+        clock: { type: number }
+        total: { type: number }
+      additionalProperties: true
+    Run: { type: object, required: [r, t, title, joined], properties: { r: { type: integer }, t: { type: integer, description: epoch ms }, w: { type: integer }, title: { type: string }, joined: { type: integer } } }
+    Event: { type: object, required: [id, kind, data], properties: { id: { type: integer }, phone: { type: [string, "null"] }, kind: { enum: [join, send, rtt, answer, request, job, load, curious, control] }, data: { type: object, additionalProperties: true } } }
+    RunReport:
+      type: object
+      required: [run, title, reach, polls]
+      properties:
+        run: { type: integer }
+        title: { type: string }
+        reach: { type: object, properties: { scanned: { type: integer }, joined: { type: integer }, phones: { type: integer } } }
+        presence: { type: array, items: { type: object, properties: { minute: { type: integer }, present: { type: integer } } } }
+        churnRate: { type: [number, "null"] }
+        reconnectionRate: { type: [number, "null"] }
+        polls: { type: array, items: { type: object, additionalProperties: true } }
+        terms: { type: [object, "null"], properties: { n: { type: integer }, before: { type: number }, after: { type: number } } }
+        ctas: { type: object, additionalProperties: { type: integer } }
+        participants:
+          type: array
+          description: Presenter-only. Everyone in the run, including people signed out mid-run.
+          items: { type: object, properties: { name: { type: string }, points: { type: integer }, answered: { type: integer }, right: { type: integer }, terms: { type: [object, "null"] }, sends: { type: integer }, practice: { type: integer }, termsOpened: { type: integer }, recapOpened: { type: integer } } }
+      additionalProperties: true

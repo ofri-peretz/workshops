@@ -25,6 +25,14 @@ jobs:
         working-directory: console
       - name: Scrub and Relay self-check
         run: npm test
+      - name: Unit tests of the room's rules
+        run: npm run unit
+      - name: Quint model (witnesses, then random runs against the invariants)
+        run: npm run spec
+      - name: OpenAPI contract
+        run: npm run contract
+      - name: Mutation score (oxmutate; breaks under 85%)
+        run: npm run mutate
       - name: Console types
         run: npx tsc --noEmit
         working-directory: console
