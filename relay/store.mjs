@@ -70,7 +70,7 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
     return inflightSync;
   }
   return {
-    sync: () => sync(false),
+    sync: (force = false) => sync(force),
     room: () => room,
     async append(ev) {
       const [row] = await rest("relay_events", { method: "POST", headers: { prefer: "return=representation" }, body: JSON.stringify({ phone: ev.phone ?? null, kind: ev.kind, data: ev.data ?? {} }) });

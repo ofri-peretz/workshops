@@ -50,6 +50,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
     const phoneId = id && ID.test(id) ? id : null;
     try {
       await store.sync();
+      if (phoneId && !store.room().phones.has(phoneId)) await store.sync(true); // joined through another instance a moment ago: catch up before saying "join first"
       let room = store.room(), p = phoneId ? room.phones.get(phoneId) : undefined;
       const lookupMs = performance.now() - t0;
       const append = async (kind, data = {}) => { const ev = await store.append({ phone: p?.id ?? null, kind, data: { t: Date.now(), ...data } }); room = store.room(); p = p && room.phones.get(p.id); return ev; };

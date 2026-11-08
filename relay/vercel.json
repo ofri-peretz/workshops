@@ -85,5 +85,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/config",
+      "schedule": "0 6 * * *"
+    }
   ]
 }
