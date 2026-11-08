@@ -27,7 +27,7 @@ export function SignInCard({ email }: { email: string }) {
         <CardTitle className="text-2xl">{state.sent ? "Check your inbox" : "Sign in"}</CardTitle>
         <CardDescription>
           {state.sent ? (
-            <>We sent a one-time link to <b className="text-foreground">{email}</b>. Open it on this computer.</>
+            <>We sent a one-time link to <b className="text-foreground">{email}</b>. Open it on the computer you'll present from: on another machine, copy the link from the email into its browser.</>
           ) : (
             <>A one-time link goes to <b className="text-foreground">{email}</b>. Only that address can open the console.</>
           )}
@@ -46,7 +46,7 @@ export function SignInCard({ email }: { email: string }) {
           </Button>
         </form>
         {state.error ? <p role="alert" className="text-sm text-destructive">{state.error}</p> : null}
-        <p className="text-xs text-muted-foreground">The console runs only on this computer. Sign-ups are off.</p>
+        <p className="text-xs text-muted-foreground">The link signs in whichever browser opens it, once. Sign-ups are off.</p>
       </CardContent>
     </Card>
   );
