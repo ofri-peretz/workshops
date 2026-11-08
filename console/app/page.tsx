@@ -68,7 +68,7 @@ export default async function Console() {
           <h1 className="text-2xl font-semibold">Workshop console</h1>
           <Badge data-testid="room-status" variant={tone}>{room.status === "live" ? "Live" : room.status === "locked" ? "Joining locked" : "Closed"}</Badge>
         </div>
-        <form action={signOutAction}><Button data-testid="sign-out" variant="ghost" size="sm" type="submit">Sign out</Button></form>
+        <form action={signOutAction}><Button data-testid="sign-out" variant="ghost" size="sm" type="submit">Log out</Button></form>
       </header>
 
       {room.status === "closed" ? (
