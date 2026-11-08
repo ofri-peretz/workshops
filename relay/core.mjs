@@ -391,7 +391,7 @@ const outroOf = (room) => {
 // What "Today" covers: the workshop's own parts and key terms, plus every case its path tells.
 const todayOf = (room) => {
   const W = titled(room);
-  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, hook: c.hook, min: programMinutes([Object.keys(CHAPTERS).find((k) => CHAPTERS[k] === c)]), concept: c.concept, asks: c.asks, terms: (c.terms ?? []).filter((t) => !c.name.toLowerCase().includes(t.toLowerCase())) })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
+  return { parts: room.chapters.map((c) => CHAPTERS[c]).filter((c) => c.q).map((c) => ({ name: c.name, q: c.q, hook: c.hook, min: Math.round(programMinutes([Object.keys(CHAPTERS).find((k) => CHAPTERS[k] === c)])), concept: c.concept, asks: c.asks, terms: (c.terms ?? []).filter((t) => !c.name.toLowerCase().includes(t.toLowerCase())) })), terms: termsOf(room.chapters).map((term) => ({ term, ...GLOSSARY[term] })),
     cases: room.chapters.filter((c) => CHAPTERS[c].q).map((c) => leadCase(CHAPTERS[c])).filter(Boolean) };
 };
 export function phoneView(room, p) {
