@@ -2,7 +2,7 @@
 // Runs the same handler the Vercel function uses, on the in-memory store.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SCENES, SCENE, POLL_TYPES, PRESENTER } from "./scenes.mjs";
+import { SCENES, SCENE, POLL_TYPES, PRESENTER, AUDIENCES } from "./scenes.mjs";
 import { CONCEPTS, GLOSSARY } from "./concepts.mjs";
 import { CASES } from "./cases.mjs";
 import { WORKSHOPS, SERIES, CHAPTERS } from "./workshops.mjs";
@@ -541,6 +541,7 @@ const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);
 for (const x of SERIES) assert.ok(hub.includes(x.track.replace(/^\d+ · /, "")), `hub.html lists ${x.track}`);
 const phoneHtml = readFileSync(new URL("./public/phone.html", import.meta.url), "utf8");
+assert.deepEqual(JSON.parse(phoneHtml.match(/const HOST = (\{.*?\}); /)[1]), { name: PRESENTER.name, photo: PRESENTER.photo, lead: AUDIENCES.tech.lead }, "the closed page's host card is the presenter's");
 assert.deepEqual(JSON.parse(phoneHtml.match(/const LINKS = (\[.*?\]); /)[1]), PRESENTER.links, "the phone's always-on links are the presenter's links");
 
 server.close(); server.closeAllConnections?.();

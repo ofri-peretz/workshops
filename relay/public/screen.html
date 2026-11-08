@@ -1081,7 +1081,7 @@
           const who = v.speaker; // the version for this audience, picked in the console
           const head = v.intro === "returning"
             ? `<h1 style="font-size:clamp(44px,5.6vw,88px)">Welcome back</h1><p class="lead">${esc(v.presenter.name)}</p>`
-            : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;
+            : `<h1 style="font-size:clamp(44px,5.6vw,88px)">${esc(s.title)}</h1><p class="lead">${esc(who.lead)}</p><div class="checks intro">${who.items.map((i) => `<div>${esc(i).replace(/\bInterlace\b/, `<a href="https://interlace.tools" target="_blank" rel="noopener">Interlace</a>`)}</div>`).join("")}</div>`;
           return `<div class="grid2" style="align-items:center"><div style="display:grid;gap:18px"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="180" height="180" style="width:clamp(140px,12vw,220px);height:auto;border-radius:50%" />${head}</div>
       <div style="display:grid;justify-items:start">${findMe(v)}</div></div>`;
         },
@@ -1157,7 +1157,7 @@
         today(v) {
           const t = v.today;
           return `<div class="focus"><span class="label">What we'll cover today</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
-      <ol class="path">${t.parts.map((x) => `<li><span class="min">${x.min} min</span><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span>${x.terms.length ? `<div class="chips">${x.terms.map((term) => `<span>${esc(term)}</span>`).join("")}</div>` : ""}</li>`).join("")}</ol></div>`;
+      <ol class="path">${t.parts.map((x) => `<li><span class="min">${x.min} min</span><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span></li>`).join("")}</ol></div>`;
         },
         next(v, s) {
           return `<span class="label">Coming up</span><h1>${esc(s.title)}</h1><div class="checks next">${s.items.map((i) => `<div>${esc(i)}</div>`).join("")}</div>`;

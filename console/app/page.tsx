@@ -125,7 +125,7 @@ export default async function Console() {
           <CardHeader>
             <CardTitle>{room.status === "locked" ? "Too many wrong codes: joining is paused" : waiting ? "Doors open: phones are waiting" : "The workshop is running"}</CardTitle>
             <CardDescription>
-              {stage?.title ? <span data-testid="running-title" className="block text-base font-medium text-foreground">Running: {stage.title} · to run a different part, Close the room, then pick one and Go live</span> : null}
+              {stage?.title ? <span data-testid="running-title" className="block text-base font-medium text-foreground">Running: {stage.title} · to run a different part, Kick everyone out, then pick one and Go live</span> : null}
               Room closes <Countdown until={room.liveUntil} /> · code stops admitting new phones <Countdown until={room.joinUntil} />
             </CardDescription>
           </CardHeader>

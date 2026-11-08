@@ -27,12 +27,12 @@ export function RoomSteps({ status, waiting, code }: Props) {
         <div className="flex flex-wrap items-center gap-2" data-testid="room-controls-closed">
           <Button variant="outline" disabled>New code</Button>
           <Button variant="outline" disabled>Sign everyone out</Button>
-          <Button variant="outline" disabled>Close the room</Button>
+          <Button variant="outline" disabled>Kick everyone out</Button>
           <span className="text-sm text-muted-foreground">No room is open, so nobody is in it. Go live first; these controls appear on the live room card.</span>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {code ? <>Phones join with code <b className="font-mono text-foreground">{code}</b>.</> : <>No join code right now: press <b>New code</b>.</>} New code keeps phones in; Sign everyone out makes them all enter the new code.
+          {code ? <>Phones join with code <b className="font-mono text-foreground">{code}</b>.</> : <>No join code right now: press <b>New code</b>.</>} New code keeps phones in. Sign everyone out: a new code, everyone re-enters it. Kick everyone out: the room closes; phones show your page and tell people when you Go live again.
         </p>
       )}
     </section>

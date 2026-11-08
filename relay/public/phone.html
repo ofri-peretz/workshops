@@ -994,7 +994,7 @@
         today(v) {
           const t = v.today;
           return `<span class="label">What we'll cover today</span><h1>${esc(v.workshop)}</h1><p class="lead">${esc(v.promise)}</p>
-      <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span>${x.terms.length ? `<span class="chips">${x.terms.map((term) => `<i>${esc(term)}</i>`).join("")}</span>` : ""}</li>`).join("")}</ol>`;
+      <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span></li>`).join("")}</ol>`;
         },
         name(v) {
           return `<span class="label">One thing first</span><h1>Pick a name</h1><p class="lead">Any name you like. It shows on the leaderboard.</p>
@@ -1005,7 +1005,7 @@
       <div class="hero"><span class="label">${v.part ? `${esc(v.part.series)} · Part ${v.part.n} of ${v.part.of}` : "Workshop"} · ${v.minutes} min</span><h1>${esc(v.workshop)}</h1><p class="tag">${esc(v.promise)}</p>
         <p class="meta" data-testid="waiting-people">Starting soon · ${v.people} here</p></div>
       <div class="col">
-        <section class="card host" style="order:1"><img class="avatar" src="${esc(v.host.photo)}" alt="${esc(v.host.name)}" width="72" height="72" /><div><span class="label">Your host</span><b>${esc(v.host.name)}</b><p class="meta">${esc(v.host.lead)}</p><ul>${v.host.items.map((it) => `<li>${esc(it)}</li>`).join("")}</ul></div></section>
+        <section class="card host" style="order:1"><img class="avatar" src="${esc(v.host.photo)}" alt="${esc(v.host.name)}" width="72" height="72" /><div><span class="label">Your host</span><b>${esc(v.host.name)}</b><p class="meta">${esc(v.host.lead)}</p><ul>${v.host.items.map((it) => `<li>${hostItem(it)}</li>`).join("")}</ul></div></section>
       </div>
       <div class="col">
         <section class="card" style="order:2"><span class="label">What we'll do</span><ol>${v.parts.map((p) => `<li><b>${esc(p.name)}</b><span>${esc(p.q)}</span></li>`).join("")}</ol></section>
@@ -1150,7 +1150,7 @@
           return `<h1>${esc(v.title)}</h1>${ctrl}<div class="card"><div class="row"><span>Requests you sent</span><b>${L.n}</b></div><div class="row"><span>Last answer took</span><b>${fmt(L.last)}</b></div></div>${leadHtml(v)}`;
         },
         intro(v) {
-          const who = v.intro === "returning" ? `<p class="lead">Welcome back</p>` : `<p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${esc(it)}</p>`).join("")}</div>`;
+          const who = v.intro === "returning" ? `<p class="lead">Welcome back</p>` : `<p class="lead">${esc(v.lead)}</p><div class="card">${v.items.map((it) => `<p>${hostItem(it)}</p>`).join("")}</div>`;
           return `<div class="me"><img src="${esc(v.presenter.photo)}" alt="${esc(v.presenter.name)}" width="88" height="88" /><div><span class="label">Your host</span><h1>${esc(v.presenter.name)}</h1></div></div>${who}${findMe(v)}`;
         },
         next(v) {
@@ -1240,6 +1240,7 @@
       };
       // The host's links: icons on the way in; at the end and when no room is open, icons plus one "Visit the blog".
       const LINKS = [{"label": "LinkedIn", "cta": "Follow on LinkedIn", "icon": "linkedin", "href": "https://www.linkedin.com/in/ofri-peretz/"}, {"label": "dev.to", "cta": "Read on dev.to", "icon": "devto", "href": "https://dev.to/ofri-peretz"}, {"label": "GitHub", "cta": "Star on GitHub", "icon": "github", "href": "https://github.com/ofri-peretz"}, {"label": "Blog", "cta": "Visit the blog", "icon": "blog", "href": "https://ofriperetz.dev"}]; // = PRESENTER.links (self-checked)
+      const hostItem = (t) => esc(t).replace(/\bInterlace\b/, `<a href="https://interlace.tools" target="_blank" rel="noopener">Interlace</a>`); // the project, one tap away
       const linkIcons = (ls, name) => `<nav class="findme icons" aria-label="${esc(name)} elsewhere">${ls.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener" data-cta="${esc(l.icon)}" aria-label="${esc(l.cta || l.label)}" title="${esc(l.cta || l.label)}">${ICON[l.icon] || ""}</a>`).join("")}</nav>`;
       const linksCta = (ls, name) => { const blog = ls.find((l) => l.icon === "blog"); return `<div class="findcta">${linkIcons(ls.filter((l) => l !== blog), name)}${blog ? `<a class="cta" href="${esc(blog.href)}" target="_blank" rel="noopener" data-cta="blog">${ICON.blog || ""}<span>${esc(blog.cta)}</span></a>` : ""}</div>`; };
       const findMe = (v, cta = false) => (cta ? linksCta : linkIcons)(v.presenter.links, v.presenter.name);
@@ -1384,11 +1385,29 @@
 
       // The room is closed unless the presenter opened it. The QR carries the code (?c=); typing the
       // address asks for it.
+      // Closed or kicked out: check quietly until the doors open again, then say so and ask for the new code.
+      const HOST = {"name": "Ofri Peretz", "photo": "/ofri.jpg", "lead": "Engineering leader. JavaScript at scale."}; // = PRESENTER name and photo, and the tech audience's lead (self-checked)
+      let reopenTimer = null;
+      function watchReopen() {
+        if (reopenTimer) return;
+        reopenTimer = setInterval(async () => {
+          const r = await fetch("/api/status", { cache: "no-store" }).catch(() => null);
+          if (!r?.ok) return;
+          clearInterval(reopenTimer); reopenTimer = null;
+          try { navigator.vibrate?.([80, 60, 80]); } catch {}
+          gate("The workshop is live again. Enter the code from the big screen.", true);
+          $("code").focus();
+        }, 10_000);
+      }
       const gate = (msg, askCode) => {
         $("gate").hidden = false;
         $("gateForm").hidden = !askCode;
         $("gateHome").hidden = askCode;
-        if (!askCode) $("gateHome").innerHTML = `<p>Until the next one: <a href="https://workshop.ofriperetz.dev">workshop.ofriperetz.dev</a></p>${linksCta(LINKS, "Ofri Peretz")}`;
+        if (!askCode) {
+          $("gateHome").innerHTML = `<div class="me"><img src="${esc(HOST.photo)}" alt="${esc(HOST.name)}" width="72" height="72" /><div><span class="label">Your host</span><h2>${esc(HOST.name)}</h2><p>${esc(HOST.lead)}</p></div></div>${linksCta(LINKS, HOST.name)}<p class="muted" data-testid="reopen-watch">Keep this page open: it tells you when the workshop is live again. Everything else: <a href="https://workshop.ofriperetz.dev" target="_blank" rel="noopener">workshop.ofriperetz.dev</a></p>`;
+          $("top").innerHTML = ""; $("rest").innerHTML = "";
+          watchReopen();
+        }
         $("gateTitle").textContent = askCode ? "Join the workshop" : "Not running right now";
         $("gateMsg").textContent = msg;
         $("chat").hidden = true;
