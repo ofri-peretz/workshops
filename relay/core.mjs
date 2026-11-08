@@ -104,6 +104,8 @@ export function fresh(w = 1, chapters = WORKSHOPS[w].chapters) {
     names: "anonymous", voters: false, eyes: false, arrived: {}, scans: 0, ctas: {}, devs: new Set(), reconnects: 0, joins: 0,
     phones: new Map(), // id -> { id, group, sends, dups, answers, used, last, job }
     chat: [], reqs: [], jobs: { n: 0, slow: 0 }, load: [], incidents: [],
+    questions: [], // anonymous questions: { id, text, by, votes: Set, hidden }
+    pulse: {}, // step id -> Map(phone -> "lost" | "ok"): the room's own read on each step
   };
 }
 const phonesIn = (room, g) => [...room.phones.values()].filter((p) => p.group === g);
@@ -146,6 +148,9 @@ export function reduce(room, ev) {
       else if (d.scene === "_practice") p.practice = (p.practice || 0) + 1; // a Terms practice answer: kept, never scored
       else if (d.scene === "_terms") p.termsOpened = (p.termsOpened || 0) + 1;
       else if (d.scene === "_recap") p.recapOpened = (p.recapOpened || 0) + 1;
+      else if (d.scene === "_ask") room.questions.push({ id: ev.id, text: d.value, by: p.id, votes: new Set([p.id]), hidden: false, t });
+      else if (d.scene === "_vote") { const q = room.questions.find((x) => x.id === d.value); if (q) q.votes.has(p.id) ? q.votes.delete(p.id) : q.votes.add(p.id); }
+      else if (d.scene === "_pulse") { const m = (room.pulse[d.value.step] ??= new Map()); d.value.v ? m.set(p.id, d.value.v) : m.delete(p.id); }
       else if (SCENE[d.scene]?.type === "termcheck") { const m = (p.answers[d.scene] ||= {}); if (m[d.value.k] === undefined) m[d.value.k] = d.value.a; p.at[d.scene] = t; } // first try per term
       else if (d.scene !== "followup") { p.answers[d.scene] = d.value; p.at[d.scene] = t; }
       return room;
@@ -169,6 +174,8 @@ function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, 
   const s = sceneAt(room);
   if (op === "eyes") { room.eyes = !room.eyes; return room; }
   if (op === "close") { room.closedAt = t; return room; } // the end of the run, for the report
+  if (op === "hideq") { const q = room.questions.find((x) => x.id === i); if (q) q.hidden = !q.hidden; return room; } // the presenter hides (or restores) a question
+  if (op === "extend") { room.extended = (room.extended || 0) + 1; return room; } // recorded; the doors themselves live in Supabase
   if (op === "signout") { room.phones = new Map(); room.signedOut = ev; return room; } // everyone rejoins with the new code; the step stays // "look at the screen": phones pause input
   if (op === "mode") { if (names) room.names = names; if (voters !== undefined) room.voters = voters; return room; }
   if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, names: room.names, voters: room.voters, audience: room.audience, intro: room.intro }; // stay in this workshop
@@ -213,10 +220,12 @@ export const validProgram = (c) => Array.isArray(c) && c.length >= 2 && c.some((
   && c.every((x) => typeof x === "string" && Object.hasOwn(CHAPTERS, x)) && programMinutes(c) <= MAX_PROGRAM_MIN;
 export const NAME_MODES = ["anonymous", "named"];
 export const validName = (x) => typeof x === "string" && /^[\p{L}\p{N} .'’-]{1,24}$/u.test(x.trim());
-export function validControl({ op, i, w, a, id, intro, c, title, names, voters }) {
+export function validControl({ op, i, w, a, id, intro, c, title, names, voters, label }) {
+  if (label !== undefined && !(typeof label === "string" && label.length <= 60)) return false; // the group or venue, for the history
   if (op === "mode") return (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean");
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
-  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout", "close"].includes(op)) return true;
+  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout", "close", "extend"].includes(op)) return true;
+  if (op === "hideq") return Number.isInteger(i) && i > 0;
   if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c)) && (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean")
     && (title === undefined || (typeof title === "string" && /^[\p{L}\p{N} &,.:'’-]{1,40}$/u.test(title)));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
@@ -410,7 +419,8 @@ export function phoneView(room, p) {
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
     shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], quiz: s.type === "termcheck" ? quizOf(room, s).map((x) => ({ term: x.term, options: x.options, answer: shown ? x.answer : undefined })) : undefined,
-    termScore: s.type === "termcheck" && p ? termScore(room, p, s) : undefined, lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined, why: shown ? s.why : undefined,
+    termScore: s.type === "termcheck" && p ? termScore(room, p, s) : undefined,
+    questions: questionsOf(room, p).slice(0, 20), pulseMine: p ? room.pulse[s.id]?.get(p.id) : undefined, lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined, why: shown ? s.why : undefined,
     workshop: W.title, promise: W.promise, terms: termsSoFar(room), curiousMine: !!p?.curious.has(s.id), chosen: s.chosen,
     group: room.groupsShown ? p?.group : undefined, broken: room.broken };
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
@@ -457,6 +467,7 @@ export function screenView(room, now, withLibrary = false) { // the library (9 K
   return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, part: partOf(room), begun: room.begun, waiting: room.begun ? undefined : { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), minutes: minutes(room, room.path.length), lead: AUDIENCES.tech.lead }, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
     shown: room.shown.has(s.id), groupsShown: room.groupsShown, broken: room.broken,
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
+    questions: questionsOf(room, null, true), pulse: pulseOf(room, s.id),
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
     library: withLibrary ? SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })) : undefined,
@@ -561,6 +572,14 @@ function termResults(room, s) {
     improved: rows.filter((r) => r.after > r.before).sort((a, b) => b.after - b.before - (a.after - a.before)).slice(0, 3).map(({ name, before, after }) => ({ name, before, after })) };
 }
 
+// ---- anonymous questions and the pulse --------------------------------------------------------------
+// Questions: anyone asks, anyone upvotes, nobody is named; the presenter can hide one. The pulse: each phone
+// says "got it" or "I'm lost" on a step; only the counts leave the server.
+export const questionsOf = (room, p, all = false) => room.questions.filter((q) => all || !q.hidden)
+  .map((q) => ({ id: q.id, text: q.text, votes: q.votes.size, hidden: q.hidden || undefined, mine: p ? q.votes.has(p.id) || undefined : undefined, own: p ? q.by === p.id || undefined : undefined }))
+  .sort((a, b) => b.votes - a.votes || a.id - b.id);
+export const pulseOf = (room, step) => { const m = room.pulse[step]; if (!m) return { lost: 0, ok: 0 }; let lost = 0, ok = 0; for (const v of m.values()) v === "lost" ? lost++ : ok++; return { lost, ok }; };
+
 // The game: a right answer scores 500 plus up to 500 for speed (time left on that step's countdown).
 const QUIZ = (s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined;
 export const pointsOf = (room, p, skip) => termPoints(room, p, skip) + room.path.map((id) => SCENE[id]).filter((s) => QUIZ(s) && s.id !== skip).reduce((sum, s) => {
@@ -606,6 +625,8 @@ export function reportOf(room, events) {
     learning: before && after ? { before: before.right / Math.max(1, before.answered), after: after.right / Math.max(1, after.answered) } : null,
     terms: (() => { const fin = room.path.map((id) => SCENE[id]).find((x) => x?.type === "termcheck" && x.final); if (!fin) return null; const r = termResults(room, fin); return { n: r.n, before: r.before, after: r.after, items: r.items }; })(),
     ctas: room.ctas,
+    questions: questionsOf(room, null, true),
+    pulse: Object.fromEntries(Object.keys(room.pulse).map((k) => [k, pulseOf(room, k)])),
     participants: phones.map((p) => {
       const scored = room.path.map((id) => SCENE[id]).filter((s) => QUIZ(s) && p.answers[s.id] !== undefined);
       const fin = room.path.map((id) => SCENE[id]).find((x) => x?.type === "termcheck" && x.final), ts = fin ? termScore(room, p, fin) : null;

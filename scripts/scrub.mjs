@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const RULES = [
   [/\b(gil|asher|galileo|mamdas|galaxia|masmer|snappy)\b/i, "private name"],
   [/[֐-׿]/, "Hebrew (workshops are English only)"],
-  [/sb_secret_[A-Za-z0-9_-]{10,}|service_role/, "Supabase service key"],
+  [/sb_secret_[A-Za-z0-9_-]{10,}|service_role[_a-z]*["'\s]*[:=]\s*["'`]?[A-Za-z0-9._-]{20,}/i, "Supabase service key"], // a key value, not the role's name in SQL grants
   [/eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}/, "JWT"],
   [/\bphx_[A-Za-z0-9]{20,}|\bsk_(live|test)_[A-Za-z0-9]{10,}|\bre_[A-Za-z0-9]{20,}/, "API key"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "private key"],

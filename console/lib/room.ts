@@ -52,8 +52,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string }) {
-  await relayControl({ op: "start", wait: true, w: Number(workshop) || workshop, intro, a: audience, names, ...(chapters ? { c: chapters, title } : {}) });
+export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, label }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; label?: string }) {
+  await relayControl({ op: "start", wait: true, w: Number(workshop) || workshop, intro, a: audience, names, ...(label ? { label } : {}), ...(chapters ? { c: chapters, title } : {}) });
   const now = Date.now(), joinUntil = new Date(now + JOIN_MS).toISOString();
   await update(jwt, {
     opened_at: new Date(now).toISOString(),
@@ -70,18 +70,26 @@ export async function newJoinCode(jwt: string) {
   await update(jwt, { join_until: joinUntil, code_hmac: hmac(codeFor(joinUntil)), locked: false });
 }
 
+/** Thirty more minutes for the room (the join code keeps its own window; New code if people still need in). */
+export async function extendRoom(jwt: string) {
+  const [a] = await rest(jwt, "relay_access?id=eq.1&select=live_until");
+  const from = Math.max(Date.parse(a?.live_until ?? "") || 0, Date.now());
+  await update(jwt, { live_until: new Date(from + 30 * 60_000).toISOString() });
+}
+
 export async function closeRoom(jwt: string) {
   await update(jwt, { live_until: new Date().toISOString(), code_hmac: null });
 }
 
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */
-export type Stage = { begun: boolean; people: number; title: string; step: number; steps: number; scene: string; present: number; answered: number | null; clock: number; total: number };
+export type Stage = { begun: boolean; people: number; title: string; step: number; steps: number; scene: string; present: number; answered: number | null; clock: number; total: number; lost: number; ok: number; questions: number };
 export async function readStage(): Promise<Stage | null> {
   const r = await fetch(`${env.relayUrl()}/api/screen?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
   if (!r?.ok) return null;
   const v = await r.json();
   return { begun: v.begun !== false, people: v.people, title: v.workshop ?? "", step: (v.i ?? 0) + 1, steps: v.n ?? 0, scene: v.scene?.title ?? "", present: v.present ?? v.people,
-    answered: typeof v.results?.total === "number" ? v.results.total : null, clock: v.clock ?? 0, total: v.total ?? 0 };
+    answered: typeof v.results?.total === "number" ? v.results.total : null, clock: v.clock ?? 0, total: v.total ?? 0,
+    lost: v.pulse?.lost ?? 0, ok: v.pulse?.ok ?? 0, questions: (v.questions ?? []).filter((q: { hidden?: boolean }) => !q.hidden).length };
 }
 
 /** Across every session: who picked one thing to do, and who said they did it a week later. */
@@ -103,7 +111,7 @@ export type RunReport = {
   ctas: Record<string, number>;
   participants?: { name: string; points: number; answered: number; right: number; terms: { before: number; after: number; n: number } | null; sends: number; practice: number; termsOpened: number; recapOpened: number }[];
 };
-export type Run = { r: number; t: number; w: number; title: string; joined: number };
+export type Run = { r: number; t: number; w: number; title: string; joined: number; label?: string };
 /** Every run ever, newest first: the history behind each report. */
 export async function readRuns(): Promise<Run[]> {
   const r = await fetch(`${env.relayUrl()}/api/runs?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);

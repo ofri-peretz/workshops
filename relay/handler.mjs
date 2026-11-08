@@ -78,7 +78,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true, names: body.names, voters: body.voters });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true, names: body.names, voters: body.voters, label: body.label });
         return json(200, screenView(room, Date.now()));
       }
       // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).
@@ -122,7 +122,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/runs") { // every workshop ever run here, newest first: the history behind each report
         if (!presenter) return json(403, { error: "presenter link needed" });
         const [starts, joins] = await Promise.all([store.events({ kind: "control" }), store.events({ kind: "join" })]);
-        const runs = starts.filter((e) => e.data?.op === "start").map((e) => ({ r: e.id, t: e.data.t, w: e.data.w, title: e.data.title || WORKSHOPS[e.data.w]?.title }));
+        const runs = starts.filter((e) => e.data?.op === "start").map((e) => ({ r: e.id, t: e.data.t, w: e.data.w, title: e.data.title || WORKSHOPS[e.data.w]?.title, label: e.data.label }));
         for (const [k, run] of runs.entries()) run.joined = joins.filter((j) => j.id > run.r && (k === runs.length - 1 || j.id < runs[k + 1].r)).length;
         return json(200, { runs: runs.reverse() });
       }
@@ -187,7 +187,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           const outcome = await store.tryJoin(hmac(codeSecret, code), hmac(codeSecret, "ip:" + ip).slice(0, 16)); // never store an IP
           if (outcome !== "ok") { const [status, error] = JOIN[outcome] ?? JOIN.closed; return json(status, { error, needCode: outcome === "wrong" || outcome === "expired" }); }
           // a device mark (never the raw IP or user agent): two sessions from one phone count as a reconnection
-          const dev = hmac(codeSecret, "dev:" + ip + "|" + (request.headers.get("user-agent") || "")).slice(0, 16);
+          const dev = hmac(codeSecret, "dev:" + room.runId + "|" + ip + "|" + (request.headers.get("user-agent") || "")).slice(0, 16); // per run: a device can't be linked across workshops
           rid = randomUUID(); await store.append({ phone: rid, kind: "join", data: { t: Date.now(), dev } }); room = store.room(); p = room.phones.get(rid); }
         return json(200, phoneView(room, p), { "set-cookie": `rid=${rid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${url.protocol === "https:" ? "; Secure" : ""}` });
       }
@@ -249,6 +249,14 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (type === "cta" && ["linkedin", "github", "devto", "blog", "recap", "reminder"].includes(target)) { await append("answer", { scene: "_cta", value: target }); return json(200, { ok: true }); }
         if (type === "practice" && typeof target?.term === "string" && Object.hasOwn(GLOSSARY, target.term)) { await append("answer", { scene: "_practice", value: { term: target.term, right: target.right === true } }); return json(200, { ok: true }); }
         if (type === "terms") { await append("answer", { scene: "_terms", value: 1 }); return json(200, { ok: true }); }
+        if (type === "ask") { // an anonymous question: 3–200 characters, 5 per phone
+          const text = typeof target === "string" ? target.trim().replace(/\s+/g, " ") : "";
+          if (text.length < 3 || text.length > 200) return json(400, { error: "A question is 3 to 200 characters." });
+          if (room.questions.filter((q) => q.by === p.id).length >= 5) return json(429, { error: "Five questions each. Upvote the others." });
+          await append("answer", { scene: "_ask", value: text }); return json(200, { ok: true });
+        }
+        if (type === "vote" && Number.isInteger(target) && room.questions.some((q) => q.id === target && !q.hidden)) { await append("answer", { scene: "_vote", value: target }); return json(200, { ok: true }); }
+        if (type === "pulse" && (target === "lost" || target === "ok" || target === null)) { await append("answer", { scene: "_pulse", value: { step: sceneAt(room).id, v: target } }); return json(200, { ok: true }); }
         return json(400, { error: "unknown event" });
       }
       if (method === "POST" && path === "/answer") {

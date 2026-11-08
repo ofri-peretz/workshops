@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 import { accessToken, clearSession, sendSignInLink } from "@/lib/session";
-import { closeRoom, goLive, newJoinCode, readChapters, relayControl } from "@/lib/room";
+import { closeRoom, extendRoom, goLive, newJoinCode, readChapters, relayControl } from "@/lib/room";
 import { rememberGroup } from "@/lib/groups";
 
 const signedIn = async () => {
@@ -28,17 +28,17 @@ export async function goLiveAction(form: FormData) {
   const jwt = await signedIn();
   const intro = String(form.get("intro") || "first"), audience = String(form.get("audience") || "tech");
   const names = form.get("names") === "named" ? "named" : "anonymous";
-  const group = String(form.get("group") || "").trim().slice(0, 60);
+  const group = String(form.get("group") || form.get("label") || "").trim().slice(0, 60);
   if (form.get("compose")) {
     const parts = form.getAll("c").map(String);
     // ponytail: the wrap-up is always Signals' (Monday questions, next, Q&A); pick per program if it matters
     const chapters = ["welcome", ...parts, "sig-close"];
     const title = String(form.get("title") || "").trim() || "Monitoring and performance";
-    await goLive(jwt, "5", { intro, audience, chapters, title, names });
+    await goLive(jwt, "5", { intro, audience, chapters, title, names, label: group || undefined });
     if (group) await rememberGroup(group, parts);
   } else {
     const w = String(form.get("workshop") || "1");
-    await goLive(jwt, w, { intro, audience, names });
+    await goLive(jwt, w, { intro, audience, names, label: group || undefined });
     if (group) await rememberGroup(group, (await readChapters()).filter((c) => c.in.some((x) => String(x.w) === w)).map((c) => c.id));
   }
   revalidatePath("/");
@@ -67,6 +67,13 @@ export async function signOutAllAction() {
 export async function resetAction() {
   await signedIn();
   await relayControl({ op: "reset" });
+  revalidatePath("/");
+}
+
+export async function extendAction() {
+  const jwt = await signedIn();
+  await extendRoom(jwt);
+  await relayControl({ op: "extend" }).catch(() => {});
   revalidatePath("/");
 }
 

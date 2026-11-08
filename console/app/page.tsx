@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
 import { readChapters, readImpact, readRoom, readRunReport, readRuns, readStage } from "@/lib/room";
@@ -11,7 +12,7 @@ import { RunReportCard } from "./run-report";
 import { readGroups } from "@/lib/groups";
 import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
-import { beginAction, closeAction, goLiveAction, newCodeAction, resetAction, signOutAction, signOutAllAction } from "./actions";
+import { beginAction, closeAction, extendAction, goLiveAction, newCodeAction, resetAction, signOutAction, signOutAllAction } from "./actions";
 import { Countdown } from "./countdown";
 import { ConfirmClose, ConfirmReset, ConfirmSignOut } from "./confirm-close";
 import { RoomSteps } from "./room-steps";
@@ -90,6 +91,10 @@ export default async function Console({ searchParams }: { searchParams: Promise<
               <Choice legend="This group" name="intro" options={INTROS} />
               <Choice legend="Who's in the room" name="audience" options={AUDIENCES} />
               <Choice legend="Names" name="names" options={NAMES} />
+              <Label className="grid gap-1 font-normal">
+                <span className="font-medium">Group or venue <span className="text-muted-foreground">(optional, for your history)</span></span>
+                <Input data-testid="run-label" name="label" maxLength={60} placeholder="e.g. a team, a meetup, a conference" />
+              </Label>
             </CardContent>
           </Card>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -138,6 +143,8 @@ export default async function Console({ searchParams }: { searchParams: Promise<
                   <span><b>{stage.present}</b> present of {stage.people}</span>
                   {stage.answered != null ? <span><b>{stage.answered}</b> answered</span> : null}
                   <span>{Math.round(stage.clock)} of {Math.round(stage.total)} min</span>
+                  <span title="This step, from the phones: counts only">👍 <b>{stage.ok}</b> · 🤔 <b>{stage.lost}</b> lost</span>
+                  {stage.questions ? <span>💬 <b>{stage.questions}</b> questions</span> : null}
                 </div>
               ) : null}
               {waiting ? (
@@ -161,6 +168,7 @@ export default async function Console({ searchParams }: { searchParams: Promise<
                 <form action={newCodeAction}><Button data-testid="new-code" variant="outline" type="submit">New code</Button></form>
                 <ConfirmSignOut action={signOutAllAction} />
                 <ConfirmReset action={resetAction} />
+                <form action={extendAction}><Button data-testid="extend" variant="outline" type="submit">Extend 30 min</Button></form>
                 <ConfirmClose action={closeAction} />
               </div>
             </div>
@@ -180,7 +188,7 @@ export default async function Console({ searchParams }: { searchParams: Promise<
             <ul className="grid gap-2">
               {runs.slice(0, 30).map((x) => (
                 <li key={x.r} className="flex flex-wrap items-center justify-between gap-3 border-b pb-2 text-sm">
-                  <span><b>{x.title}</b> · {new Date(x.t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {x.joined} joined</span>
+                  <span><b>{x.title}</b>{x.label ? ` · ${x.label}` : ""} · {new Date(x.t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {x.joined} joined</span>
                   <span className="flex gap-3">
                     <a className="underline" href={`/?run=${x.r}`}>{report?.run === x.r ? "Showing" : "Report"}</a>
                     <a className="underline" href={`/export?r=${x.r}`}>Download log</a>

@@ -162,6 +162,9 @@
         width: 24px;
         height: 24px;
       }
+      .pulse { display: flex; gap: 8px; } .pulse button { flex: 1; min-height: 44px; border-radius: 999px; font-weight: 600; }
+      .qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .qs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); } .qs li span { min-width: 0; overflow-wrap: anywhere; } .qs button { flex: none; min-height: 44px; min-width: 64px; border-radius: 999px; font: 700 15px var(--mono); }
+      .ask textarea { font: 400 17px var(--sans); padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); resize: vertical; }
       #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); z-index: 30; margin: 0; padding: 10px 16px; border-radius: 999px; background: var(--fg); color: var(--bg); font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
       header button.tbtn {
         width: auto;
@@ -625,6 +628,7 @@
       </section>
       <section id="terms" class="card" hidden aria-label="Terms so far"></section>
       <p id="toast" role="status" aria-live="polite" hidden></p>
+      <section id="ask" class="card" hidden aria-label="Questions"></section>
       <div id="top"></div>
       <section id="chat" aria-label="Chat with Dana">
         <div class="ctop">
@@ -853,6 +857,12 @@
             render();
           } else toast(whyNot(r));
         }).catch(() => toast(whyNot()));
+      }
+      // Anonymous questions: ask (5 each), upvote any; the screen shows the top five, never who asked.
+      function askHtml(v) {
+        const qs = v.questions || [];
+        return `<form class="card ask" data-askform><label class="label" for="askq">Ask anything. Nobody sees who asked.</label><textarea id="askq" name="q" rows="2" maxlength="200" minlength="3" required placeholder="Your question"></textarea><button type="submit" class="primary">Send question</button></form>
+          ${qs.length ? `<ul class="qs">${qs.map((q) => `<li><span>${esc(q.text)}${q.own ? ` <i class="muted">(yours)</i>` : ""}</span><button type="button" data-vote="${q.id}" aria-pressed="${!!q.mine}" aria-label="Upvote: ${q.votes}">▲ ${q.votes}</button></li>`).join("")}</ul>` : `<p class="muted">No questions yet. Be the first.</p>`}`;
       }
       function leadHtml(v) {
         return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
@@ -1169,7 +1179,7 @@
           return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
         },
         qa(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${v.recap ? `<a class="btn" data-testid="recap-link" data-cta="recap" href="${esc(v.recap)}">Today's recap</a>` : ""}${findMe(v, true)}`;
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1>${askHtml(v)}${v.recap ? `<a class="btn" data-testid="recap-link" data-cta="recap" href="${esc(v.recap)}">Today's recap</a>` : ""}${findMe(v, true)}`;
         },
         takeaway(v) {
           const opts = v.items.map((it, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(it)}</button>`).join("");
@@ -1211,6 +1221,7 @@
         document.body.classList.toggle("eyes", !!v.eyes);
         terms(v.terms);
         if (v.needName && document.getElementById("nameform")) return; // don't redraw under someone typing their name
+        if (document.querySelector("#rest #askq")?.value) return; // nor under someone typing a question
         $("chat").classList.toggle("on", v.type === "chat");
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
@@ -1224,8 +1235,11 @@
           $("top").innerHTML = "";
           $("rest").innerHTML = html;
         }
-        if (!NO_DEEPER.has(v.type) && !v.needName)
+        if (!NO_DEEPER.has(v.type) && !v.needName) {
+          $("rest").insertAdjacentHTML("beforeend", `<div class="pulse" role="group" aria-label="How is this step for you? Only counts are shown, never names"><button type="button" data-pulse="ok" aria-pressed="${v.pulseMine === "ok"}">👍 Got it</button><button type="button" data-pulse="lost" aria-pressed="${v.pulseMine === "lost"}">🤔 I'm lost</button></div>`);
           $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted: the presenter sees it" : "🔍 I want more on this"}</button>`);
+        }
+        if (!v.needName && v.type !== "qa") $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" data-ask>💬 Ask a question${v.questions?.length ? ` · ${v.questions.length} asked` : ""}</button>`);
         const nf = $("nameform");
         if (nf) nf.onsubmit = async (e) => {
           e.preventDefault();
@@ -1290,6 +1304,41 @@
         if (!open) { practice = null; terms(view?.terms); }
         else window.scrollTo({ top: 0 });
       }
+      // The Ask panel, open from any step; Back closes it like Terms.
+      function setAsk(open) {
+        $("ask").hidden = !open;
+        if (open) { $("ask").innerHTML = `<div class="tbar"><button type="button" class="back" data-closeask>← Back to the workshop</button></div>${askHtml(view || {})}`; window.scrollTo({ top: 0 }); }
+      }
+      addEventListener("popstate", () => { if (!$("ask").hidden) setAsk(false); });
+      document.addEventListener("click", async (e) => {
+        const b = e.target.closest("[data-ask],[data-closeask],[data-vote],[data-pulse]");
+        if (!b) return;
+        if (b.hasAttribute("data-ask")) { history.pushState({ ask: true }, "", location.hash); return setAsk(true); }
+        if (b.hasAttribute("data-closeask")) return history.state?.ask ? history.back() : setAsk(false);
+        if (b.dataset.vote) {
+          const r = await post("/api/event", { type: "vote", target: +b.dataset.vote }).catch(() => null);
+          if (!r?.ok) return toast(whyNot(r));
+          const v = await fetch("/api/view", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+          if (v) { view = v; if (!$("ask").hidden) setAsk(true); render(); }
+          return;
+        }
+        if (b.dataset.pulse) {
+          const next = view?.pulseMine === b.dataset.pulse ? null : b.dataset.pulse; // tap again to take it back
+          view.pulseMine = next ?? undefined; render();
+          const r = await post("/api/event", { type: "pulse", target: next }).catch(() => null);
+          if (!r?.ok) toast(whyNot(r));
+        }
+      });
+      document.addEventListener("submit", async (e) => {
+        if (!e.target.matches("[data-askform]")) return;
+        e.preventDefault();
+        const text = new FormData(e.target).get("q");
+        const r = await post("/api/event", { type: "ask", target: text }).catch(() => null);
+        if (!r?.ok) return toast(r?.body?.error || whyNot(r));
+        toast("Sent. Others can upvote it.");
+        const v = await fetch("/api/view", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+        if (v) { view = v; if (!$("ask").hidden) setAsk(true); render(); }
+      });
       $("termsBtn").onclick = () => {
         const open = $("terms").hidden;
         if (open) { history.pushState({ terms: true }, "", location.hash); post("/api/event", { type: "terms" }); }
