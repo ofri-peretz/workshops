@@ -127,7 +127,7 @@ export function reduce(room, ev) {
     case "send": {
       if (!p) return room;
       p.sends++; if (d.again) p.dups++;
-      room.chat.push({ t, id: p.id, g: p.group, ms: d.ms, ok: d.ok, rtt: null, n: ev.id, trace: d.trace });
+      room.chat.push({ t, id: p.id, g: p.group, ms: d.ms, ok: d.ok, rtt: null, n: ev.id, trace: d.trace, again: !!d.again });
       p.lastSend = ev.id;
       return room;
     }
@@ -340,7 +340,9 @@ function metricsOf(room, now) {
 }
 function logLine(c) {
   const ms = waited(c);
-  return { time: new Date(c.t).toISOString(), level: !c.ok ? "error" : ms != null && ms > 2500 ? "warn" : "info", route: "POST /send",
+  // the usual rule: failed is ERROR; went wrong but handled (the phone re-sent, and it got through) is WARN;
+  // everything else is INFO, slow or fast: slowness is a duration field, and the metrics (p95, the SLO) alert on it
+  return { time: new Date(c.t).toISOString(), level: !c.ok ? "error" : c.again ? "warn" : "info", route: "POST /send", attempt: c.again ? 2 : 1,
     status: c.ok ? 200 : 503, duration_ms: ms == null ? null : Math.round(ms), client: clientId(c.id), trace_id: c.trace ?? null };
 }
 const levels = (chat) => ({ count: chat.length, errors: chat.filter((c) => !c.ok).length, slowest: chat.length ? logLine(chat.reduce((a, b) => ((waited(b) ?? 0) > (waited(a) ?? 0) ? b : a))) : null });
@@ -531,8 +533,8 @@ export const ROADS = {
 // Log levels as the industry uses them (syslog / OpenTelemetry severity, simplified).
 export const LEVELS = [
   ["DEBUG", "Detail for developers; usually off in production"],
-  ["INFO", "Normal events: a request finished"],
-  ["WARN", "Odd but still working: a slow request"],
+  ["INFO", "Normal events: a request finished, slow or fast"],
+  ["WARN", "Went wrong but was handled: a retry, a fallback"],
   ["ERROR", "A request failed"],
   ["FATAL", "The process can't go on"],
 ];

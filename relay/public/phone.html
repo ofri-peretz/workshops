@@ -922,7 +922,7 @@
             <text x="${L}" y="${S.length * row + 20}" style="fill:var(--muted);font-size:${fs}px">One trace id on every bar. Each bar is a span.</text></svg>`;
         },
       };
-      const LEVEL_SAYS = { DEBUG: "Detail for developers. Off in production", INFO: "Normal: a request finished", WARN: "Odd, still working: a slow request", ERROR: "A request failed: someone should fix it", FATAL: "The program stops: wake someone" };
+      const LEVEL_SAYS = { DEBUG: "Detail for developers. Off in production", INFO: "Normal: a request finished, slow or fast", WARN: "Went wrong, but handled: a retry, a fallback", ERROR: "A request failed: someone should fix it", FATAL: "The program stops: wake someone" };
       function liveOf(st, r = {}, mine) {
         const line = mine || r.line;
         const who = mine ? "Your last message" : "The room's latest message";
