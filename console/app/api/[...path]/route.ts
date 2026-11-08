@@ -8,6 +8,7 @@ async function forward(request: Request, { params }: { params: Promise<{ path: s
   const { path } = await params;
   if (!["screen", "control", "status", "metrics"].includes(path.join("/"))) return Response.json({ error: "not found" }, { status: 404 });
   const target = new URL(`${env.relayUrl()}/api/${path.join("/")}`);
+  for (const [k, v] of new URL(request.url).searchParams) if (k !== "t") target.searchParams.set(k, v); // e.g. ?lib=1
   target.searchParams.set("t", env.presenterToken());
   const r = await fetch(target, {
     method: request.method,

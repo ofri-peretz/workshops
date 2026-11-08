@@ -451,7 +451,7 @@ export function phoneView(room, p) {
   if (p && s.type === "trace") v.trace = buildTrace(room.chat.findLast((c) => c.id === p.id && c.spans));
   return v;
 }
-export function screenView(room, now) {
+export function screenView(room, now, withLibrary = false) { // the library (9 KB) only when asked: it never changes mid-session
   const s = sceneAt(room), W = titled(room);
   const flexAhead = room.path.slice(room.pos + 1).filter((id) => SCENE[id]?.flex).map((id) => SCENE[id].title);
   return { i: room.pos, n: room.path.length, workshop: W.title, workshopId: room.workshop, promise: W.promise, part: partOf(room), begun: room.begun, waiting: room.begun ? undefined : { parts: partsOf(room.chapters).map(([name, q]) => ({ name, q })), minutes: minutes(room, room.path.length), lead: AUDIENCES.tech.lead }, act: room.begun ? actAt(room) : "Starting soon", remember: room.begun ? rememberAt(room) : undefined, scene: !room.begun ? { ...WAITING, id: "waiting", title: W.title } : room.shown.has(s.id) && s.takeaway ? { ...s, title: s.takeaway } : s, // the question, then the answer as the headline
@@ -459,7 +459,7 @@ export function screenView(room, now) {
     people: room.phones.size, results: results(room, s, now), slo: room.slo, curious: room.curious[s.id] || 0,
     audience: room.audience, speaker: AUDIENCES[room.audience], intro: room.intro, presenter: PRESENTER, series: SERIES, instrumented: room.instrumented, audiences: Object.entries(AUDIENCES).map(([k, x]) => ({ k, label: x.label })),
     workshops: Object.entries(WORKSHOPS).map(([k, x]) => ({ k: +k, title: x.title })),
-    library: SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })),
+    library: withLibrary ? SCENES.map((x) => ({ id: x.id, title: x.title, act: x.act, min: x.min })) : undefined,
     path: room.path, // the presenter's deep links: /screen?t=…#<step id>
     today: s.type === "today" ? todayOf(room) : undefined,
     road: s.type === "road" ? roadOf(room, s, null, now) : undefined,

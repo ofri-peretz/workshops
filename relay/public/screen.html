@@ -1216,7 +1216,7 @@
           aud.innerHTML = v.audiences.map((x) => `<option value="${esc(x.k)}">${esc(x.label)}</option>`).join("");
         if (document.activeElement !== aud) aud.value = v.audience;
         const lib = $("lib");
-        if (!lib.options.length) {
+        if (!lib.options.length && v.library) {
           const acts = [...new Set(v.library.map((x) => x.act))];
           lib.innerHTML = `<option value="">Play a scene…</option>` + acts.map((a) => `<optgroup label="${esc(a)}">${v.library.filter((x) => x.act === a).map((x) => `<option value="${esc(x.id)}">${esc(x.title)} · ${x.min} min</option>`).join("")}</optgroup>`).join("");
         }
@@ -1293,7 +1293,7 @@
       });
       (async function poll() {
         try {
-          const r = await fetch("/api/screen?t=" + encodeURIComponent(T), { cache: "no-store" });
+          const r = await fetch("/api/screen?t=" + encodeURIComponent(T) + ($("lib").options.length ? "" : "&lib=1"), { cache: "no-store" });
           if (r.ok) { const v = await r.json(); joinHeader(v.doors !== false); render(v); }
           else {
             const { error, closed } = await r.json().catch(() => ({}));

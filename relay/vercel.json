@@ -81,7 +81,16 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-store"
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/(ofri\\.jpg|favicon\\.svg|favicon\\.ico)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
         }
       ]
     }

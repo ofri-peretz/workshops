@@ -73,7 +73,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         const user = r?.ok ? await r.json() : null;
         return user?.email?.toLowerCase() === owner.toLowerCase() ? json(200, { t: token }) : json(403, { error: "This link isn't the owner's. Request a new one." });
       }
-      if (method === "GET" && path === "/screen") return presenter ? json(200, { ...screenView(room, Date.now()), doors: (await store.gate()).live }) : json(403, { error: "presenter link needed" });
+      if (method === "GET" && path === "/screen") return presenter ? json(200, { ...screenView(room, Date.now(), url.searchParams.get("lib") === "1"), doors: (await store.gate()).live }) : json(403, { error: "presenter link needed" });
       if (method === "POST" && path === "/control") {
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
