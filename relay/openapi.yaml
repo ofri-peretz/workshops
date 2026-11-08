@@ -335,12 +335,13 @@ components:
         - { enum: [99, 99.9, 99.95, 99.99, 99.999], description: a nines choice }
         - { type: object, required: [ms, pct], properties: { ms: { enum: [100, 300, 1000] }, pct: { enum: [99, 99.9, 99.99] } }, description: an SLO choice }
         - { type: object, required: [k, a], properties: { k: { type: integer, minimum: 0, maximum: 59 }, a: { type: integer, minimum: 0, maximum: 3 } }, description: one term in a term check }
+        - { type: object, required: [k, text], properties: { k: { type: integer, minimum: 0 }, text: { type: string, minLength: 2, maxLength: 160 } }, description: "one term in your own words (an explain step); the latest wording counts until the reveal" }
     Span: { type: object, required: [n, s, d], properties: { n: { type: string, description: span name }, s: { type: number, description: "start, ms" }, d: { type: number, description: "duration, ms" } } }
     Control:
       type: object
       required: [op]
       properties:
-        op: { enum: [start, begin, next, prev, goto, choose, detour, reveal, groups, break, fix, instrument, eyes, mode, audience, reset, signout, close, extend, hideq] }
+        op: { enum: [start, begin, next, prev, goto, choose, detour, reveal, groups, break, fix, instrument, eyes, mode, audience, reset, signout, close, extend, hideq, hidex, tag] }
         label: { type: string, maxLength: 60, description: "start: the group or venue, kept with the run" }
         w: { type: integer, description: "start: the workshop" }
         wait: { type: boolean, description: "start: phones wait until begin" }

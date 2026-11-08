@@ -16,7 +16,7 @@
     "spec": "quint test relay/specs/relay.qnt --main=relayFixed && quint run relay/specs/relay.qnt --main=relayFixed --invariant=safe --max-steps=30 --max-samples=5000",
     "spec:old-order": "quint run relay/specs/relay.qnt --main=relayOldOrder --invariant=rightCodeAlwaysAdmits --max-steps=30 --max-samples=5000",
     "contract": "redocly lint relay/openapi.yaml --config relay/.redocly.yaml",
-    "mutate": "oxmutate run",
+    "mutate": "node scripts/mutate-ranges.mjs && oxmutate run",
     "verify": "npm test && npm run unit && npm run spec && npm run contract && npm run mutate"
   },
   "devDependencies": {

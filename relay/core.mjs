@@ -127,7 +127,7 @@ export function reduce(room, ev) {
     case "send": {
       if (!p) return room;
       p.sends++; if (d.again) p.dups++;
-      room.chat.push({ t, id: p.id, g: p.group, ms: d.ms, ok: d.ok, rtt: null, n: ev.id, trace: d.trace, again: !!d.again });
+      room.chat.push({ t, id: p.id, g: p.group, ms: d.ms, ok: d.ok, rtt: null, n: ev.id, trace: d.trace, again: !!d.again, name: room.names === "named" ? p.name : undefined });
       p.lastSend = ev.id;
       return room;
     }
@@ -151,6 +151,7 @@ export function reduce(room, ev) {
       else if (d.scene === "_ask") room.questions.push({ id: ev.id, text: d.value, by: p.id, votes: new Set([p.id]), hidden: false, t });
       else if (d.scene === "_vote") { const q = room.questions.find((x) => x.id === d.value); if (q) q.votes.has(p.id) ? q.votes.delete(p.id) : q.votes.add(p.id); }
       else if (d.scene === "_pulse") { const m = (room.pulse[d.value.step] ??= new Map()); d.value.v ? m.set(p.id, d.value.v) : m.delete(p.id); }
+      else if (SCENE[d.scene]?.type === "explain") { (p.answers[d.scene] ||= {})[d.value.k] = { text: d.value.text, id: ev.id }; p.at[d.scene] = t; } // the latest wording counts, until the reveal
       else if (SCENE[d.scene]?.type === "termcheck") { const m = (p.answers[d.scene] ||= {}); if (m[d.value.k] === undefined) m[d.value.k] = d.value.a; p.at[d.scene] = t; } // first try per term
       else if (d.scene !== "followup") { p.answers[d.scene] = d.value; p.at[d.scene] = t; }
       return room;
@@ -175,6 +176,7 @@ function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, 
   if (op === "eyes") { room.eyes = !room.eyes; return room; }
   if (op === "close") { room.closedAt = t; return room; } // the end of the run, for the report
   if (op === "tag") return room; // about a past run: only the history reads it
+  if (op === "hidex") { (room.hiddenAnswers ??= new Set()).has(i) ? room.hiddenAnswers.delete(i) : room.hiddenAnswers.add(i); return room; } // hide (or restore) one typed answer
   if (op === "hideq") { const q = room.questions.find((x) => x.id === i); if (q) q.hidden = !q.hidden; return room; } // the presenter hides (or restores) a question
   if (op === "extend") { room.extended = (room.extended || 0) + 1; return room; } // recorded; the doors themselves live in Supabase
   if (op === "signout") { room.phones = new Map(); room.signedOut = ev; return room; } // everyone rejoins with the new code; the step stays // "look at the screen": phones pause input
@@ -228,7 +230,7 @@ export function validControl({ op, i, w, a, id, intro, c, title, names, voters, 
   if (op === "mode") return (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean");
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
   if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout", "close", "extend"].includes(op)) return true;
-  if (op === "hideq") return Number.isInteger(i) && i > 0;
+  if (op === "hideq" || op === "hidex") return Number.isInteger(i) && i > 0;
   if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c)) && (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean")
     && (title === undefined || (typeof title === "string" && /^[\p{L}\p{N} &,.:'’-]{1,40}$/u.test(title)));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
@@ -237,6 +239,7 @@ export function validControl({ op, i, w, a, id, intro, c, title, names, voters, 
 export function validAnswer(s, value) {
   if (POLL_TYPES.has(s.type) || s.type === "cases" || (s.type === "outro" && s.options)) return Number.isInteger(value) && value >= 0 && value < s.options.length;
   if (s.type === "nines") return NINES.includes(value);
+  if (s.type === "explain") return !!value && Number.isInteger(value.k) && value.k >= 0 && value.k < s.quiz.length && typeof value.text === "string" && value.text.trim().length >= 2 && value.text.length <= 160;
   if (s.type === "termcheck") return !!value && Number.isInteger(value.k) && value.k >= 0 && value.k < 60 && Number.isInteger(value.a) && value.a >= 0 && value.a < 4;
   if (s.type === "slo") return !!value && SLO_MS.includes(value.ms) && SLO_PCT.includes(value.pct);
   if (s.type === "takeaway") return Number.isInteger(value) && value >= 0 && value < s.items.length; // "the one I'll do this week"
@@ -250,6 +253,7 @@ export function results(room, s, now) {
     case "cases": return results(room, { ...s, type: "poll" }, now);
     case "outro": return s.options ? results(room, { ...s, type: "poll" }, now) : {};
     case "termcheck": return termResults(room, s);
+    case "explain": return explainResults(room, s);
     case "takeaway": return { counts: s.items.map((_, i) => answers.filter(([, a]) => a === i).length), total: answers.length };
     case "fork": return { ...results(room, { ...s, type: "poll" }, now), curious: s.order.map((d) => curiosity(room, s.detours[d])) };
     case "gantt": { const tr = traced(room); return { ...results(room, { ...s, type: "poll" }, now), real: tr.length ? buildTrace(tr.at(-1)) : null }; }
@@ -343,7 +347,7 @@ function logLine(c) {
   // the usual rule: failed is ERROR; went wrong but handled (the phone re-sent, and it got through) is WARN;
   // everything else is INFO, slow or fast: slowness is a duration field, and the metrics (p95, the SLO) alert on it
   return { time: new Date(c.t).toISOString(), level: !c.ok ? "error" : c.again ? "warn" : "info", route: "POST /send", attempt: c.again ? 2 : 1,
-    status: c.ok ? 200 : 503, duration_ms: ms == null ? null : Math.round(ms), client: clientId(c.id), trace_id: c.trace ?? null };
+    status: c.ok ? 200 : 503, duration_ms: ms == null ? null : Math.round(ms), client_id: clientId(c.id), client_name: c.name ?? null, trace_id: c.trace ?? null };
 }
 const levels = (chat) => ({ count: chat.length, errors: chat.filter((c) => !c.ok).length, slowest: chat.length ? logLine(chat.reduce((a, b) => ((waited(b) ?? 0) > (waited(a) ?? 0) ? b : a))) : null });
 
@@ -370,7 +374,7 @@ function outage(room, now) {
 }
 
 // Hands-on steps get a countdown: the scene's minutes, from the moment the room arrived.
-export const TIMED = new Set([...POLL_TYPES, "cases", "road", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway", "termcheck"]);
+export const TIMED = new Set([...POLL_TYPES, "cases", "road", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway", "termcheck", "explain"]);
 const timerOf = (room, s, now = Date.now()) => (room.begun && room.since && TIMED.has(s.type) && s.min ? { left: Math.max(0, room.since + s.min * 60_000 - now), total: s.min * 60_000 } : undefined);
 const ALWAYS_LEAD = new Set(["intro", "why", "today", "outro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
@@ -423,7 +427,7 @@ export function phoneView(room, p) {
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, how: s.how, step: s.type === "step" ? { flow: s.flow, viz: s.viz, example: s.example, live: s.live, parts: s.parts } : undefined, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
-    shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], quiz: s.type === "termcheck" ? quizOf(room, s).map((x) => ({ term: x.term, options: x.options, answer: shown ? x.answer : undefined })) : undefined,
+    shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], explain: s.type === "explain" ? s.quiz.map((term, k) => ({ term, def: shown ? GLOSSARY[term].def : undefined, mine: p?.answers[s.id]?.[k]?.text })) : undefined, quiz: s.type === "termcheck" ? quizOf(room, s).map((x) => ({ term: x.term, options: x.options, answer: shown ? x.answer : undefined })) : undefined,
     termScore: s.type === "termcheck" && p ? termScore(room, p, s) : undefined,
     questions: questionsOf(room, p).slice(0, 20), pulseMine: p ? room.pulse[s.id]?.get(p.id) : undefined, lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined, why: shown ? s.why : undefined,
     workshop: W.title, promise: W.promise, terms: termsSoFar(room), curiousMine: !!p?.curious.has(s.id), chosen: s.chosen,
@@ -575,6 +579,16 @@ function termResults(room, s) {
   const avg = (f) => (rows.length && items.length ? rows.reduce((a, r) => a + f(r), 0) / rows.length / items.length : 0);
   return { items: per, done, people: ps.length, n: items.length, before: avg((r) => r.before), after: avg((r) => r.after),
     improved: rows.filter((r) => r.after > r.before).sort((a, b) => b.after - b.before - (a.after - a.before)).slice(0, 3).map(({ name, before, after }) => ({ name, before, after })) };
+}
+
+// ---- "say it in your own words": each phone types a meaning per term; the reveal shows the real one and three of the room's
+function explainResults(room, s) {
+  const ps = [...room.phones.values()], hidden = room.hiddenAnswers ?? new Set();
+  return { people: ps.length, done: ps.filter((p) => Object.keys(p.answers[s.id] || {}).length >= s.quiz.length).length,
+    items: s.quiz.map((term, k) => {
+      const all = ps.map((p) => p.answers[s.id]?.[k]).filter(Boolean);
+      return { term, def: GLOSSARY[term].def, n: all.length, samples: all.filter((a) => !hidden.has(a.id)).sort((a, b) => b.id - a.id).slice(0, 3).map((a) => ({ id: a.id, text: a.text })) };
+    }) };
 }
 
 // ---- anonymous questions and the pulse --------------------------------------------------------------

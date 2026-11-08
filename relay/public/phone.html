@@ -1061,6 +1061,10 @@
         gantt(v) {
           return R.poll(v);
         },
+        explain(v) {
+          if (v.shown) return `<h1>${esc(v.title)}</h1><ul class="tclist">${v.explain.map((x) => `<li><b>${esc(x.term)}</b><span>${esc(x.def)}</span>${x.mine ? `<span><i>You wrote:</i> ${esc(x.mine)}</span>` : ""}</li>`).join("")}</ul>`;
+          return `<span class="label">Your own words · nobody sees who wrote what</span><h1>${esc(v.title)}</h1><form class="card ask" data-explain>${v.explain.map((x, k) => `<label class="label" for="ex${k}">${esc(x.term)}</label><textarea id="ex${k}" name="${k}" rows="2" maxlength="160" placeholder="What does it mean?">${esc(x.mine || "")}</textarea>`).join("")}<button type="submit" class="primary">${v.explain.some((x) => x.mine) ? "Update my answers" : "Send my answers"}</button></form>`;
+        },
         termcheck(v) {
           const m = v.mine || {}, n = v.quiz.length, k = v.quiz.findIndex((_, i) => m[i] === undefined), sc = v.termScore || {};
           if (v.shown) {
@@ -1121,7 +1125,7 @@
           const more = `<button type="button" class="primary" id="sendmore">Send Dana a message</button>`;
           const lines = local.allLogs ? v.lines : v.myLines;
           const slow = (v.myLines || []).reduce((a, b) => ((b.duration_ms ?? 0) > (a?.duration_ms ?? -1) ? b : a), null);
-          const row = (l) => `<code class="logline ${l.level}${slow && l.trace_id === slow.trace_id ? " slow" : ""}">${esc(JSON.stringify({ time: l.time.slice(11, 23), level: l.level, status: l.status, duration_ms: l.duration_ms, client: l.client, trace_id: l.trace_id && l.trace_id.slice(0, 12) + "…" }))}</code>`;
+          const row = (l) => `<code class="logline ${l.level}${slow && l.trace_id === slow.trace_id ? " slow" : ""}">${esc(JSON.stringify({ time: l.time.slice(11, 23), level: l.level, status: l.status, duration_ms: l.duration_ms, client_id: l.client_id, client_name: l.client_name ?? undefined, trace_id: l.trace_id && l.trace_id.slice(0, 12) + "…" }))}</code>`;
           return `<h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p><div class="card"><span class="label">Your client id</span><span class="big">${esc(v.client)}</span></div>${more}
       <button type="button" id="alllogs" aria-pressed="${!!local.allLogs}">${local.allLogs ? "Show only my lines" : "Show the whole room's log"}</button>
       <div class="card logs">${lines && lines.length ? lines.map(row).join("") : "<p>No lines yet. Send a message.</p>"}</div>
@@ -1191,7 +1195,7 @@
         },
       };
 
-      let lastKey = "", roadBase = null;
+      let lastKey = "", roadBase = null, deepOpened = false;
       function live(v) { // the in-place updates
         setTimer(v.timer);
         $("score").hidden = !v.points || !v.shown; // the score shows at reveals, not over every step
@@ -1212,8 +1216,10 @@
         const v = view;
         if (!v) return;
         setTimer(v.timer);
-        if (v.id && location.hash.slice(1) !== v.id) history.replaceState(null, "", "#" + v.id);
-        const quizOpen = v.type === "termcheck" && !v.shown; // no peeking at the meanings mid-check
+        if (!deepOpened) { deepOpened = true; const h = location.hash; if (h.endsWith("/ask")) setTimeout(() => setAsk(true)); else if (h.endsWith("/terms")) setTimeout(() => setTerms(true)); } // a link straight to a panel
+        const panel = !$("terms").hidden ? "/terms" : !$("ask").hidden ? "/ask" : "";
+        if (v.id && location.hash.slice(1) !== v.id + panel) history.replaceState(history.state, "", "#" + v.id + panel); // the step, and the open panel
+        const quizOpen = (v.type === "termcheck" || v.type === "explain") && !v.shown; // no peeking at the meanings mid-check
         $("termsBtn").disabled = quizOpen; if (quizOpen && !$("terms").hidden) setTerms(false); // the address names the current slide, like the big screen's
         $("where").textContent = v.act;
         $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
@@ -1223,6 +1229,7 @@
         terms(v.terms);
         if (v.needName && document.getElementById("nameform")) return; // don't redraw under someone typing their name
         if (document.querySelector("#rest #askq")?.value) return; // nor under someone typing a question
+        if (document.activeElement?.closest?.("[data-explain]")) return; // nor under someone writing a meaning
         $("chat").classList.toggle("on", v.type === "chat");
         const key = `${v.id}:${v.shown}`;
         document.body.classList.toggle("enter", key !== lastKey);
@@ -1250,8 +1257,13 @@
         };
         const rs = $("roadsend");
         if (rs) rs.onclick = async () => {
-          rs.disabled = true;
-          try { await post("/api/send", {}, { traceparent: `00-${hex(16)}-${hex(8)}-01` }); const r = await fetch("/api/view", { cache: "no-store" }); if (r.ok) { view = await r.json(); render(); } } finally { rs.disabled = false; }
+          rs.disabled = true; rs.textContent = "Sending… your group's wait comes first";
+          roadBase = { since: -1e9, at: Date.now() }; // every stage dark until the reply lands
+          try {
+            await post("/api/send", {}, { traceparent: `00-${hex(16)}-${hex(8)}-01` });
+            const r = await fetch("/api/view", { cache: "no-store" }); if (r.ok) { view = await r.json(); render(); }
+            roadBase = { since: 0, at: Date.now() }; // Relay writes the line as it answers: the road starts now
+          } finally { const b = $("roadsend"); if (b) { b.disabled = false; b.textContent = "Send another"; } }
         };
         wire(v);
       }
@@ -1271,7 +1283,7 @@
       const linkIcons = (ls, name) => `<nav class="findme icons" aria-label="${esc(name)} elsewhere">${ls.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener" data-cta="${esc(l.icon)}" aria-label="${esc(l.cta || l.label)}" title="${esc(l.cta || l.label)}">${ICON[l.icon] || ""}</a>`).join("")}</nav>`;
       const linksCta = (ls, name) => { const blog = ls.find((l) => l.icon === "blog"); return `<div class="findcta">${linkIcons(ls.filter((l) => l !== blog), name)}${blog ? `<a class="cta" href="${esc(blog.href)}" target="_blank" rel="noopener" data-cta="blog">${ICON.blog || ""}<span>${esc(blog.cta)}</span></a>` : ""}</div>`; };
       const findMe = (v, cta = false) => (cta ? linksCta : linkIcons)(v.presenter.links, v.presenter.name);
-      const NO_DEEPER = new Set(["intro", "series", "scan", "why", "today", "road", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway", "termcheck"]);
+      const NO_DEEPER = new Set(["intro", "series", "scan", "why", "today", "road", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway", "termcheck", "explain"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
         let kept = {};
@@ -1314,7 +1326,7 @@
       document.addEventListener("click", async (e) => {
         const b = e.target.closest("[data-ask],[data-closeask],[data-vote],[data-pulse]");
         if (!b) return;
-        if (b.hasAttribute("data-ask")) { history.pushState({ ask: true }, "", location.hash); return setAsk(true); }
+        if (b.hasAttribute("data-ask")) { history.pushState({ ask: true }, "", "#" + (view?.id ?? "") + "/ask"); return setAsk(true); }
         if (b.hasAttribute("data-closeask")) return history.state?.ask ? history.back() : setAsk(false);
         if (b.dataset.vote) {
           const r = await post("/api/event", { type: "vote", target: +b.dataset.vote }).catch(() => null);
@@ -1331,6 +1343,19 @@
         }
       });
       document.addEventListener("submit", async (e) => {
+        if (e.target.matches("[data-explain]")) {
+          e.preventDefault();
+          const f = new FormData(e.target), sends = [];
+          for (const [k, text] of f) if (String(text).trim().length >= 2) sends.push(post("/api/answer", { value: { k: +k, text: String(text).trim() } }).catch(() => null));
+          const rs = await Promise.all(sends);
+          if (!rs.length) return toast("Write at least one meaning.");
+          if (rs.some((r) => !r?.ok)) return toast(whyNot(rs.find((r) => !r?.ok)));
+          toast("Saved. You can still edit until the reveal.");
+          document.activeElement?.blur();
+          const v = await fetch("/api/view", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+          if (v) { view = v; render(); }
+          return;
+        }
         if (!e.target.matches("[data-askform]")) return;
         e.preventDefault();
         const text = new FormData(e.target).get("q");
@@ -1342,7 +1367,7 @@
       });
       $("termsBtn").onclick = () => {
         const open = $("terms").hidden;
-        if (open) { history.pushState({ terms: true }, "", location.hash); post("/api/event", { type: "terms" }); }
+        if (open) { history.pushState({ terms: true }, "", "#" + (view?.id ?? "") + "/terms"); post("/api/event", { type: "terms" }); }
         else if (history.state?.terms) return history.back();
         setTerms(open);
       };

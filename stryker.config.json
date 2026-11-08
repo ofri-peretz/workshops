@@ -2,10 +2,10 @@
   "$comment": "oxmutate grades relay/core.test.mjs on the rules specs/relay.qnt models: joining (store.mjs tryJoin), term answers, sign-out and close, term-check scoring, points and leaderboard moves. Line ranges follow the code; re-pin them when those functions move.",
   "mutate": [
     "relay/store.mjs:23-33",
-    "relay/core.mjs:154-154",
-    "relay/core.mjs:176-177",
-    "relay/core.mjs:237-237",
-    "relay/core.mjs:550-597"
+    "relay/core.mjs:154-155",
+    "relay/core.mjs:177-180",
+    "relay/core.mjs:242-243",
+    "relay/core.mjs:559-616"
   ],
   "testRunner": "vitest",
   "vitest": {

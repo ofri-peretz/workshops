@@ -298,7 +298,7 @@ for (const line of prom.trim().split("\n")) assert.match(line, /^(# (HELP|TYPE) 
 await go("sig-logs");
 const logs = await sig[1].view();
 assert.equal(logs.myLines.length, 3, "a phone finds its own lines");
-assert.ok(logs.myLines.every((l) => l.client === logs.client && /^[0-9a-f]{32}$/.test(l.trace_id)), "every log line carries the client and a trace id");
+assert.ok(logs.myLines.every((l) => l.client_id === logs.client && /^[0-9a-f]{32}$/.test(l.trace_id)), "every log line carries the client and a trace id");
 assert.ok(!JSON.stringify(logs.lines).includes(sig[0].cookie.split("=")[1]), "log lines never show a phone's cookie id");
 
 // ---- the room is closed unless the presenter opened it; the join code is guarded -----------------

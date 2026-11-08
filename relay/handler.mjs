@@ -264,7 +264,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (room.eyes) return json(423, { error: "Eyes on the screen for a moment." });
         const s = sceneAt(room), { value } = await read(request);
         if (!validAnswer(s, value)) return json(400, { error: "not an answer for this scene" });
-        if ((room.shown.has(s.id) && (s.answer !== undefined || s.type === "termcheck")) || s.chosen !== undefined) return json(409, { error: "answers are closed" });
+        if ((room.shown.has(s.id) && (s.answer !== undefined || s.type === "termcheck" || s.type === "explain")) || s.chosen !== undefined) return json(409, { error: "answers are closed" });
         await append("answer", { scene: s.id, value });
         return json(200, { ok: true });
       }

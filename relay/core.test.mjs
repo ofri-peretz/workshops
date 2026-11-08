@@ -289,3 +289,81 @@ describe("test sessions", () => {
     expect([out.pos, out.phones.size]).toEqual([pos, people]);
   });
 });
+
+describe("your own words, and names in the log", () => {
+  it("keeps the latest wording per term, shows three, and lets the presenter hide one", () => {
+    let room = roomAt("explain");
+    const s = SCENE.explain;
+    expect(validAnswer(s, { k: 0, text: "a number over time" })).toBe(true);
+    expect(validAnswer(s, { k: 0, text: "x" })).toBe(false);
+    expect(validAnswer(s, { k: 3, text: "out of range" })).toBe(false);
+    room = answer(room, "a", "explain", { k: 0, text: "first try" });
+    room = answer(room, "a", "explain", { k: 0, text: "a count over time" });
+    room = answer(room, "b", "explain", { k: 0, text: "a graph number" });
+    let r = screenView(room, Date.now()).results.items[0];
+    expect(r.n).toBe(2);
+    expect(r.samples.map((x) => x.text)).toEqual(["a graph number", "a count over time"]);
+    room = reduce(room, ev("control", { op: "hidex", i: r.samples[0].id }));
+    r = screenView(room, Date.now()).results.items[0];
+    expect(r.samples.map((x) => x.text)).toEqual(["a count over time"]);
+    expect(phoneView(room, room.phones.get("a")).explain[0]).toMatchObject({ term: "metric", mine: "a count over time", def: undefined });
+  });
+  it("logs the client id, and the name the person picked", () => {
+    let room = roomAt("felt");
+    room = reduce(room, ev("send", { ms: 120, ok: true }, "a"));
+    const line = phoneView(room, room.phones.get("a"));
+    expect(room.chat.at(-1).name).toBe("A");
+  });
+});
+
+describe("edges the third oxmutate run found", () => {
+  it("counts extensions and lets the presenter restore a hidden question or answer", () => {
+    let room = ctl(roomAt("felt"), "extend");
+    room = ctl(room, "extend");
+    expect(room.extended).toBe(2);
+    room = answer(room, "a", "_ask", "Will this be recorded?");
+    const id = room.questions[0].id;
+    room = reduce(room, ev("control", { op: "hideq", i: id }));
+    room = reduce(room, ev("control", { op: "hideq", i: id }));
+    expect(screenView(room, Date.now()).questions[0].hidden).toBeUndefined();
+    room = reduce(room, ev("control", { op: "goto", i: room.path.indexOf("explain") }));
+    room = answer(room, "a", "explain", { k: 0, text: "a number over time" });
+    const aid = screenView(room, Date.now()).results.items[0].samples[0].id;
+    room = reduce(room, ev("control", { op: "hidex", i: aid }));
+    room = reduce(room, ev("control", { op: "hidex", i: aid }));
+    expect(screenView(room, Date.now()).results.items[0].samples).toHaveLength(1);
+  });
+  it("bounds a typed meaning: 2 to 160 characters, not just spaces, for a real term", () => {
+    const s = SCENE.explain;
+    expect(validAnswer(s, { k: 0, text: "x".repeat(160) })).toBe(true);
+    expect(validAnswer(s, { k: 0, text: "x".repeat(161) })).toBe(false);
+    expect(validAnswer(s, { k: 0, text: "   " })).toBe(false);
+    expect(validAnswer(s, { k: 0, text: 42 })).toBe(false);
+    expect(validAnswer(s, { k: 0.5, text: "fine" })).toBe(false);
+    expect(validAnswer(s, { k: -1, text: "fine" })).toBe(false);
+    expect(validAnswer(s, null)).toBe(false);
+    expect(validAnswer(s, { k: 0, a: 1 })).toBe(false);
+  });
+  it("shows three answers per term, newest first, and counts who finished all three", () => {
+    let room = roomAt("explain", ["a", "b", "c", "d"]);
+    for (const p of ["a", "b", "c", "d"]) room = answer(room, p, "explain", { k: 0, text: `meaning from ${p}` });
+    for (const k of [1, 2]) room = answer(room, "a", "explain", { k, text: "done" });
+    const r = screenView(room, Date.now()).results;
+    expect(r.items[0].samples.map((x) => x.text)).toEqual(["meaning from d", "meaning from c", "meaning from b"]);
+    expect(r.items[0].n).toBe(4);
+    expect([r.done, r.people]).toEqual([1, 4]);
+  });
+  it("marks a phone's own question and its upvote, and breaks vote ties by age", () => {
+    let room = roomAt("felt");
+    room = answer(room, "a", "_ask", "Older question");
+    room = answer(room, "b", "_ask", "Newer question");
+    const v = phoneView(room, room.phones.get("a")).questions;
+    expect(v.map((q) => q.text)).toEqual(["Older question", "Newer question"]);
+    expect(v[0]).toMatchObject({ own: true, mine: true });
+    expect(v[1].own).toBeUndefined();
+    expect(v[1].mine).toBeUndefined();
+  });
+  it("reports zero pulse for a step nobody marked", () => {
+    expect(screenView(roomAt("felt"), Date.now()).pulse).toEqual({ lost: 0, ok: 0 });
+  });
+});
