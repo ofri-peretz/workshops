@@ -516,8 +516,11 @@
         flex: none;
       }
       #send:active {
-        transform: scale(0.88);
+        transform: scale(0.92);
       }
+      #send { width: 44px; height: 44px; min-height: 0; display: grid; place-items: center; align-self: center; }
+      .msgtime { align-self: flex-end; margin-top: -2px; font: 500 11px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+      .msgtime.bad { color: var(--bad, #ef4444); }
 
       /* ---- Design layer: calm depth, one accent, big type, gentle entrances (once per step). ---- */
       body { background: radial-gradient(120% 60% at 50% -10%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
@@ -627,7 +630,7 @@
         </div>
         <div class="cbar">
           <div class="field" id="field">Message</div>
-          <button id="send" type="button" aria-label="Send">↑</button>
+          <button id="send" type="button" aria-label="Send"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
         </div>
       </section>
       <div id="rest"></div>
@@ -766,6 +769,13 @@
           $("msgs").scrollTop = 1e9;
         }, 1400 + Math.random() * 900);
       }
+      // Each sent message shows how long it took: the round trip the phone measured.
+      function stamp(b, text, bad) {
+        const t = document.createElement("div");
+        t.className = "msgtime" + (bad ? " bad" : "");
+        t.textContent = text;
+        b.after(t);
+      }
       $("send").addEventListener("click", async () => {
         const again = pending > 0,
           text = LINES[(again ? n - 1 : n) % LINES.length];
@@ -791,6 +801,7 @@
           }
           b.classList.remove("pending");
           const ms = Math.round(performance.now() - t0);
+          stamp(b, r.ok ? `${fmt(ms)}` : `Failed after ${fmt(ms)}`, !r.ok);
           if (r.body.spans) post("/api/rtt", { ms, trace: r.body.trace, spans: r.body.spans, phases: phasesFor(t0) });
           else if (r.ok) post("/api/rtt", { ms });
           if (r.ok) {
@@ -806,6 +817,7 @@
         } catch {
           b.classList.add("failed");
           receipt("Not Delivered", true);
+          stamp(b, `Failed after ${fmt(performance.now() - t0)}`, true);
         } finally {
           pending--;
           $("msgs").scrollTop = 1e9;
