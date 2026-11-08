@@ -55,6 +55,21 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/chapters") return presenter ? json(200, { chapters: chapterList() }) : json(403, { error: "presenter link needed" });
       if (method === "GET" && path === "/config") // what the pages may know: PostHog only when its key is set
         return json(200, { posthog: process.env.POSTHOG_KEY ? { key: process.env.POSTHOG_KEY, host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" } : null });
+      // The screen's "Email me a presenter link": Supabase emails a sign-in link to the owner only;
+      // landing back, the screen trades the owner's session for the presenter token.
+      const sb = process.env.SUPABASE_URL, sbKey = process.env.SUPABASE_KEY, owner = process.env.OWNER_EMAIL;
+      if (method === "POST" && (path === "/screen-link" || path === "/screen-unlock") && !(sb && sbKey && owner)) return json(503, { error: "Email sign-in isn't set up on this relay." });
+      if (method === "POST" && path === "/screen-link") {
+        const back = /(^|\.)workshop\.ofriperetz\.dev$|^localhost$|^127\.0\.0\.1$/.test(url.hostname) ? url.origin : "https://screen.signals.workshop.ofriperetz.dev";
+        const r = await fetch(`${sb}/auth/v1/otp?redirect_to=${encodeURIComponent(back + "/screen")}`, { method: "POST", headers: { apikey: sbKey, "content-type": "application/json" }, body: JSON.stringify({ email: owner, create_user: false }) });
+        return r.ok ? json(200, { sent: true }) : json(r.status === 429 ? 429 : 502, { error: r.status === 429 ? "A link was just sent. Check your email, or wait a minute." : "The email couldn't be sent." });
+      }
+      if (method === "POST" && path === "/screen-unlock") {
+        const { access_token } = await read(request).catch(() => ({}));
+        const r = typeof access_token === "string" ? await fetch(`${sb}/auth/v1/user`, { headers: { apikey: sbKey, authorization: `Bearer ${access_token}` } }) : null;
+        const user = r?.ok ? await r.json() : null;
+        return user?.email?.toLowerCase() === owner.toLowerCase() ? json(200, { t: token }) : json(403, { error: "This link isn't the owner's. Request a new one." });
+      }
       if (method === "GET" && path === "/screen") return presenter ? json(200, screenView(room, Date.now())) : json(403, { error: "presenter link needed" });
       if (method === "POST" && path === "/control") {
         if (!presenter) return json(403, { error: "presenter link needed" });

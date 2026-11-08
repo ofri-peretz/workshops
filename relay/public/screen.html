@@ -666,6 +666,20 @@
         if (t) { u.searchParams.delete("t"); history.replaceState(null, "", u); }
         return t;
       })();
+      // Back from the emailed link: Supabase put the owner's session in the fragment; trade it for the token.
+      if (location.hash.includes("access_token=")) {
+        const access_token = new URLSearchParams(location.hash.slice(1)).get("access_token");
+        history.replaceState(null, "", location.pathname + location.search);
+        fetch("/api/screen-unlock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ access_token }) })
+          .then((r) => r.json()).then((d) => { if (d.t) { try { localStorage.setItem("relayT", d.t); } catch {} location.reload(); } else alertGuide(d.error); });
+      }
+      function alertGuide(msg) { const el = document.getElementById("linkmsg"); if (el) el.textContent = msg; }
+      async function emailLink() {
+        alertGuide("Sending…");
+        const r = await fetch("/api/screen-link", { method: "POST" }).catch(() => null);
+        const d = r ? await r.json().catch(() => ({})) : {};
+        alertGuide(r?.ok ? "Sent. Open the link in your email on this device." : d.error || "The email couldn't be sent.");
+      }
       function unlock(e) {
         e.preventDefault();
         try { localStorage.setItem("relayT", new FormData(e.target).get("t").trim()); } catch {}
@@ -1263,7 +1277,7 @@
             const { error, closed } = await r.json().catch(() => ({}));
             const stage = document.getElementById("stage");
             if (closed) stage.innerHTML = `<section class="guide"><h1>The room is closed</h1><p>In your console: pick the workshop, then Go live. This screen picks it up by itself.</p></section>`;
-            else if (!stage.querySelector("form")) stage.innerHTML = `<section class="guide"><h1>Presenter screen</h1><p>Paste your presenter token once. This machine remembers it.</p><form onsubmit="unlock(event)"><input name="t" type="password" autocomplete="off" required aria-label="Presenter token"> <button>Open</button></form><p class="muted">${esc(error || "Relay answered " + r.status)}</p></section>`;
+            else if (!stage.querySelector("form")) stage.innerHTML = `<section class="guide"><h1>Presenter screen</h1><p><button type="button" onclick="emailLink()">Email me a presenter link</button></p><p id="linkmsg" role="status" class="muted"></p><p class="muted">Or paste your presenter token. This machine remembers it.</p><form onsubmit="unlock(event)"><input name="t" type="password" autocomplete="off" required aria-label="Presenter token"> <button>Open</button></form></section>`;
           }
         } catch {}
         setTimeout(poll, 1000);
