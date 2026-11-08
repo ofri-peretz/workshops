@@ -20,5 +20,6 @@ export async function rememberGroup(label: string, chapters: string[]) {
   const g = groups.find((x) => x.label === label) ?? (groups.push({ label, chapters: [], last: "" }), groups.at(-1)!);
   g.chapters = [...new Set([...g.chapters, ...chapters])];
   g.last = new Date().toISOString().slice(0, 10);
-  await writeFile(FILE, JSON.stringify(groups, null, 2) + "\n");
+  // ponytail: on Vercel the filesystem is read-only, so history only persists when run locally; move to Supabase if it matters there.
+  await writeFile(FILE, JSON.stringify(groups, null, 2) + "\n").catch(() => {});
 }

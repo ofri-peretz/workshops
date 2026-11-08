@@ -32,12 +32,12 @@ them all; DNS is A records to Vercel at the registrar.
 | `chat.`, `screen.`, `status.workshop.ofriperetz.dev` | Older Relay editions; retire when workshops 2–4 get their slugs | While live |
 
 "While live" means the presenter opened the room from the console; otherwise the address answers
-403. The console itself has no address: it runs on the presenter's laptop at `localhost:4180`.
+403. The console lives at `console.workshop.ofriperetz.dev` (Vercel project `workshop-console`, also `workshop-console-two.vercel.app`); only the owner's email can sign in. It also runs locally at `localhost:4180`.
 
 ## What's here
 
 - [`relay/`](relay/): Relay, the chat app every demo measures. Phones, big screen, status page.
-- [`console/`](console/): the presenter's console (Next.js, Interlace DS), run on the presenter's laptop.
+- [`console/`](console/): the presenter's console (Next.js, Interlace DS), on Vercel or the presenter's laptop.
 - [`.sdlc/intents/`](.sdlc/intents/): what each change is for and how it was designed.
 - [`docs/storytelling.md`](docs/storytelling.md): how headlines and taglines are written (checked by the tests).
 

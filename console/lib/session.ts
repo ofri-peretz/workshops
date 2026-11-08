@@ -7,8 +7,8 @@ const COOKIE = "console_session";
 type Session = { access: string; refresh: string; expiresAt: number };
 
 /** Supabase Auth over plain REST: the magic link signs the presenter in; the session lives in an HttpOnly cookie. */
-export async function sendSignInLink(email: string) {
-  const r = await fetch(`${env.supabaseUrl()}/auth/v1/otp?redirect_to=${encodeURIComponent("http://localhost:4180/auth/callback")}`, {
+export async function sendSignInLink(email: string, origin: string) {
+  const r = await fetch(`${env.supabaseUrl()}/auth/v1/otp?redirect_to=${encodeURIComponent(origin + "/auth/callback")}`, {
     method: "POST",
     headers: { apikey: env.anonKey(), "content-type": "application/json" },
     body: JSON.stringify({ email, create_user: false }),
@@ -17,7 +17,7 @@ export async function sendSignInLink(email: string) {
 }
 
 export async function saveSession(s: Session) {
-  (await cookies()).set(COOKIE, JSON.stringify(s), { httpOnly: true, sameSite: "strict", path: "/", maxAge: 12 * 3600 });
+  (await cookies()).set(COOKIE, JSON.stringify(s), { httpOnly: true, secure: process.env.VERCEL === "1", sameSite: "strict", path: "/", maxAge: 12 * 3600 });
 }
 
 export async function clearSession() {

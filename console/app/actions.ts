@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 import { accessToken, clearSession, sendSignInLink } from "@/lib/session";
@@ -14,7 +15,9 @@ const signedIn = async () => {
 
 export async function requestLink(): Promise<{ sent?: boolean; error?: string }> {
   try {
-    await sendSignInLink(env.ownerEmail());
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:4180";
+    await sendSignInLink(env.ownerEmail(), `${host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https"}://${host}`);
     return { sent: true };
   } catch (e) {
     return { error: (e as Error).message };

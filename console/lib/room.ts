@@ -1,7 +1,5 @@
 import "server-only";
-import { createHmac, randomInt } from "node:crypto";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHmac } from "node:crypto";
 import { env } from "./env";
 
 export type RoomState = {
@@ -15,17 +13,10 @@ export type RoomState = {
 const LIVE_MS = 2 * 3600_000;
 const JOIN_MS = 60 * 60_000;
 
-// The plain code exists only here, in this laptop's console process. Supabase keeps its HMAC.
-// It also sits in a file on this laptop (gitignored, never in Supabase or git), so a console
-// restart doesn't lose the code that participants need.
-const CODE_FILE = join(process.cwd(), ".console-code.json");
-let current: { code: string; openedAt: string } | null = (() => {
-  try { return JSON.parse(readFileSync(CODE_FILE, "utf8")); } catch { return null; }
-})();
-const remember = (c: { code: string; openedAt: string } | null) => {
-  current = c;
-  try { if (c) writeFileSync(CODE_FILE, JSON.stringify(c)); else rmSync(CODE_FILE, { force: true }); } catch {}
-};
+// The plain code is never stored: it is derived from the secret and the code's own expiry, so any
+// console instance (laptop or Vercel) recomputes it. Supabase keeps only its HMAC.
+const codeFor = (joinUntil: string) =>
+  String(parseInt(createHmac("sha256", env.codeSecret()).update("code:" + Date.parse(joinUntil)).digest("hex").slice(0, 12), 16) % 1_000_000).padStart(6, "0");
 
 const rest = async (jwt: string, path: string, init: RequestInit = {}) => {
   const r = await fetch(`${env.supabaseUrl()}/rest/v1/${path}`, {
@@ -38,7 +29,6 @@ const rest = async (jwt: string, path: string, init: RequestInit = {}) => {
 };
 
 const hmac = (code: string) => createHmac("sha256", env.codeSecret()).update(code).digest("hex");
-const newCode = () => String(randomInt(1_000_000)).padStart(6, "0");
 
 /** Writes the owner's row; RLS returns no row for anyone else, which we treat as a hard error. */
 async function update(jwt: string, fields: Record<string, unknown>) {
@@ -48,10 +38,10 @@ async function update(jwt: string, fields: Record<string, unknown>) {
 }
 
 export async function readRoom(jwt: string): Promise<RoomState> {
-  const [a] = await rest(jwt, "relay_access?id=eq.1&select=opened_at,live_until,join_until,locked");
+  const [a] = await rest(jwt, "relay_access?id=eq.1&select=opened_at,live_until,join_until,locked,code_hmac");
   const live = a && a.live_until && Date.parse(a.live_until) > Date.now();
-  if (!live && current) remember(null);
-  const code = current && a && current.openedAt === a.opened_at && Date.parse(a.join_until) > Date.now() ? current.code : null;
+  const derived = live && a.join_until && Date.parse(a.join_until) > Date.now() ? codeFor(a.join_until) : null;
+  const code = derived && hmac(derived) === a.code_hmac ? derived : null;
   return {
     status: !live ? "closed" : a.locked ? "locked" : "live",
     openedAt: a?.opened_at ?? null,
@@ -64,27 +54,24 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
 export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, voters }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; voters?: boolean }) {
   await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience, names, voters, ...(chapters ? { c: chapters, title } : {}) });
-  const code = newCode(), now = Date.now();
-  const row = await update(jwt, {
+  const now = Date.now(), joinUntil = new Date(now + JOIN_MS).toISOString();
+  await update(jwt, {
     opened_at: new Date(now).toISOString(),
     live_until: new Date(now + LIVE_MS).toISOString(),
-    join_until: new Date(now + JOIN_MS).toISOString(),
-    code_hmac: hmac(code),
+    join_until: joinUntil,
+    code_hmac: hmac(codeFor(joinUntil)),
     locked: false,
   });
-  remember({ code, openedAt: row.opened_at });
 }
 
 /** A new code for the same room: phones already in stay; the 60 minutes restart; a lock lifts. */
 export async function newJoinCode(jwt: string) {
-  const code = newCode();
-  const row = await update(jwt, { join_until: new Date(Date.now() + JOIN_MS).toISOString(), code_hmac: hmac(code), locked: false });
-  remember({ code, openedAt: row.opened_at });
+  const joinUntil = new Date(Date.now() + JOIN_MS).toISOString();
+  await update(jwt, { join_until: joinUntil, code_hmac: hmac(codeFor(joinUntil)), locked: false });
 }
 
 export async function closeRoom(jwt: string) {
   await update(jwt, { live_until: new Date().toISOString(), code_hmac: null });
-  remember(null);
 }
 
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */

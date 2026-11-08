@@ -1,0 +1,9 @@
+# Console deploys from this folder (rootDirectory: console). Never upload local secrets or state.
+**/.env*
+!**/.env.example
+**/.console-code.json
+**/.groups.json
+**/.next*
+**/node_modules
+test-results
+playwright-report
