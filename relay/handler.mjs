@@ -78,7 +78,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         if (!presenter) return json(403, { error: "presenter link needed" });
         const body = await read(request);
         if (!validControl(body)) return json(400, { error: "unknown control" });
-        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true, names: body.names, voters: body.voters, label: body.label });
+        await append("control", { op: body.op, i: body.i, w: body.w, a: body.a, id: body.id, intro: body.intro, c: body.c, title: body.title, wait: body.wait === true, names: body.names, voters: body.voters, label: body.label, test: body.test });
         return json(200, screenView(room, Date.now()));
       }
       // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).
@@ -122,7 +122,8 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/runs") { // every workshop ever run here, newest first: the history behind each report
         if (!presenter) return json(403, { error: "presenter link needed" });
         const [starts, joins] = await Promise.all([store.events({ kind: "control" }), store.events({ kind: "join" })]);
-        const runs = starts.filter((e) => e.data?.op === "start").map((e) => ({ r: e.id, t: e.data.t, w: e.data.w, title: e.data.title || WORKSHOPS[e.data.w]?.title, label: e.data.label }));
+        const tags = new Map(starts.filter((e) => e.data?.op === "tag").map((e) => [e.data.i, e.data.test === true])); // the last tag wins
+        const runs = starts.filter((e) => e.data?.op === "start").map((e) => ({ r: e.id, t: e.data.t, w: e.data.w, title: e.data.title || WORKSHOPS[e.data.w]?.title, label: e.data.label, test: tags.has(e.id) ? tags.get(e.id) : e.data.test === true }));
         for (const [k, run] of runs.entries()) run.joined = joins.filter((j) => j.id > run.r && (k === runs.length - 1 || j.id < runs[k + 1].r)).length;
         return json(200, { runs: runs.reverse() });
       }

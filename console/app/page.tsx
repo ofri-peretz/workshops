@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -12,7 +13,7 @@ import { RunReportCard } from "./run-report";
 import { readGroups } from "@/lib/groups";
 import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
-import { beginAction, closeAction, extendAction, goLiveAction, newCodeAction, resetAction, signOutAction, signOutAllAction } from "./actions";
+import { beginAction, closeAction, extendAction, goLiveAction, newCodeAction, resetAction, signOutAction, signOutAllAction, tagRunAction } from "./actions";
 import { Countdown } from "./countdown";
 import { ConfirmClose, ConfirmReset, ConfirmSignOut } from "./confirm-close";
 import { RoomSteps } from "./room-steps";
@@ -94,6 +95,10 @@ export default async function Console({ searchParams }: { searchParams: Promise<
               <Label className="grid gap-1 font-normal">
                 <span className="font-medium">Group or venue <span className="text-muted-foreground">(optional, for your history)</span></span>
                 <Input data-testid="run-label" name="label" maxLength={60} placeholder="e.g. a team, a meetup, a conference" />
+              </Label>
+              <Label className="flex items-start gap-3 font-normal">
+                <Checkbox data-testid="test-run" name="test" className="mt-0.5" />
+                <span className="grid gap-0.5"><span className="font-medium">This is a test session</span><span className="text-sm text-muted-foreground">Marked Test in your history, and removed from the database after 7 days</span></span>
               </Label>
             </CardContent>
           </Card>
@@ -182,16 +187,17 @@ export default async function Console({ searchParams }: { searchParams: Promise<
         <Card data-testid="runs">
           <CardHeader>
             <CardTitle>Every session</CardTitle>
-            <CardDescription>Each run keeps every join, answer, message and tap. Open a run&apos;s report, or download its full log.</CardDescription>
+            <CardDescription>Each run keeps every join, answer, message and tap. Open a run&apos;s report, or download its full log. Runs marked Test are removed from the database 7 days after they ran.</CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="grid gap-2">
               {runs.slice(0, 30).map((x) => (
                 <li key={x.r} className="flex flex-wrap items-center justify-between gap-3 border-b pb-2 text-sm">
-                  <span><b>{x.title}</b>{x.label ? ` · ${x.label}` : ""} · {new Date(x.t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {x.joined} joined</span>
+                  <span>{x.test ? <Badge variant="secondary" className="mr-2">Test</Badge> : null}<b>{x.title}</b>{x.label ? ` · ${x.label}` : ""} · {new Date(x.t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {x.joined} joined</span>
                   <span className="flex gap-3">
                     <a className="underline" href={`/?run=${x.r}`}>{report?.run === x.r ? "Showing" : "Report"}</a>
                     <a className="underline" href={`/export?r=${x.r}`}>Download log</a>
+                    <form action={tagRunAction}><input type="hidden" name="r" value={x.r} /><input type="hidden" name="test" value={String(!x.test)} /><button type="submit" className="underline">{x.test ? "Not a test" : "Mark as test"}</button></form>
                   </span>
                 </li>
               ))}

@@ -545,6 +545,14 @@ assert.ok(runs.length >= 2 && runs[0].r > runs[1].r && runs.every((x) => x.title
 const runLog = await (await fetch(base + `/run-events?r=${runs[1].r}&t=t`)).json();
 assert.ok(runLog.events.length && runLog.events.every((e) => e.id >= runs[1].r && e.id < runs[0].r), "a run's export holds exactly its own events");
 assert.equal((await fetch(base + "/runs")).status, 403, "the history is the presenter's");
+await ctl("start", { w: 5, test: true });
+let tagged = (await (await fetch(base + "/runs?t=t")).json()).runs;
+assert.equal(tagged[0].test, true, "a session started as a test is marked Test");
+assert.equal(tagged[1].test, false, "real sessions are not");
+await ctl("tag", { i: tagged[1].r, test: true }); await ctl("tag", { i: tagged[0].r, test: false });
+tagged = (await (await fetch(base + "/runs?t=t")).json()).runs;
+assert.deepEqual([tagged[0].test, tagged[1].test], [false, true], "a past session can be marked a test, or not, later; the last tag wins");
+assert.equal((await ctl("tag", { i: tagged[1].r, test: "yes" })).status, 400, "a tag is true or false");
 
 // The contract (openapi.yaml) and the handler list the same routes.
 const spec = readFileSync(new URL("./openapi.yaml", import.meta.url), "utf8");

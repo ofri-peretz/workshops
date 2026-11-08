@@ -274,3 +274,18 @@ describe("questions and the pulse", () => {
     expect(validControl({ op: "start", w: 5, label: "x".repeat(61) })).toBe(false);
   });
 });
+
+describe("test sessions", () => {
+  it("takes a test flag on start and a tag for a past run", () => {
+    expect(validControl({ op: "start", w: 5, test: true })).toBe(true);
+    expect(validControl({ op: "start", w: 5, test: "yes" })).toBe(false);
+    expect(validControl({ op: "tag", i: 12, test: false })).toBe(true);
+    expect(validControl({ op: "tag", i: 0, test: true })).toBe(false);
+    expect(validControl({ op: "tag", i: 12 })).toBe(false);
+  });
+  it("leaves the live room alone when a past run is tagged", () => {
+    const room = roomAt("felt"), pos = room.pos, people = room.phones.size;
+    const out = reduce(room, ev("control", { op: "tag", i: 3, test: true }));
+    expect([out.pos, out.phones.size]).toEqual([pos, people]);
+  });
+});

@@ -174,6 +174,7 @@ function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, 
   const s = sceneAt(room);
   if (op === "eyes") { room.eyes = !room.eyes; return room; }
   if (op === "close") { room.closedAt = t; return room; } // the end of the run, for the report
+  if (op === "tag") return room; // about a past run: only the history reads it
   if (op === "hideq") { const q = room.questions.find((x) => x.id === i); if (q) q.hidden = !q.hidden; return room; } // the presenter hides (or restores) a question
   if (op === "extend") { room.extended = (room.extended || 0) + 1; return room; } // recorded; the doors themselves live in Supabase
   if (op === "signout") { room.phones = new Map(); room.signedOut = ev; return room; } // everyone rejoins with the new code; the step stays // "look at the screen": phones pause input
@@ -220,7 +221,9 @@ export const validProgram = (c) => Array.isArray(c) && c.length >= 2 && c.some((
   && c.every((x) => typeof x === "string" && Object.hasOwn(CHAPTERS, x)) && programMinutes(c) <= MAX_PROGRAM_MIN;
 export const NAME_MODES = ["anonymous", "named"];
 export const validName = (x) => typeof x === "string" && /^[\p{L}\p{N} .'’-]{1,24}$/u.test(x.trim());
-export function validControl({ op, i, w, a, id, intro, c, title, names, voters, label }) {
+export function validControl({ op, i, w, a, id, intro, c, title, names, voters, label, test }) {
+  if (test !== undefined && typeof test !== "boolean") return false; // a test session (removed after 7 days)
+  if (op === "tag") return Number.isInteger(i) && i > 0 && typeof test === "boolean"; // mark a past run as a test, or not
   if (label !== undefined && !(typeof label === "string" && label.length <= 60)) return false; // the group or venue, for the history
   if (op === "mode") return (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean");
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);

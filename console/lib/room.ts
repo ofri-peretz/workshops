@@ -52,8 +52,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, label }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; label?: string }) {
-  await relayControl({ op: "start", wait: true, w: Number(workshop) || workshop, intro, a: audience, names, ...(label ? { label } : {}), ...(chapters ? { c: chapters, title } : {}) });
+export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, label, test }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; label?: string; test?: boolean }) {
+  await relayControl({ op: "start", wait: true, w: Number(workshop) || workshop, intro, a: audience, names, ...(label ? { label } : {}), ...(test ? { test: true } : {}), ...(chapters ? { c: chapters, title } : {}) });
   const now = Date.now(), joinUntil = new Date(now + JOIN_MS).toISOString();
   await update(jwt, {
     opened_at: new Date(now).toISOString(),
@@ -111,7 +111,7 @@ export type RunReport = {
   ctas: Record<string, number>;
   participants?: { name: string; points: number; answered: number; right: number; terms: { before: number; after: number; n: number } | null; sends: number; practice: number; termsOpened: number; recapOpened: number }[];
 };
-export type Run = { r: number; t: number; w: number; title: string; joined: number; label?: string };
+export type Run = { r: number; t: number; w: number; title: string; joined: number; label?: string; test?: boolean };
 /** Every run ever, newest first: the history behind each report. */
 export async function readRuns(): Promise<Run[]> {
   const r = await fetch(`${env.relayUrl()}/api/runs?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
