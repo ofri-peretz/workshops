@@ -8,7 +8,7 @@ const fork = (id, detours, dflt = 0) => ({ fork: id, slot: 3, title: "What next?
 // Every intro shows the series: three tracks on performance you can see, the current one marked.
 export const SERIES = [
   { track: "1 · Signals", what: "See what your users feel", status: "Today", w: [5] },
-  { track: "2 · API performance", what: "Find the query behind the slow tail", status: "Next", w: [1, 3] },
+  { track: "2 · API performance", what: "Find the query behind the slowest requests", status: "Next", w: [1, 3] },
   { track: "3 · Web performance", what: "Fast on the phone in their hand", status: "Coming", w: [] },
   { track: "4 · Before users notice", what: "Hear it break before users do", status: "Coming", w: [2] },
 ];
@@ -33,10 +33,10 @@ export const CHAPTERS = {
   "sig-close": { name: "Wrap up", scenes: ["mean-again", "cases", "sig-monday", "qa", "outro"] },
 
   "slow-feel": { name: "Feel it", q: "Who's waiting?", hook: "Feel the wait, then the timeout", concept: "Waits and timeouts", asks: "When does slow become broken for customers?", remember: "A late answer is a failed one", terms: ["latency", "timeout"], scenes: ["join", "felt", "why", "timeout", "journey"] },
-  "slow-measure": { name: "Measure it", q: "What do users feel?", hook: "Measure what users feel", concept: "The tail, not the average", asks: "How many customers had a bad experience today?", remember: "Measure the tail, not the average", terms: ["percentile", "p99"], scenes: ["two", "mean", "dots",
+  "slow-measure": { name: "Measure it", q: "What do users feel?", hook: "Measure what users feel", concept: "The slowest, not the average", asks: "How many customers had a bad experience today?", remember: "Measure the slowest requests, not the average", terms: ["percentile", "p99"], scenes: ["two", "mean", "dots",
     fork("w1", [
-      { title: "The tail reaches everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
-      { title: "What a slow tail costs", scenes: ["again", "impact"], after: ["felt", "journey"] },
+      { title: "Slow requests reach everyone", scenes: ["fanout", "histogram"], after: ["dots", "mean"] },
+      { title: "What slow requests cost", scenes: ["again", "impact"], after: ["felt", "journey"] },
       { title: "Numbers the business and every tool understand", scenes: ["business", "roadmap", "names"], after: ["timeout", "two"] },
     ]),
     "requests"] },
@@ -84,10 +84,10 @@ const workshop = (w) => ({ ...w, spine: spineOf(w.chapters), parts: partsOf(w.ch
 export const WORKSHOPS = {
   5: workshop({ why: { title: "Your dashboards are green. Users still wait", lead: "You just felt it: one app, six different waits.", case: "google-2009",
       abt: "Your service is up, and the dashboards are green, but users still wait, therefore we measure what they feel." },
-    studies: ["cloudflare-2025", "au-census-2016", "roblox-2021", "911-2014"], title: "Signals", minutes: 60, buffer: 3, promise: "See what your users feel",
+    studies: ["cloudflare-2025", "au-census-2016", "roblox-2021", "911-2014"], title: "Signals", minutes: 60, buffer: 3.5, promise: "See what your users feel",
     answers: ["sig-metrics", "sig-traces", "sig-outage"], // the 3 business questions the close says you can now answer
     chapters: ["welcome", "sig-feel", "sig-metrics", "sig-logs", "sig-traces", "sig-outage", "sig-close"] }),
-  1: workshop({ minutes: 34, why: { title: "Slow is the new down", lead: "Amazon promises its slowest 1 in 1,000, not its average.", case: "amazon-dynamo-2007",
+  1: workshop({ minutes: 33.5, why: { title: "Slow is the new down", lead: "Amazon promises its slowest 1 in 1,000, not its average.", case: "amazon-dynamo-2007",
       abt: "Relay answers, and most messages are fast, but some people wait seconds, therefore we turn the wait into a target." },
     studies: ["gcp-2025", "us-ui-2020", "azul-2013"], title: "Relay is slow", promise: "Turn a wait into a target",
     chapters: ["welcome", "slow-feel", "slow-measure", "slow-promise", "slow-close"] }),

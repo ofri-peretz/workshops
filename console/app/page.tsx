@@ -35,8 +35,8 @@ const INTROS = [
   { id: "returning", label: "They know me", detail: "Welcome back" },
 ];
 const NAMES = [
+  { id: "named", label: "Named", detail: "Each phone picks any name for the leaderboard" },
   { id: "anonymous", label: "Anonymous", detail: "Players are numbers" },
-  { id: "named", label: "Named", detail: "First names on the leaderboard" },
 ];
 const AUDIENCES = [
   { id: "tech", label: "Tech", detail: "Career, open source" },

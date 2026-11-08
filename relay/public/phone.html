@@ -990,8 +990,8 @@
       <ol class="card steps">${t.parts.map((x) => `<li><b>${esc(x.name)}</b><span class="hook">${esc(x.hook)}</span>${x.terms.length ? `<span class="chips">${x.terms.map((term) => `<i>${esc(term)}</i>`).join("")}</span>` : ""}</li>`).join("")}</ol>`;
         },
         name(v) {
-          return `<span class="label">One thing first</span><h1>What should we call you?</h1><p class="lead">Your first name shows on the leaderboard.</p>
-      <form id="nameform" class="card"><input id="nameinput" name="name" maxlength="24" autocomplete="given-name" placeholder="First name" required /><button type="submit" class="primary">That's me</button></form>`;
+          return `<span class="label">One thing first</span><h1>Pick a name</h1><p class="lead">Any name you like. It shows on the leaderboard.</p>
+      <form id="nameform" class="card"><input id="nameinput" name="name" maxlength="24" autocomplete="nickname" placeholder="Your name or a nickname" required /><button type="submit" class="primary">That's me</button></form>`;
         },
         waiting(v) {
                     return `<div class="onepage" data-testid="onepage">
@@ -1026,7 +1026,7 @@
             v.answer !== undefined
               ? `<p class="${v.mine === v.answer ? "ok" : "err"}"><b>${v.mine === undefined ? "Answer:" : v.mine === v.answer ? "You got it." : "Not quite."}</b> ${esc(v.options[v.answer])}</p>`
               : lockedIn(v);
-          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${leadHtml(v)}${v.link ? `<a class="btn" href="${esc(v.link)}" target="_blank" rel="noopener">Open Relay's status page</a>` : ""}`;
+          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${leadHtml(v)}${v.why ? `<div class="card" data-testid="why"><span class="label">Why</span><p>${esc(v.why)}</p></div>` : ""}${v.link ? `<a class="btn" href="${esc(v.link)}" target="_blank" rel="noopener">Open Relay's status page</a>` : ""}`;
         },
         gantt(v) {
           return R.poll(v);
@@ -1170,6 +1170,7 @@
         const v = view;
         if (!v) return;
         setTimer(v.timer);
+        if (v.id && location.hash.slice(1) !== v.id) history.replaceState(null, "", "#" + v.id); // the address names the current slide, like the big screen's
         $("where").textContent = v.act;
         $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
         $("score").hidden = !v.points;
