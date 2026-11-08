@@ -15,6 +15,7 @@ import { accessToken } from "@/lib/session";
 import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction, signOutAllAction } from "./actions";
 import { Countdown } from "./countdown";
 import { ConfirmClose, ConfirmSignOut } from "./confirm-close";
+import { RoomSteps } from "./room-steps";
 import { Mark } from "./mark";
 import { Refresh } from "./refresh";
 
@@ -70,6 +71,8 @@ export default async function Console() {
         </div>
         <form action={signOutAction}><Button data-testid="sign-out" variant="ghost" size="sm" type="submit">Log out</Button></form>
       </header>
+
+      <RoomSteps status={room.status} waiting={waiting} code={room.code} />
 
       {room.status === "closed" ? (
         <section data-testid="workshops" aria-labelledby="pick" className="grid gap-4">
