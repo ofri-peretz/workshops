@@ -25,8 +25,8 @@ export function memoryStore() {
       if (!(access.liveUntil > t)) return "closed";
       if (access.locked) return "locked";
       if (!(access.joinUntil > t)) return "expired";
+      if (access.codeHmac && access.codeHmac === hmac) return "ok"; // the right code always gets in: a venue shares one IP
       if (recent(ip) >= 5) return "rate_limited";
-      if (access.codeHmac && access.codeHmac === hmac) return "ok";
       fails.push({ at: t, ip });
       if (recent() >= 30) { access.locked = true; return "locked"; }
       return "wrong";
@@ -34,7 +34,7 @@ export function memoryStore() {
     async sync() {},
     room: () => room,
     async append(ev) { ev.id = ++id; log.push(ev); room = reduce(room, ev); return ev; },
-    async events({ from = 0, phone, kind } = {}) { return log.filter((e) => e.id >= from && (!phone || e.phone === phone) && (!kind || e.kind === kind)); },
+    async events({ from = 0, phone, kind, until } = {}) { return log.filter((e) => e.id >= from && (!until || e.id < until) && (!phone || e.phone === phone) && (!kind || e.kind === kind)); },
     async bump(d) { inflight = Math.max(0, inflight + d); return inflight; },
   };
 }
@@ -53,7 +53,7 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
 
   async function pull() {
     if (lastId === null) { // cold start: replay from the latest reset
-      const [reset] = await rest("relay_events?select=id&kind=eq.control&data->>op=eq.reset&order=id.desc&limit=1");
+      const [reset] = await rest("relay_events?select=id&kind=eq.control&data->>op=in.(start,reset)&order=id.desc&limit=1"); // a run begins at either
       lastId = reset ? reset.id - 1 : 0;
     }
     for (;;) {
@@ -85,9 +85,15 @@ export function supabaseStore({ url, key, minInterval = 300 }) {
       gateAt = Date.now(); gateCache = g ?? { live: false, joinable: false, locked: false };
       return gateCache;
     },
-    async events({ from = 0, phone, kind } = {}) { // ponytail: one page of 5000; a run is far smaller
-      const q = [`id=gte.${Number(from) || 0}`, phone && `phone=eq.${phone}`, kind && `kind=eq.${kind}`].filter(Boolean).join("&");
-      return rest(`relay_events?select=id,phone,kind,data&${q}&order=id.asc&limit=5000`);
+    async events({ from = 0, phone, kind, until } = {}) { // every page: a 50-phone run is well over 5,000 events
+      const out = [];
+      for (let after = (Number(from) || 0) - 1; ;) {
+        const q = [`id=gt.${after}`, until && `id=lt.${Number(until)}`, phone && `phone=eq.${phone}`, kind && `kind=eq.${kind}`].filter(Boolean).join("&");
+        const rows = await rest(`relay_events?select=id,phone,kind,data&${q}&order=id.asc&limit=1000`);
+        out.push(...rows);
+        if (rows.length < 1000) return out;
+        after = rows.at(-1).id;
+      }
     },
     async tryJoin(hmac, ip) { gateAt = 0; return rest("rpc/relay_try_join", { method: "POST", body: JSON.stringify({ p_hmac: hmac, p_ip: ip }) }); },
   };

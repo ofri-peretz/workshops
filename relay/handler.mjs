@@ -2,6 +2,8 @@
 // function both call it; only the store differs.
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { SCENES } from "./scenes.mjs";
+import { GLOSSARY } from "./concepts.mjs";
+import { WORKSHOPS } from "./workshops.mjs";
 import { reportOf, validName, TAKEAWAYS, runOf, recapView, chapterList, promText, CAP, FAIL_WHEN_BROKEN, POOL_MS, loadWait, workersFor, validAnswer, validControl, validSpans, validPhases, phoneView, screenView, statusSummary, sceneAt } from "./core.mjs";
 
 const ID = /^[0-9a-f-]{36}$/;
@@ -84,9 +86,12 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/recap") {
         const r = Number(url.searchParams.get("r"));
         if (!Number.isInteger(r) || r < 1) return json(400, { error: "which session?" });
-        const run = runOf(await store.events({ from: r }), r);
+        const next = (await store.events({ kind: "control", from: r + 1 })).find((e) => ["start", "reset"].includes(e.data?.op));
+        const run = runOf(await store.events({ from: r, until: next?.id }), r);
         if (!run) return json(404, { error: "no such session" });
-        return json(200, recapView(run, signed(url.searchParams) ? run.phones.get(url.searchParams.get("p")) : undefined), { "cache-control": "public, max-age=60" });
+        const who = signed(url.searchParams) ? run.phones.get(url.searchParams.get("p")) : undefined;
+        if (who) store.append({ phone: who.id, kind: "answer", data: { t: Date.now(), scene: "_recap", value: r } }).catch(() => {}); // a recap open, for the report
+        return json(200, recapView(run, who), { "cache-control": "private, max-age=60" });
       }
       if (path === "/followup" || path === "/followup.ics") {
         const q = url.searchParams;
@@ -113,11 +118,26 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           return json(200, { ok: true });
         }
       }
+      if (method === "GET" && path === "/runs") { // every workshop ever run here, newest first: the history behind each report
+        if (!presenter) return json(403, { error: "presenter link needed" });
+        const [starts, joins] = await Promise.all([store.events({ kind: "control" }), store.events({ kind: "join" })]);
+        const runs = starts.filter((e) => e.data?.op === "start").map((e) => ({ r: e.id, t: e.data.t, w: e.data.w, title: e.data.title || WORKSHOPS[e.data.w]?.title }));
+        for (const [k, run] of runs.entries()) run.joined = joins.filter((j) => j.id > run.r && (k === runs.length - 1 || j.id < runs[k + 1].r)).length;
+        return json(200, { runs: runs.reverse() });
+      }
+      if (method === "GET" && path === "/run-events") { // one run's raw log, for export: every engagement event, nothing derived
+        if (!presenter) return json(403, { error: "presenter link needed" });
+        const r = Number(url.searchParams.get("r")); if (!r) return json(400, { error: "which run? ?r=" });
+        const starts = (await store.events({ kind: "control", from: r + 1 })).filter((e) => e.data?.op === "start");
+        return json(200, { r, events: await store.events({ from: r, until: starts[0]?.id }) });
+      }
       if (method === "GET" && path === "/run-report") { // the presenter's per-run report (latest run unless ?r=)
         if (!presenter) return json(403, { error: "presenter link needed" });
         const r = Number(url.searchParams.get("r")) || room.runId;
         if (!r) return json(404, { error: "no run yet" });
-        const events = (await store.events({ from: r })), run = runOf(events, r);
+        const next = (await store.events({ kind: "control", from: r + 1 })).find((e) => ["start", "reset"].includes(e.data?.op));
+        const events = (await store.events({ from: r, until: next?.id })).filter((e) => !(e.kind === "control" && e.data?.op === "signout")); // the report keeps people signed out mid-run
+        const run = runOf(events, r);
         if (!run) return json(404, { error: "no such run" });
         const cut = events.findIndex((e, i) => i > 0 && e.kind === "control" && ["start", "reset"].includes(e.data?.op));
         return json(200, { run: r, title: titledName(run), ...reportOf(run, cut < 0 ? events : events.slice(0, cut)) });
@@ -224,8 +244,10 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       }
       if (method === "POST" && path === "/event") { // presence and calls to action, for the run report
         const { type, target } = await read(request);
-        if (type === "beat") { await append("answer", { scene: "_beat", value: 1 }); return json(200, { ok: true }); }
-        if (type === "cta" && ["linkedin", "github", "devto", "blog", "recap"].includes(target)) { await append("answer", { scene: "_cta", value: target }); return json(200, { ok: true }); }
+        if (type === "beat") { await append("answer", { scene: "_beat", value: { step: String(target?.step ?? "").slice(0, 40), vis: target?.vis !== false } }); return json(200, { ok: true }); } // time on step, drop-off
+        if (type === "cta" && ["linkedin", "github", "devto", "blog", "recap", "reminder"].includes(target)) { await append("answer", { scene: "_cta", value: target }); return json(200, { ok: true }); }
+        if (type === "practice" && typeof target?.term === "string" && Object.hasOwn(GLOSSARY, target.term)) { await append("answer", { scene: "_practice", value: { term: target.term, right: target.right === true } }); return json(200, { ok: true }); }
+        if (type === "terms") { await append("answer", { scene: "_terms", value: 1 }); return json(200, { ok: true }); }
         return json(400, { error: "unknown event" });
       }
       if (method === "POST" && path === "/answer") {

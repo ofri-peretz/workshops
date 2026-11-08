@@ -143,6 +143,9 @@ export function reduce(room, ev) {
       if (d.scene === "_name") p.name = d.value;
       else if (d.scene === "_beat") p.beat = t;
       else if (d.scene === "_cta") room.ctas[d.value] = (room.ctas[d.value] || 0) + 1;
+      else if (d.scene === "_practice") p.practice = (p.practice || 0) + 1; // a Terms practice answer: kept, never scored
+      else if (d.scene === "_terms") p.termsOpened = (p.termsOpened || 0) + 1;
+      else if (d.scene === "_recap") p.recapOpened = (p.recapOpened || 0) + 1;
       else if (SCENE[d.scene]?.type === "termcheck") { const m = (p.answers[d.scene] ||= {}); if (m[d.value.k] === undefined) m[d.value.k] = d.value.a; p.at[d.scene] = t; } // first try per term
       else if (d.scene !== "followup") { p.answers[d.scene] = d.value; p.at[d.scene] = t; }
       return room;
@@ -165,6 +168,7 @@ function control(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, v
 function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, voters }) {
   const s = sceneAt(room);
   if (op === "eyes") { room.eyes = !room.eyes; return room; }
+  if (op === "close") { room.closedAt = t; return room; } // the end of the run, for the report
   if (op === "signout") { room.phones = new Map(); room.signedOut = ev; return room; } // everyone rejoins with the new code; the step stays // "look at the screen": phones pause input
   if (op === "mode") { if (names) room.names = names; if (voters !== undefined) room.voters = voters; return room; }
   if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, names: room.names, voters: room.voters, audience: room.audience, intro: room.intro }; // stay in this workshop
@@ -212,7 +216,7 @@ export const validName = (x) => typeof x === "string" && /^[\p{L}\p{N} .'’-]{1
 export function validControl({ op, i, w, a, id, intro, c, title, names, voters }) {
   if (op === "mode") return (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean");
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
-  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout"].includes(op)) return true;
+  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout", "close"].includes(op)) return true;
   if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c)) && (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean")
     && (title === undefined || (typeof title === "string" && /^[\p{L}\p{N} &,.:'’-]{1,40}$/u.test(title)));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);
@@ -462,13 +466,14 @@ export function screenView(room, now) {
     timer: timerOf(room, s, now),
     eyes: room.eyes, names: room.names, voters: room.voters, defs: s.options ? defsOf(s) : undefined,
     leaderboard: (QUIZ(s) || s.type === "termcheck") && room.shown.has(s.id) ? leaderboardOf(room, 5, s.id) : undefined,
-    who: QUIZ(s) && room.shown.has(s.id) ? votersOf(room, s) : undefined,
+    // never who answered what on the screen: the room sees shares; the presenter's report has the names
     learning: s.type === "qa" ? learningOf(room) : undefined,
     why: s.type === "why" ? whyOf(room) : undefined,
     study: s.type === "cases" && room.shown.has(s.id) ? storyOf(winnerOf(room, s)) : undefined,
     cards: s.type === "cases" ? studiesOf(room).map((c) => ({ who: c.who, what: c.what })) : undefined,
     ...(s.type === "outro" ? outroOf(room) : {}),
-    clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead };
+    clock: minutes(room, room.pos + 1), total: minutes(room, room.path.length), over: room.over, flexAhead,
+    present: [...room.phones.values()].filter((p) => p.beat && now - p.beat < 75_000).length }; // checked in within the last heartbeat or two
 }
 export function statusSummary(room, now) {
   const today = [...room.chat, ...room.reqs], ok = today.filter((x) => x.ok).length;
@@ -572,8 +577,6 @@ export const leaderboardOf = (room, top = 5, sid) => {
     .sort((a, b) => b.points - a.points).slice(0, top);
 };
 const rankOf = (room, p) => { const mine = pointsOf(room, p); return 1 + [...room.phones.values()].filter((x) => pointsOf(room, x) > mine).length; };
-const votersOf = (room, s) => room.names === "named" && room.voters && s.options
-  ? s.options.map((_, i) => [...room.phones.values()].filter((p) => p.answers[s.id] === i).map((p) => displayName(room, p))) : undefined;
 
 // The run report: reach, presence over time (the churn curve), engagement, learning, conversion and
 // reconnection, from one run's events. "Last seen" is a phone's latest beat, answer or send.
@@ -603,6 +606,13 @@ export function reportOf(room, events) {
     learning: before && after ? { before: before.right / Math.max(1, before.answered), after: after.right / Math.max(1, after.answered) } : null,
     terms: (() => { const fin = room.path.map((id) => SCENE[id]).find((x) => x?.type === "termcheck" && x.final); if (!fin) return null; const r = termResults(room, fin); return { n: r.n, before: r.before, after: r.after, items: r.items }; })(),
     ctas: room.ctas,
+    participants: phones.map((p) => {
+      const scored = room.path.map((id) => SCENE[id]).filter((s) => QUIZ(s) && p.answers[s.id] !== undefined);
+      const fin = room.path.map((id) => SCENE[id]).find((x) => x?.type === "termcheck" && x.final), ts = fin ? termScore(room, p, fin) : null;
+      return { name: displayName(room, p), joinedAt: p.joinedAt, lastSeen: seen.get(p.id) || p.joinedAt, group: p.group, points: pointsOf(room, p),
+        answered: scored.length, right: scored.filter((s) => p.answers[s.id] === s.answer).length, terms: ts && { before: ts.before, after: ts.after, n: ts.n },
+        sends: p.sends, resends: p.dups, curious: p.curious.size, practice: p.practice || 0, termsOpened: p.termsOpened || 0, recapOpened: p.recapOpened || 0 };
+    }).sort((a, b) => b.points - a.points),
   };
 }
 

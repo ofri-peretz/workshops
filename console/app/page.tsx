@@ -3,18 +3,17 @@ import QRCode from "qrcode";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { env } from "@/lib/env";
-import { readChapters, readImpact, readRoom, readRunReport, readStage } from "@/lib/room";
+import { readChapters, readImpact, readRoom, readRunReport, readRuns, readStage } from "@/lib/room";
 import { RunReportCard } from "./run-report";
 import { readGroups } from "@/lib/groups";
 import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
-import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction, signOutAllAction } from "./actions";
+import { beginAction, closeAction, goLiveAction, newCodeAction, resetAction, signOutAction, signOutAllAction } from "./actions";
 import { Countdown } from "./countdown";
-import { ConfirmClose, ConfirmSignOut } from "./confirm-close";
+import { ConfirmClose, ConfirmReset, ConfirmSignOut } from "./confirm-close";
 import { RoomSteps } from "./room-steps";
 import { Mark } from "./mark";
 import { Refresh } from "./refresh";
@@ -46,14 +45,15 @@ const AUDIENCES = [
 ];
 
 /** The presenter's control room: open the workshop, share the code, run the big screen, close it. */
-export default async function Console() {
+export default async function Console({ searchParams }: { searchParams: Promise<{ run?: string }> }) {
+  const picked = Number((await searchParams).run) || undefined;
   const jwt = await accessToken();
   if (!jwt) redirect("/signin");
   const room = await readRoom(jwt);
   const stage = room.status === "closed" ? null : await readStage();
   const waiting = stage?.begun === false;
   const impact = await readImpact();
-  const report = await readRunReport();
+  const [report, runs] = await Promise.all([readRunReport(picked), readRuns()]);
   const [chapters, groups] = room.status === "closed" ? await Promise.all([readChapters(), readGroups()]) : [[], []];
   const phone = env.phoneUrl();
   const joinLink = room.code ? `${phone}?c=${room.code}` : null;
@@ -90,10 +90,6 @@ export default async function Console() {
               <Choice legend="This group" name="intro" options={INTROS} />
               <Choice legend="Who's in the room" name="audience" options={AUDIENCES} />
               <Choice legend="Names" name="names" options={NAMES} />
-              <Label className="flex items-start gap-3 font-normal">
-                <Checkbox data-testid="voters" name="voters" className="mt-0.5" />
-                <span className="grid gap-0.5"><span className="font-medium">Show who voted what</span><span className="text-sm text-muted-foreground">Named sessions only, big screen only</span></span>
-              </Label>
             </CardContent>
           </Card>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -135,6 +131,15 @@ export default async function Console() {
               <img src={qr} alt={`QR code that opens ${joinLink}`} width={200} height={200} className="rounded-md bg-white p-2" />
             ) : null}
             <div className="grid gap-3">
+              {stage && !waiting ? (
+                <div data-testid="live-strip" className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border px-3 py-2 text-sm tabular-nums">
+                  <Refresh every={5000} />
+                  <span>Step <b>{stage.step}</b>/{stage.steps} · {stage.scene}</span>
+                  <span><b>{stage.present}</b> present of {stage.people}</span>
+                  {stage.answered != null ? <span><b>{stage.answered}</b> answered</span> : null}
+                  <span>{Math.round(stage.clock)} of {Math.round(stage.total)} min</span>
+                </div>
+              ) : null}
               {waiting ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <Refresh every={5000} />
@@ -155,6 +160,7 @@ export default async function Console() {
                 <Button data-testid="open-screen" render={<a href={screenHref} target="_blank" rel="noreferrer" />}>Open the big screen</Button>
                 <form action={newCodeAction}><Button data-testid="new-code" variant="outline" type="submit">New code</Button></form>
                 <ConfirmSignOut action={signOutAllAction} />
+                <ConfirmReset action={resetAction} />
                 <ConfirmClose action={closeAction} />
               </div>
             </div>
@@ -163,6 +169,28 @@ export default async function Console() {
       )}
 
       {report ? <RunReportCard report={report} /> : null}
+
+      {runs.length ? (
+        <Card data-testid="runs">
+          <CardHeader>
+            <CardTitle>Every session</CardTitle>
+            <CardDescription>Each run keeps every join, answer, message and tap. Open a run&apos;s report, or download its full log.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-2">
+              {runs.slice(0, 30).map((x) => (
+                <li key={x.r} className="flex flex-wrap items-center justify-between gap-3 border-b pb-2 text-sm">
+                  <span><b>{x.title}</b> · {new Date(x.t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · {x.joined} joined</span>
+                  <span className="flex gap-3">
+                    <a className="underline" href={`/?run=${x.r}`}>{report?.run === x.r ? "Showing" : "Report"}</a>
+                    <a className="underline" href={`/export?r=${x.r}`}>Download log</a>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {impact ? (
         <Card data-testid="impact-card">

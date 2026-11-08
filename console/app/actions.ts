@@ -27,18 +27,18 @@ export async function requestLink(): Promise<{ sent?: boolean; error?: string }>
 export async function goLiveAction(form: FormData) {
   const jwt = await signedIn();
   const intro = String(form.get("intro") || "first"), audience = String(form.get("audience") || "tech");
-  const names = form.get("names") === "named" ? "named" : "anonymous", voters = names === "named" && form.get("voters") === "on";
+  const names = form.get("names") === "named" ? "named" : "anonymous";
   const group = String(form.get("group") || "").trim().slice(0, 60);
   if (form.get("compose")) {
     const parts = form.getAll("c").map(String);
     // ponytail: the wrap-up is always Signals' (Monday questions, next, Q&A); pick per program if it matters
     const chapters = ["welcome", ...parts, "sig-close"];
     const title = String(form.get("title") || "").trim() || "Monitoring and performance";
-    await goLive(jwt, "5", { intro, audience, chapters, title, names, voters });
+    await goLive(jwt, "5", { intro, audience, chapters, title, names });
     if (group) await rememberGroup(group, parts);
   } else {
     const w = String(form.get("workshop") || "1");
-    await goLive(jwt, w, { intro, audience, names, voters });
+    await goLive(jwt, w, { intro, audience, names });
     if (group) await rememberGroup(group, (await readChapters()).filter((c) => c.in.some((x) => String(x.w) === w)).map((c) => c.id));
   }
   revalidatePath("/");
@@ -63,8 +63,17 @@ export async function signOutAllAction() {
   revalidatePath("/");
 }
 
+/** Back to the first step of this workshop, everyone's points and answers cleared: a new run. */
+export async function resetAction() {
+  await signedIn();
+  await relayControl({ op: "reset" });
+  revalidatePath("/");
+}
+
 export async function closeAction() {
-  await closeRoom(await signedIn());
+  const jwt = await signedIn();
+  await relayControl({ op: "close" }).catch(() => {}); // the run's end time, for the report; closing must not depend on it
+  await closeRoom(jwt);
   revalidatePath("/");
 }
 

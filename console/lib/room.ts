@@ -52,8 +52,8 @@ export async function readRoom(jwt: string): Promise<RoomState> {
 }
 
 /** Empties the room into the chosen workshop, then opens it with a fresh code. */
-export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names, voters }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string; voters?: boolean }) {
-  await relayControl({ op: "start", w: Number(workshop) || workshop, intro, a: audience, names, voters, ...(chapters ? { c: chapters, title } : {}) });
+export async function goLive(jwt: string, workshop: string, { intro, audience, chapters, title, names }: { intro: string; audience: string; chapters?: string[]; title?: string; names?: string }) {
+  await relayControl({ op: "start", wait: true, w: Number(workshop) || workshop, intro, a: audience, names, ...(chapters ? { c: chapters, title } : {}) });
   const now = Date.now(), joinUntil = new Date(now + JOIN_MS).toISOString();
   await update(jwt, {
     opened_at: new Date(now).toISOString(),
@@ -75,11 +75,13 @@ export async function closeRoom(jwt: string) {
 }
 
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */
-export async function readStage(): Promise<{ begun: boolean; people: number; title: string } | null> {
+export type Stage = { begun: boolean; people: number; title: string; step: number; steps: number; scene: string; present: number; answered: number | null; clock: number; total: number };
+export async function readStage(): Promise<Stage | null> {
   const r = await fetch(`${env.relayUrl()}/api/screen?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
   if (!r?.ok) return null;
   const v = await r.json();
-  return { begun: v.begun !== false, people: v.people, title: v.workshop ?? "" };
+  return { begun: v.begun !== false, people: v.people, title: v.workshop ?? "", step: (v.i ?? 0) + 1, steps: v.n ?? 0, scene: v.scene?.title ?? "", present: v.present ?? v.people,
+    answered: typeof v.results?.total === "number" ? v.results.total : null, clock: v.clock ?? 0, total: v.total ?? 0 };
 }
 
 /** Across every session: who picked one thing to do, and who said they did it a week later. */
@@ -97,11 +99,19 @@ export type RunReport = {
   polls: { id: string; q: string; answered: number; present: number; rate: number }[];
   concepts: Record<string, { right: number; total: number }>;
   learning: { before: number; after: number } | null;
+  terms?: { n: number; before: number; after: number } | null;
   ctas: Record<string, number>;
+  participants?: { name: string; points: number; answered: number; right: number; terms: { before: number; after: number; n: number } | null; sends: number; practice: number; termsOpened: number; recapOpened: number }[];
 };
-/** The latest run's report: reach, presence, churn, engagement, learning, clicks. */
-export async function readRunReport(): Promise<RunReport | null> {
-  const r = await fetch(`${env.relayUrl()}/api/run-report?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+export type Run = { r: number; t: number; w: number; title: string; joined: number };
+/** Every run ever, newest first: the history behind each report. */
+export async function readRuns(): Promise<Run[]> {
+  const r = await fetch(`${env.relayUrl()}/api/runs?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  return r?.ok ? (await r.json()).runs : [];
+}
+/** One run's report (the latest unless `run` is given): reach, presence, churn, engagement, learning, clicks. */
+export async function readRunReport(run?: number): Promise<RunReport | null> {
+  const r = await fetch(`${env.relayUrl()}/api/run-report?t=${encodeURIComponent(env.presenterToken())}${run ? `&r=${run}` : ""}`, { cache: "no-store" }).catch(() => null);
   return r?.ok ? r.json() : null;
 }
 

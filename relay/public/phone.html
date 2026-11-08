@@ -162,11 +162,12 @@
         width: 24px;
         height: 24px;
       }
+      #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); z-index: 30; margin: 0; padding: 10px 16px; border-radius: 999px; background: var(--fg); color: var(--bg); font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
       header button.tbtn {
         width: auto;
         font: 600 13px var(--sans);
-        padding: 5px 10px;
-        min-height: 32px;
+        padding: 5px 12px;
+        min-height: 44px;
         border-radius: 99px;
         text-align: center;
       }
@@ -623,6 +624,7 @@
         <div id="gateHome" hidden></div>
       </section>
       <section id="terms" class="card" hidden aria-label="Terms so far"></section>
+      <p id="toast" role="status" aria-live="polite" hidden></p>
       <div id="top"></div>
       <section id="chat" aria-label="Chat with Dana">
         <div class="ctop">
@@ -832,6 +834,16 @@
       });
 
       // ---- scene renderers -----------------------------------------------------------------------------
+      // A short line at the bottom: what happened to a tap the server didn't take, or a lost connection.
+      let toastTimer;
+      function toast(msg, stay = false) {
+        const t = $("toast");
+        clearTimeout(toastTimer);
+        if (!msg) { t.hidden = true; return; }
+        t.textContent = msg; t.hidden = false;
+        if (!stay) toastTimer = setTimeout(() => (t.hidden = true), 2600);
+      }
+      const whyNot = (r) => (r?.status === 409 ? "Answers are closed for this one." : r?.status === 423 ? "Eyes on the screen for a moment." : "Not sent. Tap again.");
       function answer(value) {
         post("/api/answer", { value }).then((r) => {
           if (r.ok) {
@@ -839,8 +851,8 @@
             track(view?.type === "cases" ? "vote" : "answer", { step: view?.id });
             view.mine = value;
             render();
-          }
-        });
+          } else toast(whyNot(r));
+        }).catch(() => toast(whyNot()));
       }
       function leadHtml(v) {
         return v.lead ? `<p class="lead">${esc(v.lead)}</p>` : "";
@@ -1044,7 +1056,7 @@
             const head = sc.before !== undefined
               ? `<div class="card tcscore"><span class="label">Your terms</span><div class="tcvs"><div><b>${sc.before}</b><span>of ${n} at the start</span></div><i aria-hidden="true">→</i><div><b>${sc.after}</b><span>of ${n} now</span></div></div></div>`
               : `<div class="card tcscore"><span class="label">Your terms</span><div class="tcvs"><div><b>${sc.right}</b><span>of ${n} right</span></div></div></div>`;
-            return `<h1>${esc(v.title)}</h1>${head}<ul class="tclist">${v.quiz.map((q, i) => `<li class="${m[i] === q.answer ? "ok" : "err"}"><b>${m[i] === q.answer ? "✓" : "✗"} ${esc(q.term)}</b><span>${esc(q.options[q.answer])}</span></li>`).join("")}</ul>`;
+            return `<h1>${esc(v.title)}</h1>${head}<ul class="tclist">${v.quiz.map((q, i) => `<li class="${m[i] === undefined ? "" : m[i] === q.answer ? "ok" : "err"}"><b>${m[i] === undefined ? "–" : m[i] === q.answer ? "✓" : "✗"} ${esc(q.term)}</b><span>${esc(q.options[q.answer])}</span></li>`).join("")}</ul>`;
           }
           if (k < 0) return `<h1>Done: ${n} of ${n} answered</h1><p class="lead">The screen shows how the room did, with every meaning.</p>`;
           const q = v.quiz[k];
@@ -1157,22 +1169,22 @@
           return `<span class="label">Coming up</span><h1>${esc(v.title)}</h1><div class="card">${v.items.map((it) => `<p>→ ${esc(it)}</p>`).join("")}</div><p>${esc(v.phone)}</p>`;
         },
         qa(v) {
-          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${v.recap ? `<a class="btn" data-testid="recap-link" href="${esc(v.recap)}">Today's recap</a>` : ""}${findMe(v, true)}`;
+          return `<span class="label">${esc(v.workshop)}</span><h1>${esc(v.title)}</h1><p>${esc(v.phone)}</p>${v.recap ? `<a class="btn" data-testid="recap-link" data-cta="recap" href="${esc(v.recap)}">Today's recap</a>` : ""}${findMe(v, true)}`;
         },
         takeaway(v) {
           const opts = v.items.map((it, i) => `<button type="button" data-a="${i}" aria-pressed="${v.mine === i}">${esc(it)}</button>`).join("");
           const after = v.followup
-            ? `<div class="card" data-testid="followup"><b>In a week we'll ask: did you?</b><a class="btn" href="${esc(v.followup)}">Add a reminder</a></div>`
+            ? `<div class="card" data-testid="followup"><b>In a week we'll ask: did you?</b><a class="btn" data-cta="reminder" href="${esc(v.followup)}">Add a reminder</a></div>`
             : `<p>Pick the one you'll do this week.</p>`;
-          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${v.recap ? `<a class="btn" data-testid="recap-link" href="${esc(v.recap)}">Today's recap</a>` : ""}`;
+          return `<h1>${esc(v.title)}</h1><div class="opts">${opts}</div>${after}${v.recap ? `<a class="btn" data-testid="recap-link" data-cta="recap" href="${esc(v.recap)}">Today's recap</a>` : ""}`;
         },
       };
 
       let lastKey = "", roadBase = null;
       function live(v) { // the in-place updates
         setTimer(v.timer);
-        $("score").hidden = !v.points;
-        if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()} · #${v.rank}`;
+        $("score").hidden = !v.points || !v.shown; // the score shows at reveals, not over every step
+        if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()}${v.rank <= 10 ? ` · #${v.rank}` : ""}`;
         document.body.classList.toggle("eyes", !!v.eyes);
         const t = document.querySelector("[data-tally]");
         if (t && v.tally) t.textContent = `${v.tally.done} of ${v.tally.of}`;
@@ -1194,8 +1206,8 @@
         $("termsBtn").disabled = quizOpen; if (quizOpen && !$("terms").hidden) setTerms(false); // the address names the current slide, like the big screen's
         $("where").textContent = v.act;
         $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
-        $("score").hidden = !v.points;
-        if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()} · #${v.rank}`;
+        $("score").hidden = !v.points || !v.shown; // the score shows at reveals, not over every step
+        if (v.points) $("score").textContent = `★ ${v.points.toLocaleString()}${v.rank <= 10 ? ` · #${v.rank}` : ""}`;
         document.body.classList.toggle("eyes", !!v.eyes);
         terms(v.terms);
         if (v.needName && document.getElementById("nameform")) return; // don't redraw under someone typing their name
@@ -1280,7 +1292,7 @@
       }
       $("termsBtn").onclick = () => {
         const open = $("terms").hidden;
-        if (open) history.pushState({ terms: true }, "", location.hash);
+        if (open) { history.pushState({ terms: true }, "", location.hash); post("/api/event", { type: "terms" }); }
         else if (history.state?.terms) return history.back();
         setTerms(open);
       };
@@ -1295,6 +1307,7 @@
         if (b.dataset.pq !== undefined && practice.picked === undefined) {
           practice.picked = +b.dataset.pq; practice.asked++;
           if (practice.opts[practice.picked] === practice.term) practice.right++;
+          post("/api/event", { type: "practice", target: { term: practice.term, right: practice.opts[practice.picked] === practice.term } });
           $("terms").innerHTML = practiceHtml();
         }
       });
@@ -1316,7 +1329,8 @@
           const k = +b.dataset.tk, a = +b.dataset.ta;
           view.mine = { ...(view.mine || {}), [k]: a };
           render();
-          post("/api/answer", { value: { k, a } }).then(() => track("answer", { step: view?.id }));
+          const undo = (r) => { if (view?.mine) { const { [k]: _, ...rest } = view.mine; view.mine = rest; render(); } toast(whyNot(r)); };
+          post("/api/answer", { value: { k, a } }).then((r) => (r.ok ? track("answer", { step: view?.id }) : undo(r))).catch(() => undo());
         }));
         document
           .querySelectorAll("[data-a]")
@@ -1404,7 +1418,7 @@
         $("gateForm").hidden = !askCode;
         $("gateHome").hidden = askCode;
         if (!askCode) {
-          $("gateHome").innerHTML = `<div class="me"><img src="${esc(HOST.photo)}" alt="${esc(HOST.name)}" width="72" height="72" /><div><span class="label">Your host</span><h2>${esc(HOST.name)}</h2><p>${esc(HOST.lead)}</p></div></div>${linksCta(LINKS, HOST.name)}<p class="muted" data-testid="reopen-watch">Keep this page open: it tells you when the workshop is live again. Everything else: <a href="https://workshop.ofriperetz.dev" target="_blank" rel="noopener">workshop.ofriperetz.dev</a></p>`;
+          $("gateHome").innerHTML = `<div class="me"><img src="${esc(HOST.photo)}" alt="${esc(HOST.name)}" width="72" height="72" /><div><span class="label">Your host</span><h2>${esc(HOST.name)}</h2><p>${esc(HOST.lead)}</p></div></div>${linksCta(LINKS, HOST.name)}${(() => { try { const rc = localStorage.getItem("relay-recap"); return rc ? `<a class="cta primary-cta" data-cta="recap" href="${esc(rc)}">Your recap of today</a>` : ""; } catch { return ""; } })()}<p class="muted" data-testid="reopen-watch">Keep this page open: it tells you when the workshop is live again. Everything else: <a href="https://workshop.ofriperetz.dev" target="_blank" rel="noopener">workshop.ofriperetz.dev</a></p>`;
           $("top").innerHTML = ""; $("rest").innerHTML = "";
           watchReopen();
         }
@@ -1424,7 +1438,9 @@
         document.head.appendChild(sc);
       }).catch(() => {});
       post("/api/scan", {}).catch(() => {});
-      setInterval(() => { if (document.visibilityState === "visible" && view) { post("/api/event", { type: "beat" }).catch(() => {}); } }, 30_000);
+      const beat = () => view && post("/api/event", { type: "beat", target: { step: view.id, vis: document.visibilityState === "visible" } }).catch(() => {});
+      setInterval(() => { if (document.visibilityState === "visible") beat(); }, 30_000);
+      document.addEventListener("visibilitychange", beat); // leaving and coming back are both signals
       addEventListener("pagehide", () => track("leave", { step: view?.id }));
       document.addEventListener("click", (e) => { // calls to action: counted, then followed
         const a = e.target.closest("a[data-cta]");
@@ -1475,6 +1491,7 @@
           const shape = (v) => JSON.stringify(v, (k, x) => (VOLATILE.has(k) ? undefined : x));
           let lastShape = "";
           const apply = (next) => {
+            if (next.recap) try { localStorage.setItem("relay-recap", next.recap); } catch {} // so the recap survives Close
             const sig = shape(next);
             if (sig === lastShape && view) { view = next; live(next); return; }
             lastShape = sig;
@@ -1486,7 +1503,9 @@
             view = next;
             render();
           };
-          const poll = async () => { // every phone checks in; 1.5 s keeps 60 phones at ~40 req/s
+          let misses = 0; // two failed check-ins in a row: say so, until one works
+          let pushLive = false; // with the push stream up, checking in is only a fallback (6 s); without it, every 1.5 s
+          const poll = async () => {
             try {
               const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" });
               if (r.status === 403) return gate("The presenter closed the workshop. Thanks for joining.", false);
@@ -1500,16 +1519,16 @@
                 if (again.ok) { apply(again.body); setTimeout(poll, 1500); return; }
                 joinCode = null; gate(again.body?.error || "Enter the code from the big screen.", true); setTimeout(poll, 3000); return;
               }
-              if (r.ok) apply(await r.json());
-            } catch {}
-            setTimeout(poll, 1500);
+              if (r.ok) { apply(await r.json()); if (misses >= 2) toast(""); misses = 0; }
+            } catch { if (++misses >= 2) toast("Reconnecting…", true); }
+            setTimeout(poll, pushLive ? 6000 : 1500);
           };
           setTimeout(poll, 1500);
           // Push: the presenter's Next reaches this phone at once; polling above is the fallback.
           if (window.EventSource) {
             const es = new EventSource("/api/stream");
-            es.onopen = () => document.body.classList.remove("offline");
-            es.onerror = () => document.body.classList.add("offline"); // EventSource retries by itself
+            es.onopen = () => { pushLive = true; document.body.classList.remove("offline"); };
+            es.onerror = () => { pushLive = false; document.body.classList.add("offline"); }; // EventSource retries by itself
             es.addEventListener("step", async () => {
               try { const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" }); if (r.ok) apply(await r.json()); } catch {}
             });

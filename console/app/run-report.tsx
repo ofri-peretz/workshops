@@ -9,7 +9,7 @@ export function RunReportCard({ report: r }: { report: RunReport }) {
   return (
     <Card data-testid="run-report">
       <CardHeader>
-        <CardTitle>Last session: {r.title}</CardTitle>
+        <CardTitle>Session report: {r.title}</CardTitle>
         <CardDescription>Scanned {r.reach.scanned} · joined {r.reach.joined} · churn {pct(r.churnRate)} · reconnected {pct(r.reconnectionRate)}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -30,7 +30,19 @@ export function RunReportCard({ report: r }: { report: RunReport }) {
         <section className="grid gap-1">
           <span className="text-sm text-muted-foreground">Clicks</span>
           {Object.entries(r.ctas).map(([k, n]) => <span key={k} className="tabular-nums">{k} · {n}</span>)}
+          {r.terms ? <><span className="text-sm text-muted-foreground">Terms, start → end</span><span className="tabular-nums">{pct(r.terms.before)} → {pct(r.terms.after)} of {r.terms.n}</span></> : null}
         </section>
+        {r.participants?.length ? (
+          <section className="grid gap-1 sm:col-span-2" data-testid="participants">
+            <span className="text-sm text-muted-foreground">Participants (only you see names)</span>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm tabular-nums">
+                <thead><tr className="text-left text-muted-foreground"><th>Name</th><th>Points</th><th>Right</th><th>Terms</th><th>Msgs</th><th>Practice</th><th>Recap</th></tr></thead>
+                <tbody>{r.participants.map((p, i) => <tr key={i}><td>{p.name}</td><td>{p.points}</td><td>{p.right}/{p.answered}</td><td>{p.terms ? `${p.terms.before} → ${p.terms.after}` : "—"}</td><td>{p.sends}</td><td>{p.practice}</td><td>{p.recapOpened ? "✓" : ""}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
       </CardContent>
     </Card>
   );

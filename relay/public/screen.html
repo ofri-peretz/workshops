@@ -347,7 +347,7 @@
       .timer.low { border-color: var(--primary, currentColor); }
       .timer.done { opacity: 0.7; }
       .brands { display: flex; flex-wrap: wrap; gap: 10px; } .brands a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; border: 1px solid transparent; transition: color 150ms ease, border-color 150ms ease, background 150ms ease; } .brands a:hover, .brands a:focus-visible { color: var(--fg); border-color: var(--line); background: var(--card); }
-      .codepill { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; padding: 6px 14px; border-radius: 999px; background: var(--primary); color: var(--primary-fg, #fff); font: 600 clamp(14px, 1vw, 18px)/1 var(--mono); letter-spacing: 0.04em; } .codepill b { font-size: 1.5em; letter-spacing: 0.12em; } .codepill.none { background: transparent; color: var(--bad, #ef4444); border: 1px solid currentColor; }
+      .codepill { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; padding: 6px 14px; border-radius: 999px; background: var(--primary); color: var(--primary-fg, #fff); font: 600 clamp(16px, 1.3vw, 24px)/1 var(--mono); letter-spacing: 0.04em; } .codepill b { font-size: 1.8em; letter-spacing: 0.12em; } .codepill.none { background: transparent; color: var(--bad, #ef4444); border: 1px solid currentColor; }
       .findme {
         display: grid;
         grid-template-columns: auto 1fr;
@@ -657,7 +657,7 @@
           Notes (N)</button
         ><button type="button" data-op="eyes">Eyes up (E)</button
         ><button type="button" id="keysBtn" aria-haspopup="dialog">Keys (?)</button
-        ><button type="button" id="reset">Reset room</button>
+        >
         <label class="aud" for="aud">Audience <select id="aud"></select></label>
         <label class="aud" for="lib">Library <select id="lib"></select></label>
         <span class="clock" id="clock"></span>
@@ -1183,7 +1183,7 @@
         termcheck(v, s, r) {
           const pc = (x) => `${Math.round(100 * x)}%`;
           if (!v.shown) return `<h1>${esc(s.title)}</h1><div class="tcgrid">${r.items.map((it) => `<div class="tccard"><b>${esc(it.term)}</b><span>${it.total} answered</span></div>`).join("")}</div><p class="lead">${r.done} of ${r.people} phones finished. Your own pace: no speed bonus.</p>`;
-          const vs = s.final ? `<div class="tcbig"><div><span class="label">The room at the start</span><b>${pc(r.before)}</b></div><i aria-hidden="true">→</i><div><span class="label">Now</span><b>${pc(r.after)}</b></div>${r.improved.length ? `<div class="tcimp"><span class="label">Most improved</span>${r.improved.map((x) => `<div>${esc(x.name)} <em>${x.before} → ${x.after}</em></div>`).join("")}</div>` : ""}</div>` : "";
+          const vs = s.final ? `<div class="tcbig"><div><span class="label">The room at the start</span><b>${pc(r.before)}</b></div><i aria-hidden="true">→</i><div><span class="label">Now</span><b>${pc(r.after)}</b></div>${r.improved.length ? `<div class="tcimp"><span class="label">Most improved</span>${r.improved.map((x) => `<div>${esc(x.name)} <em>+${x.after - x.before}</em></div>`).join("")}</div>` : ""}</div>` : "";
           if (s.final) return `<h1>${esc(s.title)}</h1>${vs}<div class="tcmini">${r.items.map((it) => `<div><b>${esc(it.term)}</b><em>${it.total ? Math.round((100 * it.right) / it.total) : 0}%</em></div>`).join("")}</div>`;
           return `<h1>${esc(s.title)}</h1>${vs}<div class="tcrows">${r.items.map((it) => `<div class="tcrow"><b>${esc(it.term)}</b><span class="d">${esc(it.def)}</span><span class="bar"><i style="width:${it.total ? Math.round((100 * it.right) / it.total) : 0}%"></i></span><em>${it.total ? Math.round((100 * it.right) / it.total) : 0}%</em></div>`).join("")}</div>`;
         },
@@ -1230,8 +1230,8 @@
           if (want && k >= 0 && k !== v.i) return control("goto", { i: k });
         }
         if (v.begun && v.path[v.i] && location.hash.slice(1) !== v.path[v.i]) history.replaceState(null, "", "#" + v.path[v.i]);
-        const board = v.leaderboard?.length ? `<aside class="board" data-testid="leaderboard"><span class="label">Leaderboard</span>${v.leaderboard.map((x, i) => `<div class="row"><span><b>${i + 1}</b> ${esc(x.name)}${x.move ? ` <small class="mv ${x.move > 0 ? "up" : "down"}" aria-label="${x.move > 0 ? "up" : "down"} ${Math.abs(x.move)}">${x.move > 0 ? "▲" : "▼"} ${Math.abs(x.move)}</small>` : ""}</span><em>${x.points.toLocaleString()}</em></div>`).join("")}</aside>` : "";
-        const who = v.who ? `<div class="who-voted">${v.who.map((names, i) => names.length ? `<div><span class="label">${esc(s.options[i])}</span>${esc(names.slice(0, 6).join(", "))}${names.length > 6 ? ` +${names.length - 6}` : ""}</div>` : "").join("")}</div>` : "";
+        const board = v.leaderboard?.length ? `<aside class="board" data-testid="leaderboard"><span class="label">Leaderboard</span>${v.leaderboard.map((x, i) => `<div class="row"><span><b>${i + 1}</b> ${esc(x.name)}${x.move > 0 ? ` <small class="mv up" aria-label="up ${x.move}">▲ ${x.move}</small>` : ""}</span><em>${x.points.toLocaleString()}</em></div>`).join("")}</aside>` : "";
+        const who = ""; // never who answered what: the presenter's report has names
         document.body.classList.toggle("eyes", !!v.eyes);
         let html = (s.how ? `<p class="how"><span class="label">How it works</span> ${esc(s.how)}</p>` : "") + (
           S[s.type] || ((_, x) => `<h1>${esc(x.title)}</h1>`)
@@ -1268,26 +1268,13 @@
         $("notesBtn").setAttribute("aria-pressed", String(!n.hidden));
       }
       $("notesBtn").onclick = toggleNotes;
-      let armed = false;
-      $("reset").onclick = (e) => {
-        if (!armed) {
-          armed = true;
-          e.target.textContent = "Tap again to reset";
-          setTimeout(() => {
-            armed = false;
-            e.target.textContent = "Reset room";
-          }, 3000);
-          return;
-        }
-        armed = false;
-        e.target.textContent = "Reset room";
-        control("reset");
-      };
+
       const keys = $("keys");
       const toggleKeys = () => (keys.open ? keys.close() : keys.showModal());
       $("keysBtn").onclick = toggleKeys;
       keys.onclick = (e) => { if (e.target === keys) keys.close(); }; // a click outside the card closes it
       addEventListener("keydown", (e) => {
+        if (e.repeat || e.target.closest?.("select, input, textarea")) return; // a held key or a bouncy clicker is one press; typing isn't a command
         const k = e.key.toLowerCase();
         if (e.key === "?" || ((e.metaKey || e.ctrlKey) && e.key === "/")) { e.preventDefault(); return toggleKeys(); }
         if (keys.open) return;

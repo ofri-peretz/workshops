@@ -14,6 +14,18 @@ export function ConfirmSignOut({ action }: { action: () => Promise<void> }) {
   );
 }
 
+/** Restarting wipes the run's scores, so it is a deliberate second press, never on the projector. */
+export function ConfirmReset({ action }: { action: () => Promise<void> }) {
+  const [armed, setArmed] = useState(false);
+  if (!armed) return <Button data-testid="reset-room" variant="outline" type="button" onClick={() => setArmed(true)}>Restart from step 1</Button>;
+  return (
+    <form action={action} className="flex gap-2">
+      <Button data-testid="reset-room-confirm" variant="destructive" type="submit">Restart, scores cleared</Button>
+      <Button data-testid="reset-room-cancel" variant="ghost" type="button" onClick={() => setArmed(false)}>Cancel</Button>
+    </form>
+  );
+}
+
 /** Close is final for everyone in the room, so it takes a second, deliberate press. */
 export function ConfirmClose({ action }: { action: () => Promise<void> }) {
   const [armed, setArmed] = useState(false);

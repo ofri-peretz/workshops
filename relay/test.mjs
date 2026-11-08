@@ -306,7 +306,8 @@ const wrong = CODE === "000000" ? "000001" : "000000";
 const insider = await phone();
 assert.equal((await join("12")).status, 401, "a malformed code is refused");
 for (let i = 1; i <= 5; i++) assert.equal((await join(wrong)).status, 401, `wrong try ${i} is 401`);
-assert.equal((await join(CODE)).status, 429, "the 6th try from one network is rate-limited, even with the right code");
+assert.equal((await join(wrong)).status, 429, "the 6th wrong try from one network is rate-limited");
+assert.equal((await join(CODE)).status, 200, "the right code still gets in from that network: a venue shares one IP");
 assert.equal((await join(CODE, "198.51.100.2")).status, 200, "another network still joins");
 store.setAccess({ joinUntil: Date.now() - 1 });
 assert.equal((await join(CODE, "198.51.100.3")).status, 401, "an expired code admits nobody new");
@@ -474,7 +475,8 @@ await ctl("reveal");
 const lb = (await screen()).leaderboard;
 assert.deepEqual(lb.map((x) => x.name), ["Dana", "Noa", "Player 3"], "the leaderboard orders by points; unnamed phones are players");
 assert.ok(lb[0].points > lb[1].points && lb[1].points >= 500 && lb[2].points === 0, "right and fast beats right and slow; wrong scores 0");
-assert.deepEqual((await screen()).who[SCENE.mean.answer], ["Dana", "Noa"], "show voters lists who chose each option");
+assert.equal((await screen()).who, undefined, "the screen never names who answered what");
+assert.deepEqual((await (await fetch(base + "/run-report?t=t")).json()).participants.slice(0, 2).map((x) => [x.name, x.right]), [["Dana", 1], ["Noa", 1]], "the presenter's report has each participant, by name");
 assert.equal((await fast.view()).who, undefined, "voters never reach phones");
 assert.equal((await fast.view()).rank, 1, "each phone knows its rank");
 await ctl("mode", { voters: false });
@@ -535,6 +537,13 @@ assert.equal(room().phones.size, 0, "sign-out removes every phone");
 assert.equal(room().pos, before, "the room stays on its step");
 const out = await fetch(base + "/view", { headers: { cookie: learner.cookie } });
 assert.equal(out.status, 401); assert.equal((await out.json()).signedOut, true, "a signed-out phone is told so");
+
+// History: every run is listed, and any run's raw log can be exported; both are the presenter's only.
+const runs = (await (await fetch(base + "/runs?t=t")).json()).runs;
+assert.ok(runs.length >= 2 && runs[0].r > runs[1].r && runs.every((x) => x.title && Number.isInteger(x.joined)), "runs are listed newest first with their title and joins");
+const runLog = await (await fetch(base + `/run-events?r=${runs[1].r}&t=t`)).json();
+assert.ok(runLog.events.length && runLog.events.every((e) => e.id >= runs[1].r && e.id < runs[0].r), "a run's export holds exactly its own events");
+assert.equal((await fetch(base + "/runs")).status, 403, "the history is the presenter's");
 
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
