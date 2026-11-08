@@ -90,10 +90,13 @@
     </style>
   </head>
   <body>
+    <style>.backlink { display: inline-block; margin-bottom: 12px; color: var(--muted, inherit); text-decoration: none; font-weight: 600; } .backlink:hover { text-decoration: underline; } .blogcta { display: grid; gap: 4px; margin: 24px 0; padding: 18px 20px; border-radius: 16px; background: var(--primary); color: var(--card); text-decoration: none; } .blogcta span { opacity: 0.85; }</style>
     <main>
+      <a class="backlink" href="/" data-testid="recap-back">← Back to the workshop</a>
       <header><svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg><h1 id="title">Your recap</h1><p id="promise"></p></header>
       <p id="msg" role="status"></p>
       <div id="out"></div>
+      <a class="blogcta" href="https://ofriperetz.dev" target="_blank" rel="noopener" data-testid="recap-blog"><b>Keep going on the blog</b><span>Monitoring, performance and JavaScript at scale, written up in depth.</span></a>
       <footer><a href="/">Ofri Peretz · all workshops and links</a></footer>
     </main>
     <script>

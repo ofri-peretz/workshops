@@ -6,7 +6,7 @@ import { SCENES, SCENE, POLL_TYPES, PRESENTER } from "./scenes.mjs";
 import { CONCEPTS, GLOSSARY } from "./concepts.mjs";
 import { CASES } from "./cases.mjs";
 import { WORKSHOPS, SERIES, CHAPTERS } from "./workshops.mjs";
-import { GROUPS, fresh, reduce, sceneAt, checkTrace, buildTrace, SPAN_NAMES } from "./core.mjs";
+import { GROUPS, fresh, reduce, sceneAt, checkTrace, buildTrace, SPAN_NAMES, quizItem } from "./core.mjs";
 import { createServer } from "./server.mjs";
 
 // ---- the library: nothing taught is ever dropped, every term is defined --------------------------
@@ -81,7 +81,7 @@ for (const [id, c] of Object.entries(CASES)) {
 
 // Every chapter is told the same way: a question; it opens on a question, a case or the room doing
 // something; the room tries it on their phones; one line to remember; its terms taught inside it.
-const HANDS_ON = new Set([...POLL_TYPES, "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines"]);
+const HANDS_ON = new Set([...POLL_TYPES, "termcheck", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines"]);
 for (const [id, c] of Object.entries(CHAPTERS)) {
   if (!c.q) continue;
   const ids = c.scenes.flatMap((x) => (typeof x === "string" ? [x] : x.detours.flatMap((d) => d.scenes)));
@@ -500,14 +500,40 @@ assert.ok(rep.reconnectionRate > 0 && rep.churnRate >= 0, "the report has reconn
 assert.equal((await fetch(base + "/run-report")).status, 403, "the run report is for the presenter");
 await ctl("start", { w: 5 });
 const learner = await phone();
-await go("mean"); await learner("/answer", { value: (SCENE.mean.answer + 1) % SCENE.mean.options.length });
-await go("mean-again"); await learner("/answer", { value: SCENE["mean-again"].answer });
-assert.deepEqual((await (await fetch(base + "/run-report?t=t")).json()).learning, { before: 0, after: 1 }, "the learning check measures before and after");
+const peer = await phone();
+// Term checks: five questions as a part opens, every one again at the end; first try per term counts.
+await go("tc-metrics");
+const tcm = await learner.view();
+assert.equal(tcm.quiz.length, 5, "a term check asks five terms");
+assert.ok(tcm.quiz.every((q) => q.options.length === 4 && q.answer === undefined), "four options each, no answer before the reveal");
+const right = (term) => quizItem(term).answer;
+for (let k = 0; k < 5; k++) await learner("/answer", { value: { k, a: k < 2 ? right(tcm.quiz[k].term) : (right(tcm.quiz[k].term) + 1) % 4 } });
+await learner("/answer", { value: { k: 0, a: (right(tcm.quiz[0].term) + 1) % 4 } }); // a second try doesn't change the first
+await peer("/answer", { value: { k: 0, a: right(tcm.quiz[0].term) } });
+assert.equal((await learner("/answer", { value: { k: 9, a: 7 } })).status, 400, "a term answer is a term and one of four options");
+await ctl("reveal");
+const tcr = (await screen()).results;
+assert.deepEqual([tcr.items[0].right, tcr.items[0].total, tcr.items[2].right], [2, 2, 0], "the reveal counts right answers per term");
+assert.equal((await learner.view()).termScore.right, 2, "the phone gets its score");
+assert.equal((await learner("/answer", { value: { k: 3, a: 0 } })).status, 409, "no answers after the reveal");
+await go("tc-final");
+const fin = await learner.view();
+assert.ok(fin.quiz.length >= 5 && fin.quiz.some((q) => q.term === tcm.quiz[2].term), "the final check asks every term the room saw");
+for (let k = 0; k < fin.quiz.length; k++) await learner("/answer", { value: { k, a: right(fin.quiz[k].term) } });
+const sc = (await learner.view()).termScore;
+assert.deepEqual([sc.before, sc.after, sc.n], [2, fin.quiz.length, fin.quiz.length], "the phone sees its start and end scores");
+await ctl("reveal");
+const board = (await screen()).leaderboard;
+assert.ok(board.length >= 2 && board.every((x) => Number.isInteger(x.move)), "the leaderboard says how far each player moved");
+const termsRep = (await (await fetch(base + "/run-report?t=t")).json()).terms;
+assert.ok(termsRep && termsRep.after > termsRep.before, "the run report has the room's terms before and after");
 
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);
 for (const x of SERIES) assert.ok(hub.includes(x.track.replace(/^\d+ · /, "")), `hub.html lists ${x.track}`);
+const phoneHtml = readFileSync(new URL("./public/phone.html", import.meta.url), "utf8");
+assert.deepEqual(JSON.parse(phoneHtml.match(/const LINKS = (\[.*?\]); /)[1]), PRESENTER.links, "the phone's always-on links are the presenter's links");
 
 server.close(); server.closeAllConnections?.();
 console.log("relay self-check: ok");

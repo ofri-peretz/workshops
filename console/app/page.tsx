@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 const WORKSHOPS = [
   // Mirrors relay/workshops.mjs SERIES: where each workshop sits in the monitoring series.
-  { id: "5", part: "Part 1 · Signals", title: "Signals", minutes: 60, summary: "See what your users feel" },
+  { id: "5", part: "Part 1 · Signals (intro to monitoring)", title: "Signals", minutes: 60, summary: "See what your users feel" },
   { id: "1", part: "Part 2 · API performance", title: "Relay is slow", minutes: 32, summary: "Turn a wait into a target" },
   { id: "3", part: "Part 2 · API performance", title: "GraphQL measured", minutes: 33, summary: "One endpoint hides every slow query" },
   { id: "2", part: "Part 4 · Before users notice", title: "Relay breaks", minutes: 33, summary: "Find the break, prove the fix" },

@@ -173,6 +173,12 @@
       [hidden] {
         display: none !important;
       }
+      .tbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      #terms button.back { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--quiet); color: var(--fg); font-weight: 600; }
+      .tcterm { font-family: var(--mono); font-size: clamp(30px, 9vw, 44px); }
+      .tcdots { display: flex; gap: 6px; justify-content: center; } .tcdots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); } .tcdots i.on { background: var(--primary); }
+      .tcvs { display: flex; align-items: center; gap: 16px; } .tcvs div { display: grid; } .tcvs b { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; } .tcvs span { color: var(--muted); font-size: 14px; } .tcvs i { font-style: normal; font-size: 28px; color: var(--primary); }
+      .tclist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; } .tclist li { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); } .tclist li.ok b { color: var(--good); } .tclist li.err b { color: var(--bad, #ef4444); } .tclist span { color: var(--muted); font-size: 14px; }
       #terms dl {
         margin: 0;
         display: grid;
@@ -567,6 +573,7 @@
       a.cta.primary-cta { min-height: 64px; font-size: 18px; background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
       .me { display: flex; gap: 16px; align-items: center; } .me img { border-radius: 50%; flex: none; }
       .def { display: block; margin-top: 4px; font-weight: 400; font-size: 14px; color: var(--muted); }
+      .findcta { display: grid; gap: 12px; }
       .findme.icons { display: flex; flex-wrap: wrap; gap: 12px; }
       .findme.icons a { width: 56px; height: 56px; min-height: 0; padding: 0; border-radius: 50%; }
       .findme.icons .ico { width: 24px; height: 24px; }
@@ -613,7 +620,7 @@
           <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required />
           <button type="submit">Join</button>
         </form>
-        <p id="gateHome" hidden>Find me: <a href="https://workshop.ofriperetz.dev">workshop.ofriperetz.dev</a></p>
+        <div id="gateHome" hidden></div>
       </section>
       <section id="terms" class="card" hidden aria-label="Terms so far"></section>
       <div id="top"></div>
@@ -1031,6 +1038,18 @@
         gantt(v) {
           return R.poll(v);
         },
+        termcheck(v) {
+          const m = v.mine || {}, n = v.quiz.length, k = v.quiz.findIndex((_, i) => m[i] === undefined), sc = v.termScore || {};
+          if (v.shown) {
+            const head = sc.before !== undefined
+              ? `<div class="card tcscore"><span class="label">Your terms</span><div class="tcvs"><div><b>${sc.before}</b><span>of ${n} at the start</span></div><i aria-hidden="true">→</i><div><b>${sc.after}</b><span>of ${n} now</span></div></div></div>`
+              : `<div class="card tcscore"><span class="label">Your terms</span><div class="tcvs"><div><b>${sc.right}</b><span>of ${n} right</span></div></div></div>`;
+            return `<h1>${esc(v.title)}</h1>${head}<ul class="tclist">${v.quiz.map((q, i) => `<li class="${m[i] === q.answer ? "ok" : "err"}"><b>${m[i] === q.answer ? "✓" : "✗"} ${esc(q.term)}</b><span>${esc(q.options[q.answer])}</span></li>`).join("")}</ul>`;
+          }
+          if (k < 0) return `<h1>Done: ${n} of ${n} answered</h1><p class="lead">The screen shows how the room did, with every meaning.</p>`;
+          const q = v.quiz[k];
+          return `<span class="label">Term ${k + 1} of ${n}</span><h1 class="tcterm">${esc(q.term)}</h1><p>What does it mean?</p><div class="opts">${q.options.map((o, i) => `<button type="button" data-tk="${k}" data-ta="${i}">${esc(o)}</button>`).join("")}</div><div class="tcdots" aria-hidden="true">${v.quiz.map((_, i) => `<i class="${m[i] !== undefined ? "on" : ""}"></i>`).join("")}</div>`;
+        },
         fork(v) {
           if (v.chosen !== undefined)
             return `<span class="label">Your call</span><h1>The room has chosen.</h1><p>Look up — that's where we're going next.</p>`;
@@ -1170,7 +1189,9 @@
         const v = view;
         if (!v) return;
         setTimer(v.timer);
-        if (v.id && location.hash.slice(1) !== v.id) history.replaceState(null, "", "#" + v.id); // the address names the current slide, like the big screen's
+        if (v.id && location.hash.slice(1) !== v.id) history.replaceState(null, "", "#" + v.id);
+        const quizOpen = v.type === "termcheck" && !v.shown; // no peeking at the meanings mid-check
+        $("termsBtn").disabled = quizOpen; if (quizOpen && !$("terms").hidden) setTerms(false); // the address names the current slide, like the big screen's
         $("where").textContent = v.act;
         $("progress").style.width = v.type === "waiting" ? "0%" : `${Math.round((100 * (v.i + 1)) / v.n)}%`;
         $("score").hidden = !v.points;
@@ -1217,9 +1238,12 @@
         github: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
         blog: '<svg viewBox="0 0 24 24" aria-hidden="true" class="ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
       };
-      const findMe = (v, cta = false) =>
-        `<nav class="findme${cta ? "" : " icons"}" aria-label="${esc(v.presenter.name)} elsewhere">${v.presenter.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener" data-cta="${esc(l.icon)}"${cta ? "" : ` aria-label="${esc(l.cta || l.label)}" title="${esc(l.cta || l.label)}"`}>${ICON[l.icon] || ""}${cta ? `<span>${esc(l.cta || l.label)}</span>` : ""}</a>`).join("")}</nav>`;
-      const NO_DEEPER = new Set(["intro", "series", "scan", "why", "today", "road", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway"]);
+      // The host's links: icons on the way in; at the end and when no room is open, icons plus one "Visit the blog".
+      const LINKS = [{"label": "LinkedIn", "cta": "Follow on LinkedIn", "icon": "linkedin", "href": "https://www.linkedin.com/in/ofri-peretz/"}, {"label": "dev.to", "cta": "Read on dev.to", "icon": "devto", "href": "https://dev.to/ofri-peretz"}, {"label": "GitHub", "cta": "Star on GitHub", "icon": "github", "href": "https://github.com/ofri-peretz"}, {"label": "Blog", "cta": "Visit the blog", "icon": "blog", "href": "https://ofriperetz.dev"}]; // = PRESENTER.links (self-checked)
+      const linkIcons = (ls, name) => `<nav class="findme icons" aria-label="${esc(name)} elsewhere">${ls.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener" data-cta="${esc(l.icon)}" aria-label="${esc(l.cta || l.label)}" title="${esc(l.cta || l.label)}">${ICON[l.icon] || ""}</a>`).join("")}</nav>`;
+      const linksCta = (ls, name) => { const blog = ls.find((l) => l.icon === "blog"); return `<div class="findcta">${linkIcons(ls.filter((l) => l !== blog), name)}${blog ? `<a class="cta" href="${esc(blog.href)}" target="_blank" rel="noopener" data-cta="blog">${ICON.blog || ""}<span>${esc(blog.cta)}</span></a>` : ""}</div>`; };
+      const findMe = (v, cta = false) => (cta ? linksCta : linkIcons)(v.presenter.links, v.presenter.name);
+      const NO_DEEPER = new Set(["intro", "series", "scan", "why", "today", "road", "qa", "waiting", "cases", "outro", "fork", "next", "takeaway", "termcheck"]);
       // Terms: every term taught so far, kept on this phone after the session (convenience only)
       function terms(list) {
         let kept = {};
@@ -1232,13 +1256,47 @@
         } catch {}
         const names = Object.keys(kept);
         $("tcount").textContent = names.length;
-        $("terms").innerHTML = `<span class="label">Terms so far</span><dl>${names.map((n) => `<div><dt>${esc(n)}</dt><dd>${esc(kept[n].def)}${kept[n].example ? ` <i>${esc(kept[n].example)}</i>` : ""}</dd></div>`).join("")}</dl>`;
+        termsKept = kept;
+        if (!practice) $("terms").innerHTML = `<div class="tbar"><button type="button" class="back" data-close>← Back to the workshop</button>${names.length >= 4 ? `<button type="button" class="back" data-practice>Practice</button>` : ""}</div><span class="label">Terms so far</span><dl>${names.map((n) => `<div><dt>${esc(n)}</dt><dd>${esc(kept[n].def)}${kept[n].example ? ` <i>${esc(kept[n].example)}</i>` : ""}</dd></div>`).join("")}</dl>`;
+      }
+      // Practice: four-option questions over the terms seen so far, on this phone only (no score, no server).
+      let termsKept = {}, practice = null;
+      function practiceHtml() {
+        const names = Object.keys(termsKept), q = practice, picked = q.picked;
+        return `<div class="tbar"><button type="button" class="back" data-list>← All terms</button><span class="label">${q.right} of ${q.asked} right</span></div><span class="label">Practice</span><h2 class="tcterm">${esc(q.term)}</h2><div class="opts">${q.opts.map((t, i) => `<button type="button" data-pq="${i}" class="${picked === undefined ? "" : t === q.term ? "right" : i === picked ? "wrong" : ""}">${esc(termsKept[t].def)}</button>`).join("")}</div>${picked === undefined ? "" : `<button type="button" class="primary" data-next>Next term</button>`}`;
+      }
+      function nextPractice(prev = { right: 0, asked: 0 }) {
+        const names = Object.keys(termsKept), term = names[Math.floor(Math.random() * names.length)];
+        const opts = [term, ...names.filter((x) => x !== term).sort(() => Math.random() - 0.5).slice(0, 3)].sort(() => Math.random() - 0.5);
+        practice = { ...prev, term, opts, picked: undefined };
+        $("terms").innerHTML = practiceHtml();
+      }
+      function setTerms(open) {
+        $("terms").hidden = !open;
+        $("termsBtn").setAttribute("aria-expanded", String(open));
+        if (!open) { practice = null; terms(view?.terms); }
+        else window.scrollTo({ top: 0 });
       }
       $("termsBtn").onclick = () => {
-        const s = $("terms");
-        s.hidden = !s.hidden;
-        $("termsBtn").setAttribute("aria-expanded", String(!s.hidden));
+        const open = $("terms").hidden;
+        if (open) history.pushState({ terms: true }, "", location.hash);
+        else if (history.state?.terms) return history.back();
+        setTerms(open);
       };
+      addEventListener("popstate", () => { if (!$("terms").hidden) setTerms(false); }); // the phone's Back closes Terms
+      $("terms").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        if (b.hasAttribute("data-close")) return history.state?.terms ? history.back() : setTerms(false);
+        if (b.hasAttribute("data-practice")) return nextPractice();
+        if (b.hasAttribute("data-list")) { practice = null; return terms(view?.terms); }
+        if (b.hasAttribute("data-next")) return nextPractice(practice);
+        if (b.dataset.pq !== undefined && practice.picked === undefined) {
+          practice.picked = +b.dataset.pq; practice.asked++;
+          if (practice.opts[practice.picked] === practice.term) practice.right++;
+          $("terms").innerHTML = practiceHtml();
+        }
+      });
       function wire(v) {
         const all = $("alllogs");
         if (all) all.onclick = () => { local.allLogs = !local.allLogs; render(); };
@@ -1253,6 +1311,12 @@
             if (r.ok || r.status === 409) view.curiousMine = true;
             render();
           };
+        document.querySelectorAll("[data-tk]").forEach((b) => (b.onclick = () => {
+          const k = +b.dataset.tk, a = +b.dataset.ta;
+          view.mine = { ...(view.mine || {}), [k]: a };
+          render();
+          post("/api/answer", { value: { k, a } }).then(() => track("answer", { step: view?.id }));
+        }));
         document
           .querySelectorAll("[data-a]")
           .forEach(
@@ -1324,6 +1388,7 @@
         $("gate").hidden = false;
         $("gateForm").hidden = !askCode;
         $("gateHome").hidden = askCode;
+        if (!askCode) $("gateHome").innerHTML = `<p>Until the next one: <a href="https://workshop.ofriperetz.dev">workshop.ofriperetz.dev</a></p>${linksCta(LINKS, "Ofri Peretz")}`;
         $("gateTitle").textContent = askCode ? "Join the workshop" : "Not running right now";
         $("gateMsg").textContent = msg;
         $("chat").hidden = true;

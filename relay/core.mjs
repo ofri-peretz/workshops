@@ -143,6 +143,7 @@ export function reduce(room, ev) {
       if (d.scene === "_name") p.name = d.value;
       else if (d.scene === "_beat") p.beat = t;
       else if (d.scene === "_cta") room.ctas[d.value] = (room.ctas[d.value] || 0) + 1;
+      else if (SCENE[d.scene]?.type === "termcheck") { const m = (p.answers[d.scene] ||= {}); if (m[d.value.k] === undefined) m[d.value.k] = d.value.a; p.at[d.scene] = t; } // first try per term
       else if (d.scene !== "followup") { p.answers[d.scene] = d.value; p.at[d.scene] = t; }
       return room;
     case "request": room.reqs.push({ t, ok: d.ok }); return room;
@@ -219,6 +220,7 @@ export function validControl({ op, i, w, a, id, intro, c, title, names, voters }
 export function validAnswer(s, value) {
   if (POLL_TYPES.has(s.type) || s.type === "cases" || (s.type === "outro" && s.options)) return Number.isInteger(value) && value >= 0 && value < s.options.length;
   if (s.type === "nines") return NINES.includes(value);
+  if (s.type === "termcheck") return !!value && Number.isInteger(value.k) && value.k >= 0 && value.k < 60 && Number.isInteger(value.a) && value.a >= 0 && value.a < 4;
   if (s.type === "slo") return !!value && SLO_MS.includes(value.ms) && SLO_PCT.includes(value.pct);
   if (s.type === "takeaway") return Number.isInteger(value) && value >= 0 && value < s.items.length; // "the one I'll do this week"
   return false;
@@ -230,6 +232,7 @@ export function results(room, s, now) {
   switch (s.type) {
     case "cases": return results(room, { ...s, type: "poll" }, now);
     case "outro": return s.options ? results(room, { ...s, type: "poll" }, now) : {};
+    case "termcheck": return termResults(room, s);
     case "takeaway": return { counts: s.items.map((_, i) => answers.filter(([, a]) => a === i).length), total: answers.length };
     case "fork": return { ...results(room, { ...s, type: "poll" }, now), curious: s.order.map((d) => curiosity(room, s.detours[d])) };
     case "gantt": { const tr = traced(room); return { ...results(room, { ...s, type: "poll" }, now), real: tr.length ? buildTrace(tr.at(-1)) : null }; }
@@ -348,7 +351,7 @@ function outage(room, now) {
 }
 
 // Hands-on steps get a countdown: the scene's minutes, from the moment the room arrived.
-export const TIMED = new Set([...POLL_TYPES, "cases", "road", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway"]);
+export const TIMED = new Set([...POLL_TYPES, "cases", "road", "chat", "metrics", "logs", "trace", "dots", "journey", "requests", "fanout", "load", "slo", "nines", "takeaway", "termcheck"]);
 const timerOf = (room, s, now = Date.now()) => (room.begun && room.since && TIMED.has(s.type) && s.min ? { left: Math.max(0, room.since + s.min * 60_000 - now), total: s.min * 60_000 } : undefined);
 const ALWAYS_LEAD = new Set(["intro", "why", "today", "outro", "next", "qa", "takeaway", "show"]); // nothing to reveal on these
 const termsSoFar = (room) => [...new Set(room.path.slice(0, room.pos + 1).flatMap((id, k) => sceneAt(room, k).terms))].map((term) => ({ term, ...GLOSSARY[term] }));
@@ -401,7 +404,8 @@ export function phoneView(room, p) {
   const v = { i: room.pos, n: room.path.length, id: s.id, type: s.type, workshopId: room.workshop, act: actAt(room), remember: rememberAt(room), title: shown && s.takeaway ? s.takeaway : s.title, how: s.how, step: s.type === "step" ? { flow: s.flow, viz: s.viz, example: s.example, live: s.live, parts: s.parts } : undefined, phone: s.phone, link: s.link,
     options: s.options, items: s.items, mode: s.mode, calls: s.calls, nines: s.type === "nines" ? NINES : undefined,
     slo: s.type === "slo" ? { ms: SLO_MS, pct: SLO_PCT, chosen: room.slo } : undefined,
-    shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined, why: shown ? s.why : undefined,
+    shown, answer: shown ? s.answer : undefined, mine: p?.answers[s.id], quiz: s.type === "termcheck" ? quizOf(room, s).map((x) => ({ term: x.term, options: x.options, answer: shown ? x.answer : undefined })) : undefined,
+    termScore: s.type === "termcheck" && p ? termScore(room, p, s) : undefined, lead: shown || ALWAYS_LEAD.has(s.type) ? s.lead : undefined, why: shown ? s.why : undefined,
     workshop: W.title, promise: W.promise, terms: termsSoFar(room), curiousMine: !!p?.curious.has(s.id), chosen: s.chosen,
     group: room.groupsShown ? p?.group : undefined, broken: room.broken };
   if (s.type === "intro") Object.assign(v, { lead: AUDIENCES.tech.lead, items: AUDIENCES.tech.items, series: SERIES, intro: room.intro }); // phones: tech only
@@ -456,7 +460,7 @@ export function screenView(room, now) {
     road: s.type === "road" ? roadOf(room, s, null, now) : undefined,
     timer: timerOf(room, s, now),
     eyes: room.eyes, names: room.names, voters: room.voters, defs: s.options ? defsOf(s) : undefined,
-    leaderboard: QUIZ(s) && room.shown.has(s.id) ? leaderboardOf(room) : undefined,
+    leaderboard: (QUIZ(s) || s.type === "termcheck") && room.shown.has(s.id) ? leaderboardOf(room, 5, s.id) : undefined,
     who: QUIZ(s) && room.shown.has(s.id) ? votersOf(room, s) : undefined,
     learning: s.type === "qa" ? learningOf(room) : undefined,
     why: s.type === "why" ? whyOf(room) : undefined,
@@ -524,16 +528,48 @@ const roadOf = (room, s, p, now) => {
 const defOf = (o) => { const k = String(o).toLowerCase(); const g = GLOSSARY[k] || GLOSSARY[k.replace(/s$/, "")]; return g ? g.def.split(/(?<=\.)\s/)[0] : undefined; };
 export const defsOf = (s) => (s.options && s.options.some((o) => defOf(o)) ? s.options.map(defOf) : undefined);
 
+// ---- term checks: five 4-option "what does it mean?" questions as a part opens, then every one again at the end.
+// Options are the term's definition plus three from the same check, in a fixed order, so screen and phones agree.
+const qh = (x) => [...x].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7);
+const checkOf = (term) => SCENES.find((x) => x.type === "termcheck" && !x.final && x.quiz.includes(term));
+const QUIZ_ITEMS = new Map();
+export const quizItem = (term) => QUIZ_ITEMS.get(term) ?? (QUIZ_ITEMS.set(term, makeItem(term)), QUIZ_ITEMS.get(term));
+const makeItem = (term) => {
+  const pool = checkOf(term).quiz, opts = [term, ...pool.filter((t) => t !== term).sort((a, b) => qh(term + a) - qh(term + b)).slice(0, 3)].sort((a, b) => qh(a + term) - qh(b + term));
+  return { term, options: opts.map((t) => GLOSSARY[t].def), answer: opts.indexOf(term) };
+};
+const quizTerms = (room, s) => (s.final ? [...new Set(room.path.slice(0, room.path.indexOf(s.id)).map((id) => SCENE[id]).filter((x) => x?.type === "termcheck" && !x.final).flatMap((x) => x.quiz))] : s.quiz);
+export const quizOf = (room, s) => quizTerms(room, s).map(quizItem);
+const rightIn = (room, p, s) => { const m = p?.answers[s.id] || {}; return quizOf(room, s).filter((it, k) => m[k] === it.answer).length; };
+const firstTry = (room, p, terms) => terms.filter((t) => { const c = checkOf(t); return room.path.includes(c.id) && p?.answers[c.id]?.[c.quiz.indexOf(t)] === quizItem(t).answer; }).length;
+const termScore = (room, p, s) => { const n = quizTerms(room, s).length; return s.final ? { n, before: firstTry(room, p, quizTerms(room, s)), after: rightIn(room, p, s) } : { n, right: rightIn(room, p, s) }; };
+const termPoints = (room, p, skip) => room.path.map((id) => SCENE[id]).filter((s) => s?.type === "termcheck" && s.id !== skip && room.shown.has(s.id)).reduce((a, s) => a + 100 * rightIn(room, p, s), 0); // scores at the reveal, never before
+function termResults(room, s) {
+  const items = quizOf(room, s), ps = [...room.phones.values()];
+  const per = items.map((it, k) => { const as = ps.map((p) => p.answers[s.id]?.[k]).filter((a) => a !== undefined); return { term: it.term, def: GLOSSARY[it.term].def, right: as.filter((a) => a === it.answer).length, total: as.length }; });
+  const done = ps.filter((p) => Object.keys(p.answers[s.id] || {}).length >= items.length).length;
+  if (!s.final) return { items: per, done, people: ps.length };
+  const rows = ps.filter((p) => p.answers[s.id]).map((p) => ({ name: displayName(room, p), ...termScore(room, p, s) }));
+  const avg = (f) => (rows.length && items.length ? rows.reduce((a, r) => a + f(r), 0) / rows.length / items.length : 0);
+  return { items: per, done, people: ps.length, n: items.length, before: avg((r) => r.before), after: avg((r) => r.after),
+    improved: rows.filter((r) => r.after > r.before).sort((a, b) => b.after - b.before - (a.after - a.before)).slice(0, 3).map(({ name, before, after }) => ({ name, before, after })) };
+}
+
 // The game: a right answer scores 500 plus up to 500 for speed (time left on that step's countdown).
 const QUIZ = (s) => s && POLL_TYPES.has(s.type) && s.answer !== undefined;
-export const pointsOf = (room, p) => room.path.map((id) => SCENE[id]).filter(QUIZ).reduce((sum, s) => {
+export const pointsOf = (room, p, skip) => termPoints(room, p, skip) + room.path.map((id) => SCENE[id]).filter((s) => QUIZ(s) && s.id !== skip).reduce((sum, s) => {
   if (p.answers[s.id] !== s.answer) return sum;
   const from = room.arrived[s.id], total = s.min * 60_000, used = from != null && p.at[s.id] != null ? (p.at[s.id] - from) / total : 1;
   return sum + 500 + Math.round(500 * Math.max(0, Math.min(1, 1 - used)));
 }, 0);
 const displayName = (room, p) => (room.names === "named" && p.name ? p.name : `Player ${p.n}`);
-export const leaderboardOf = (room, top = 5) => [...room.phones.values()].map((p) => ({ id: p.id, name: displayName(room, p), points: pointsOf(room, p) }))
-  .sort((a, b) => b.points - a.points).slice(0, top).map(({ name, points }) => ({ name, points }));
+// The top players, and how many places each moved because of this question (+ up, - down).
+export const leaderboardOf = (room, top = 5, sid) => {
+  const ps = [...room.phones.values()], now = ps.map((p) => pointsOf(room, p)), was = sid ? ps.map((p) => pointsOf(room, p, sid)) : now;
+  const rank = (pts, i) => 1 + pts.filter((x) => x > pts[i]).length;
+  return ps.map((p, i) => ({ name: displayName(room, p), points: now[i], move: rank(was, i) - rank(now, i) }))
+    .sort((a, b) => b.points - a.points).slice(0, top);
+};
 const rankOf = (room, p) => { const mine = pointsOf(room, p); return 1 + [...room.phones.values()].filter((x) => pointsOf(room, x) > mine).length; };
 const votersOf = (room, s) => room.names === "named" && room.voters && s.options
   ? s.options.map((_, i) => [...room.phones.values()].filter((p) => p.answers[s.id] === i).map((p) => displayName(room, p))) : undefined;
@@ -564,6 +600,7 @@ export function reportOf(room, events) {
     reconnectionRate: room.joins ? room.reconnects / room.joins : null,
     polls, concepts,
     learning: before && after ? { before: before.right / Math.max(1, before.answered), after: after.right / Math.max(1, after.answered) } : null,
+    terms: (() => { const fin = room.path.map((id) => SCENE[id]).find((x) => x?.type === "termcheck" && x.final); if (!fin) return null; const r = termResults(room, fin); return { n: r.n, before: r.before, after: r.after, items: r.items }; })(),
     ctas: room.ctas,
   };
 }
