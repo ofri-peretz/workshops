@@ -12,9 +12,9 @@ import { RunReportCard } from "./run-report";
 import { readGroups } from "@/lib/groups";
 import { Compose } from "./compose";
 import { accessToken } from "@/lib/session";
-import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction } from "./actions";
+import { beginAction, closeAction, goLiveAction, newCodeAction, signOutAction, signOutAllAction } from "./actions";
 import { Countdown } from "./countdown";
-import { ConfirmClose } from "./confirm-close";
+import { ConfirmClose, ConfirmSignOut } from "./confirm-close";
 import { Mark } from "./mark";
 import { Refresh } from "./refresh";
 
@@ -151,6 +151,7 @@ export default async function Console() {
               <div className="flex flex-wrap gap-2">
                 <Button data-testid="open-screen" render={<a href={screenHref} target="_blank" rel="noreferrer" />}>Open the big screen</Button>
                 <form action={newCodeAction}><Button data-testid="new-code" variant="outline" type="submit">New code</Button></form>
+                <ConfirmSignOut action={signOutAllAction} />
                 <ConfirmClose action={closeAction} />
               </div>
             </div>

@@ -137,7 +137,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       // phone (and screen) re-reads its view at once. Each stream lives under a minute; the browser's
       // EventSource reconnects by itself. Polling stays as the fallback.
       if (method === "GET" && path === "/stream") {
-        if (!presenter && !p) return json(401, { error: "join first" });
+        if (!presenter && !p) return json(401, { error: "join first", signedOut: !!room.signedOut });
         const enc = new TextEncoder(), until = Date.now() + 50_000;
         let last = store.room().seq || 0;
         const body = new ReadableStream({
@@ -174,7 +174,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/status") return json(200, statusSummary(room, Date.now()));
       if (method === "GET" && path === "/metrics") // what a Prometheus scrape of Relay would read
         return new Response(promText(room, Date.now()), { headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" } });
-      if (!p) return json(401, { error: "join first" });
+      if (!p) return json(401, { error: "join first", signedOut: !!room.signedOut });
       if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, "follow:" + p.id).slice(0, 24), url.origin));
 
       if (method === "POST" && path === "/send") { // a chat message: waits the phone's group time

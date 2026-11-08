@@ -164,7 +164,8 @@ function control(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, v
 }
 function control1(room, { op, i, w, a, id, t, intro, c, title, ev, wait, names, voters }) {
   const s = sceneAt(room);
-  if (op === "eyes") { room.eyes = !room.eyes; return room; } // "look at the screen": phones pause input
+  if (op === "eyes") { room.eyes = !room.eyes; return room; }
+  if (op === "signout") { room.phones = new Map(); room.signedOut = ev; return room; } // everyone rejoins with the new code; the step stays // "look at the screen": phones pause input
   if (op === "mode") { if (names) room.names = names; if (voters !== undefined) room.voters = voters; return room; }
   if (op === "reset") return { ...fresh(room.workshop, room.chapters), title: room.title, runId: ev, names: room.names, voters: room.voters, audience: room.audience, intro: room.intro }; // stay in this workshop
   if (op === "start") return { ...fresh(w, c ?? WORKSHOPS[w].chapters), title: c ? title : undefined, runId: ev, audience: a ?? room.audience, intro: intro ?? "first", begun: !wait, names: names ?? "anonymous", voters: voters === true }; // the presenter leads the opening; phones join at the Scan slide // an empty room; phones wait until "begin"
@@ -211,7 +212,7 @@ export const validName = (x) => typeof x === "string" && /^[\p{L}\p{N} .'’-]{1
 export function validControl({ op, i, w, a, id, intro, c, title, names, voters }) {
   if (op === "mode") return (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean");
   if (op === "audience") return Object.hasOwn(AUDIENCES, a);
-  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument"].includes(op)) return true;
+  if (["eyes", "begin", "next", "prev", "reveal", "groups", "break", "fix", "reset", "instrument", "signout"].includes(op)) return true;
   if (op === "start") return Number.isInteger(w) && Object.hasOwn(WORKSHOPS, w) && (a === undefined || Object.hasOwn(AUDIENCES, a)) && (intro === undefined || INTROS.includes(intro)) && (c === undefined || validProgram(c)) && (names === undefined || NAME_MODES.includes(names)) && (voters === undefined || typeof voters === "boolean")
     && (title === undefined || (typeof title === "string" && /^[\p{L}\p{N} &,.:'’-]{1,40}$/u.test(title)));
   if (op === "detour") return typeof id === "string" && Object.hasOwn(SCENE, id);

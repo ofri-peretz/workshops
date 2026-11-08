@@ -528,6 +528,14 @@ assert.ok(board.length >= 2 && board.every((x) => Number.isInteger(x.move)), "th
 const termsRep = (await (await fetch(base + "/run-report?t=t")).json()).terms;
 assert.ok(termsRep && termsRep.after > termsRep.before, "the run report has the room's terms before and after");
 
+// Sign everyone out: phones are removed, the step stays, and their next call says why (so they don't retry an old code).
+const before = room().pos;
+assert.equal((await ctl("signout")).status, 200);
+assert.equal(room().phones.size, 0, "sign-out removes every phone");
+assert.equal(room().pos, before, "the room stays on its step");
+const out = await fetch(base + "/view", { headers: { cookie: learner.cookie } });
+assert.equal(out.status, 401); assert.equal((await out.json()).signedOut, true, "a signed-out phone is told so");
+
 // The home page outlives every room: it must list the same links and the same series.
 const hub = readFileSync(new URL("./public/hub.html", import.meta.url), "utf8");
 for (const l of PRESENTER.links) assert.ok(hub.includes(`href="${l.href}"`), `hub.html links ${l.label}`);

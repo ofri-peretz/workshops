@@ -1471,9 +1471,15 @@
             try {
               const r = await fetch("/api/view", { cache: "no-store", credentials: "same-origin" });
               if (r.status === 403) return gate("The presenter closed the workshop. Thanks for joining.", false);
-              if (r.status === 401 && joinCode) { // our session is gone (e.g. the room restarted): rejoin quietly
-                const again = await post("/api/join", { code: joinCode });
+              if (r.status === 401) {
+                const why = await r.clone().json().catch(() => ({}));
+                if (why.signedOut || !joinCode) { // signed out: forget the old code, never retry it (5 wrong codes lock the venue's network)
+                  if (joinCode || $("gate").hidden) { joinCode = null; try { sessionStorage.removeItem("relay-code"); localStorage.removeItem("relay-session"); } catch {} gate("The presenter signed everyone out. Enter the new code from the big screen.", true); $("chat").hidden = true; $("top").innerHTML = ""; $("rest").innerHTML = ""; }
+                  setTimeout(poll, 3000); return;
+                }
+                const again = await post("/api/join", { code: joinCode }); // our session is gone (the room restarted): rejoin quietly, once
                 if (again.ok) { apply(again.body); setTimeout(poll, 1500); return; }
+                joinCode = null; gate(again.body?.error || "Enter the code from the big screen.", true); setTimeout(poll, 3000); return;
               }
               if (r.ok) apply(await r.json());
             } catch {}

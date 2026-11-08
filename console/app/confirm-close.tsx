@@ -2,6 +2,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+/** Signing everyone out takes a second, deliberate press: every phone must enter the new code. */
+export function ConfirmSignOut({ action }: { action: () => Promise<void> }) {
+  const [armed, setArmed] = useState(false);
+  if (!armed) return <Button data-testid="signout-all" variant="outline" type="button" onClick={() => setArmed(true)}>Sign everyone out</Button>;
+  return (
+    <form action={action} className="flex gap-2">
+      <Button data-testid="signout-all-confirm" variant="destructive" type="submit">New code, everyone out</Button>
+      <Button data-testid="signout-all-cancel" variant="ghost" type="button" onClick={() => setArmed(false)}>Cancel</Button>
+    </form>
+  );
+}
+
 /** Close is final for everyone in the room, so it takes a second, deliberate press. */
 export function ConfirmClose({ action }: { action: () => Promise<void> }) {
   const [armed, setArmed] = useState(false);

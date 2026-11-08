@@ -55,6 +55,14 @@ export async function newCodeAction() {
   revalidatePath("/");
 }
 
+/** A new code, and every phone out: each must enter the new code to come back. The room stays on its step. */
+export async function signOutAllAction() {
+  const jwt = await signedIn();
+  await newJoinCode(jwt);
+  await relayControl({ op: "signout" });
+  revalidatePath("/");
+}
+
 export async function closeAction() {
   await closeRoom(await signedIn());
   revalidatePath("/");
