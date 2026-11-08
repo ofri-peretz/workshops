@@ -15,7 +15,7 @@ Each step: what, and the proof. ✅ done · ☐ open · ✗ declined (reason).
 8. ✅ Phone feedback: 409/423/network on answers shows a short line; term answers roll back on failure; "Reconnecting…" strip after 2 failed checks.
 9. ✅ Recap survives Close: the phone keeps the recap link and shows it on the closed page.
 10. ✅ Phone header at 360 px: points only at reveals, rank only in the top 10; header buttons 44 px tall.
-11. ✗ Projector clean (declined for now: the controls auto-hide and the keys work without them; notes only on N. Revisit with a separate laptop view): controls, clock and notes only with `?presenter=1` (the console's "Open the big screen" link keeps them on the laptop copy).
+11. ✅ Projector clean: H hides the controls, notes and hide buttons from the projector (remembered); keys and clicker still work. Was: controls, clock and notes only with `?presenter=1` (the console's "Open the big screen" link keeps them on the laptop copy).
 12. ✅ Keys: ignore `e.repeat` and keys typed into selects/inputs.
 13. ✅ Legibility: header code pill ≥ 40 px.
 14. ✅ Console live strip during the session: step i/n, present, answered/present, minutes vs plan.
@@ -23,13 +23,13 @@ Each step: what, and the proof. ✅ done · ☐ open · ✗ declined (reason).
 16. ✅ Console history: runs list, open any run's report, download its events (JSON).
 17. ✅ Data: `close` event on Close; heartbeat carries step + visibility; recap/reminder clicks counted; recap opens logged.
 18. ✅ Recap load: bound the read to the run (`until` next start).
-19. ✗ Names to a separate purgeable table and service-role-only RLS: needs a schema change and key rotation; recorded for after the event.
+19. ✅ The event log is the relay's server key only (anon refused, verified); typed names and questions purged after 30 days (pg_cron); device mark salted per run.
 
 ## P2 / features
 20. ✅ Unanswered terms show "—", not ✗; rank shown only in the top 10.
-21. ☐ Extend 30 min button; group label stored in the start event.
-22. ☐ Anonymous questions with upvotes at Q&A (top 5 on screen, all in the report).
-23. ☐ "I'm lost" / "Got it" pulse into the console strip.
+21. ✅ Extend 30 min button; group label stored in the start event.
+22. ✅ Anonymous questions with upvotes at Q&A (top 5 on screen, all in the report).
+23. ✅ "I'm lost" / "Got it" pulse into the console strip.
 
 ## Verification
 - `npm test`, `npx playwright test`, `node scripts/load.mjs <relay> <code> 50 60` locally, then on the deployed relay during a rehearsal room (needs the presenter's go: it opens the production room).

@@ -169,6 +169,9 @@ paths:
                 - { type: object, required: [type, target], properties: { type: { const: cta }, target: { enum: [linkedin, github, devto, blog, recap, reminder] } } }
                 - { type: object, required: [type, target], properties: { type: { const: practice }, target: { type: object, required: [term, right], properties: { term: { type: string }, right: { type: boolean } } } } }
                 - { type: object, required: [type], properties: { type: { const: terms } }, description: the Terms panel opened }
+                - { type: object, required: [type, target], properties: { type: { const: ask }, target: { type: string, minLength: 3, maxLength: 200 } }, description: "an anonymous question (5 per phone); 429 past five" }
+                - { type: object, required: [type, target], properties: { type: { const: vote }, target: { type: integer } }, description: "upvote a question, or take the upvote back" }
+                - { type: object, required: [type, target], properties: { type: { const: pulse }, target: { enum: [ok, lost, null] } }, description: "got it / I'm lost on the current step; null takes it back" }
       responses: { "200": { $ref: "#/components/responses/Ok" }, "400": { $ref: "#/components/responses/Bad" } }
   /request:
     post:
@@ -337,10 +340,11 @@ components:
       type: object
       required: [op]
       properties:
-        op: { enum: [start, begin, next, prev, goto, choose, detour, reveal, groups, break, fix, instrument, eyes, mode, audience, reset, signout, close] }
+        op: { enum: [start, begin, next, prev, goto, choose, detour, reveal, groups, break, fix, instrument, eyes, mode, audience, reset, signout, close, extend, hideq] }
+        label: { type: string, maxLength: 60, description: "start: the group or venue, kept with the run" }
         w: { type: integer, description: "start: the workshop" }
         wait: { type: boolean, description: "start: phones wait until begin" }
-        i: { type: integer, minimum: 0, maximum: 99, description: "goto/choose: the step or detour" }
+        i: { type: integer, minimum: 0, description: "goto/choose: the step or detour (≤ 99); hideq: the question's id" }
         id: { type: string, description: "detour: a scene from the library" }
         a: { type: string, description: "start/audience: the audience" }
         intro: { enum: [first, returning] }
@@ -366,6 +370,8 @@ components:
         why: { type: string, description: "why the answer is right, after the reveal" }
         quiz: { type: array, items: { type: object, properties: { term: { type: string }, options: { type: array, items: { type: string }, minItems: 4, maxItems: 4 }, answer: { type: integer } } } }
         termScore: { type: object, properties: { n: { type: integer }, right: { type: integer }, before: { type: integer }, after: { type: integer } } }
+        questions: { type: array, maxItems: 20, items: { $ref: "#/components/schemas/Question" } }
+        pulseMine: { enum: [ok, lost], description: "this phone's pulse on this step" }
         points: { type: integer }
         rank: { type: integer }
         terms: { type: array, items: { type: object, properties: { term: { type: string }, def: { type: string }, example: { type: string } } } }
@@ -386,11 +392,14 @@ components:
         path: { type: array, items: { type: string } }
         results: { type: object, additionalProperties: true }
         leaderboard: { type: array, maxItems: 5, items: { type: object, required: [name, points, move], properties: { name: { type: string }, points: { type: integer }, move: { type: integer, description: places gained on this question; the screen shows only gains } } } }
+        questions: { type: array, items: { $ref: "#/components/schemas/Question" }, description: "all, hidden ones marked; the screen shows the top five unhidden" }
+        pulse: { type: object, properties: { ok: { type: integer }, lost: { type: integer } }, description: "this step's got-it / lost counts, never names" }
         library: { type: array, items: { type: object, properties: { id: { type: string }, title: { type: string }, act: { type: string }, min: { type: number } } } }
         clock: { type: number }
         total: { type: number }
       additionalProperties: true
-    Run: { type: object, required: [r, t, title, joined], properties: { r: { type: integer }, t: { type: integer, description: epoch ms }, w: { type: integer }, title: { type: string }, joined: { type: integer } } }
+    Run: { type: object, required: [r, t, title, joined], properties: { r: { type: integer }, t: { type: integer, description: epoch ms }, w: { type: integer }, title: { type: string }, label: { type: string, description: the group or venue }, joined: { type: integer } } }
+    Question: { type: object, required: [id, text, votes], properties: { id: { type: integer }, text: { type: string }, votes: { type: integer }, hidden: { type: boolean }, mine: { type: boolean, description: this phone upvoted it }, own: { type: boolean, description: this phone asked it } } }
     Event: { type: object, required: [id, kind, data], properties: { id: { type: integer }, phone: { type: [string, "null"] }, kind: { enum: [join, send, rtt, answer, request, job, load, curious, control] }, data: { type: object, additionalProperties: true } } }
     RunReport:
       type: object

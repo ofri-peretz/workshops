@@ -243,3 +243,34 @@ describe("edges the second oxmutate run found", () => {
     expect([r.before, r.after, r.improved.length]).toEqual([0, 0, 0]);
   });
 });
+
+describe("questions and the pulse", () => {
+  it("lists questions by upvotes, never says who asked, and lets the presenter hide one", () => {
+    let room = roomAt("felt");
+    room = answer(room, "a", "_ask", "Why p95 and not p99?");
+    room = answer(room, "b", "_ask", "Is logging slow?");
+    const [q1, q2] = room.questions;
+    room = answer(room, "c", "_vote", q2.id);
+    let view = screenView(room, Date.now()).questions;
+    expect(view.map((q) => [q.text, q.votes])).toEqual([["Is logging slow?", 2], ["Why p95 and not p99?", 1]]);
+    expect(JSON.stringify(view)).not.toMatch(/"by"|"a"|"b"/);
+    room = answer(room, "c", "_vote", q2.id); // a second tap takes the upvote back
+    expect(screenView(room, Date.now()).questions.find((q) => q.id === q2.id).votes).toBe(1);
+    room = reduce(room, ev("control", { op: "hideq", i: q1.id }));
+    expect(phoneView(room, room.phones.get("b")).questions.map((q) => q.id)).toEqual([q2.id]);
+    expect(phoneView(room, room.phones.get("b")).questions[0].own).toBe(true);
+    expect(validControl({ op: "hideq", i: q1.id })).toBe(true);
+    expect(validControl({ op: "hideq", i: 0 })).toBe(false);
+  });
+  it("counts got-it and lost per step, one per phone, and a second tap clears it", () => {
+    let room = roomAt("felt");
+    const mark = (p, v) => { room = answer(room, p, "_pulse", { step: "felt", v }); };
+    mark("a", "lost"); mark("b", "ok"); mark("c", "lost"); mark("c", "ok"); mark("a", null);
+    expect(screenView(room, Date.now()).pulse).toEqual({ lost: 0, ok: 2 });
+    expect(phoneView(room, room.phones.get("c")).pulseMine).toBe("ok");
+  });
+  it("takes a group label on start, and nothing longer than 60 characters", () => {
+    expect(validControl({ op: "start", w: 5, label: "JS meetup" })).toBe(true);
+    expect(validControl({ op: "start", w: 5, label: "x".repeat(61) })).toBe(false);
+  });
+});

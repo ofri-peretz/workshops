@@ -163,7 +163,8 @@
         height: 24px;
       }
       .pulse { display: flex; gap: 8px; } .pulse button { flex: 1; min-height: 44px; border-radius: 999px; font-weight: 600; }
-      .qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .qs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); } .qs li span { min-width: 0; overflow-wrap: anywhere; } .qs button { flex: none; min-height: 44px; min-width: 64px; border-radius: 999px; font: 700 15px var(--mono); }
+      .qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .qs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); } .qs li span { flex: 1; min-width: 0; overflow-wrap: anywhere; } .qs button { flex: none; width: auto; min-height: 44px; min-width: 64px; padding: 0 14px; border-radius: 999px; font: 700 15px var(--mono); }
+      #ask button.back { width: auto; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--quiet); color: var(--fg); font-weight: 600; } #ask { display: grid; gap: 14px; }
       .ask textarea { font: 400 17px var(--sans); padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); resize: vertical; }
       #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: translateX(-50%); z-index: 30; margin: 0; padding: 10px 16px; border-radius: 999px; background: var(--fg); color: var(--bg); font-weight: 600; max-width: calc(100% - 32px); text-align: center; }
       header button.tbtn {

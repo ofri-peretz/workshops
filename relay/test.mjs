@@ -74,7 +74,8 @@ for (const [id, c] of Object.entries(CASES)) {
   for (const id of WORKSHOPS[5].chapters.flatMap((c) => CHAPTERS[c].scenes)) {
     const s = SCENE[id];
     for (const t of s.terms || []) taught.add(t);
-    const text = [s.title, s.lead, s.phone, s.how, ...(s.items || [])].filter(Boolean).join(" | ");
+    if (s.type === "termcheck") continue; // the warm-up quiz names terms on purpose, before they are taught, and says so
+    const text = [s.title, s.lead, s.phone, s.how, s.takeaway, s.why, s.remember, ...(s.items || []), ...(s.options || [])].filter(Boolean).join(" | ");
     for (const j of JARGON) assert.ok(taught.has(j) || !new RegExp(`\\b${j.replace(/ /g, "\\s")}s?\\b`, "i").test(text), `${id}: "${j}" appears before the scene that teaches it`);
   }
 }
