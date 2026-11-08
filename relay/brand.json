@@ -1,13 +1,13 @@
 {
   "source": "https://interlace.tools/brand.json",
-  "syncedAt": "2026-11-07",
+  "syncedAt": "2026-11-08",
   "name": "Interlace",
   "hub": "https://interlace.tools",
   "does": "Check what coding agents ship",
   "author": {
     "lead": "Engineering leader. JavaScript at scale.",
     "facts": [
-      "Engineering Manager at Snappy · 5 years",
+      "Engineering Manager · 5 years",
       "10+ years building software",
       "Relocated to the U.S. to build the first U.S. team: 8 engineers, 5 time zones",
       "Creator and maintainer of Interlace: 77 open-source packages, 1.25M+ npm downloads"

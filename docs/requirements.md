@@ -50,8 +50,8 @@ built (✅), partly built (◐) or still open (☐). Change this file when a req
   travelling written → shipped → stored → searchable, with the room's counts on the big screen.
 - ✅ A case bank (relay/cases.mjs) of real, verified, safe-to-say cases: company, government,
   research; recent and older; each with its source. The room chooses among them.
-- ☐ Cases from the presenter's own workplace: one per workshop, different root cause. Waiting on the
-  employer's approval to name it publicly; the repo's scrub blocks the name until then.
+- ✗ Cases from the presenter's own workplace: dropped (Ofri, 2026-11-08). The workshops use
+  public, sourced cases only; the employer is never named, not even in the presenter's title.
 - ◐ Recent research on performance and revenue (Vodafone 2021, Rakuten 2022, Bing 2014, New Relic
   2025, Splunk 2026, Uptime Institute 2025, DORA 2024) is verified but not on slides yet.
 
@@ -86,4 +86,4 @@ built (✅), partly built (◐) or still open (☐). Change this file when a req
 
 - No IDF unit or system names; nothing tying the presenter to reserve duty; English only.
 - No secrets in the repo; the personal Vercel account only.
-- Material from the presenter's employer only with explicit approval.
+- No material from the presenter's employer, and the employer is never named (Ofri, 2026-11-08).

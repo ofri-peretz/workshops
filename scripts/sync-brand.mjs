@@ -16,8 +16,10 @@ const brand = {
   hub: m.links.hub,
   // What Interlace does, in the brand's words, cut to fit a slide line.
   does: m.headline.replace(/\.$/, "").replace("your coding agents", "coding agents"),
-  // Who's presenting: role, tenure, experience, the team, the open-source work.
-  author: { lead: m.author.lead, facts: m.author.facts },
+  // Who's presenting: role, tenure, experience, the team, the open-source work. The workshops
+  // never name the presenter's employer (Ofri, 2026-11-08): "Engineering Manager at X · 5 years"
+  // becomes "Engineering Manager · 5 years". scripts/scrub.mjs fails if a name gets through.
+  author: { lead: m.author.lead, facts: m.author.facts.map((f) => f.replace(/\s+at\s+[^·,]+?(?=\s*·|\s*,|$)/, "")) },
 };
 writeFileSync(new URL("../relay/brand.json", import.meta.url), JSON.stringify(brand, null, 2) + "\n");
 console.log(brand);
