@@ -94,7 +94,7 @@
         .share .qr { width: clamp(132px, 14vw, 240px); height: clamp(132px, 14vw, 240px); }
         .share .qr img, .share .qr canvas { width: 100% !important; height: 100% !important; }
       }
-      .timer { font: 700 16px/1 var(--mono); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); margin-left: auto; }
+      .timer { font: 700 15px/1 var(--mono); padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); }
       .timer.low { border-color: var(--primary, currentColor); }
       header { position: relative; }
       .progress { position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; background: transparent; } .progress i { display: block; height: 100%; width: 0; background: var(--primary, currentColor); transition: width 400ms ease; }
@@ -146,15 +146,18 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
-        border-bottom: 2px solid var(--strand);
+        padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 8px;
+        border-bottom: 2px solid var(--line);
         background: var(--card);
       }
       header .brandrow {
         display: flex;
         align-items: center;
         gap: 8px;
+        min-width: 0;
       }
+      header .hright { display: flex; align-items: center; gap: 6px; flex: none; }
+      header #where { color: var(--fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       header .mark {
         width: 24px;
         height: 24px;
@@ -162,7 +165,8 @@
       header button.tbtn {
         width: auto;
         font: 600 13px var(--sans);
-        padding: 6px 10px;
+        padding: 5px 10px;
+        min-height: 32px;
         border-radius: 99px;
         text-align: center;
       }
@@ -584,10 +588,12 @@
     <header>
       <div class="brandrow">
         <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-30 50 50)"><rect x="10" y="18" width="62" height="28" rx="14" fill="var(--mark-o)" /><rect x="28" y="54" width="62" height="28" rx="14" fill="var(--mark-g)" /></g></svg>
-        <b>Workshops</b>
+        <span class="live" aria-hidden="true"></span><span id="where">Joining…</span>
       </div>
-      <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
-      <span class="live" aria-hidden="true"></span><span id="where">Joining…</span><span class="score" id="score" hidden title="Right answers"></span><span class="timer" id="timer" hidden aria-live="off"></span>
+      <div class="hright">
+        <span class="score" id="score" hidden title="Your points and rank"></span><span class="timer" id="timer" hidden aria-live="off"></span>
+        <button type="button" class="tbtn" id="termsBtn" aria-expanded="false" aria-controls="terms">Terms <span id="tcount">0</span></button>
+      </div>
       <div class="progress" aria-hidden="true"><i id="progress"></i></div>
     </header>
     <div class="eyesup" aria-live="assertive"><span>👀</span><b>Look at the screen</b></div>
@@ -864,7 +870,7 @@
         // a trace as a waterfall: each span appears in turn
         spans(r, small) {
           const S = [["POST /send", 0, 300, 0], ["session.lookup", 5, 25, 1], ["relay.deliver", 30, 180, 1], ["db.append", 225, 70, 1]];
-          const W = small ? 360 : 960, L = small ? 96 : 190, u = (W - L - 10) / 300, row = small ? 30 : 42, fs = small ? 11 : 16;
+          const W = small ? 360 : 960, L = small ? 96 : 190, u = (W - L - (small ? 56 : 90)) / 300, row = small ? 30 : 42, fs = small ? 11 : 16;
           return `<svg class="stepsvg" viewBox="0 0 ${W} ${S.length * row + 26}" role="img" aria-label="One trace: POST /send 300 ms, made of session.lookup, relay.deliver and db.append">${S.map(([n, st, d, depth], i) => `<g opacity="${CALM ? 1 : 0}">${once("opacity", 0, 1, `${0.2 + i * 0.45}s`, "0.4s")}
             <text x="${depth * 14}" y="${i * row + row / 2 + fs / 3}" style="fill:var(--fg);font-size:${fs}px">${n}</text><rect x="${L + st * u}" y="${i * row + 5}" width="${d * u}" height="${row - 12}" rx="5" fill="${i ? "var(--c2)" : "var(--c1)"}"/><text x="${L + (st + d) * u + 6}" y="${i * row + row / 2 + fs / 3}" style="fill:var(--muted);font-size:${fs}px">${d} ms</text></g>`).join("")}
             <text x="${L}" y="${S.length * row + 20}" style="fill:var(--muted);font-size:${fs}px">One trace id on every bar. Each bar is a span.</text></svg>`;
@@ -1169,7 +1175,7 @@
           $("rest").innerHTML = html;
         }
         if (!NO_DEEPER.has(v.type) && !v.needName)
-          $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted — thanks" : "🔍 Go deeper on this"}</button>`);
+          $("rest").insertAdjacentHTML("beforeend", `<button type="button" class="deeper" id="deeper" ${v.curiousMine ? "disabled" : ""}>${v.curiousMine ? "🔍 Noted: the presenter sees it" : "🔍 I want more on this"}</button>`);
         const nf = $("nameform");
         if (nf) nf.onsubmit = async (e) => {
           e.preventDefault();
