@@ -205,6 +205,7 @@
       .muted {
         color: var(--muted);
       }
+      .guide { display: grid; gap: 1rem; place-content: center; min-height: 70vh; text-align: center; }
       .grid2 {
         display: grid;
         grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
@@ -658,7 +659,18 @@
       <table><tr><th scope="row"><kbd>→ or PageDown</kbd></th><td>Next scene (a clicker works)</td></tr><tr><th scope="row"><kbd>← or PageUp</kbd></th><td>Back</td></tr><tr><th scope="row"><kbd>R</kbd></th><td>Reveal the answer</td></tr><tr><th scope="row"><kbd>G</kbd></th><td>Reveal the speed groups</td></tr><tr><th scope="row"><kbd>B</kbd></th><td>Break Relay</td></tr><tr><th scope="row"><kbd>F</kbd></th><td>Fix Relay</td></tr><tr><th scope="row"><kbd>A</kbd></th><td>Add span</td></tr><tr><th scope="row"><kbd>E</kbd></th><td>Eyes up: phones pause and look at the screen</td></tr><tr><th scope="row"><kbd>Enter</kbd></th><td>Close & continue: reveal, 3 s, next</td></tr><tr><th scope="row"><kbd>N</kbd></th><td>Speaker notes (the room sees them)</td></tr><tr><th scope="row"><kbd>? or ⌘/</kbd></th><td>This list</td></tr><tr><th scope="row"><kbd>Esc</kbd></th><td>Close this list</td></tr></table>
     </dialog>
     <script>
-      const T = new URLSearchParams(location.search).get("t");
+      // The presenter token: from ?t= once, then kept on this machine and dropped from the address bar.
+      const T = (() => {
+        const u = new URL(location.href), t = u.searchParams.get("t");
+        try { if (t) localStorage.setItem("relayT", t); else return localStorage.getItem("relayT"); } catch {}
+        if (t) { u.searchParams.delete("t"); history.replaceState(null, "", u); }
+        return t;
+      })();
+      function unlock(e) {
+        e.preventDefault();
+        try { localStorage.setItem("relayT", new FormData(e.target).get("t").trim()); } catch {}
+        location.reload();
+      }
       // Phones join on the chat host; the projector may be on its own (screen.) host. The presenter's
       // console passes the public address and the join code (?join=…&c=…); the QR carries both.
       const Q = new URLSearchParams(location.search);
@@ -1247,6 +1259,12 @@
         try {
           const r = await fetch("/api/screen?t=" + encodeURIComponent(T), { cache: "no-store" });
           if (r.ok) render(await r.json());
+          else {
+            const { error, closed } = await r.json().catch(() => ({}));
+            const stage = document.getElementById("stage");
+            if (closed) stage.innerHTML = `<section class="guide"><h1>The room is closed</h1><p>In your console: pick the workshop, then Go live. This screen picks it up by itself.</p></section>`;
+            else if (!stage.querySelector("form")) stage.innerHTML = `<section class="guide"><h1>Presenter screen</h1><p>Paste your presenter token once. This machine remembers it.</p><form onsubmit="unlock(event)"><input name="t" type="password" autocomplete="off" required aria-label="Presenter token"> <button>Open</button></form><p class="muted">${esc(error || "Relay answered " + r.status)}</p></section>`;
+          }
         } catch {}
         setTimeout(poll, 1000);
       })();
