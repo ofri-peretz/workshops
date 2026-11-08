@@ -75,7 +75,7 @@ export default async function Console() {
         <section data-testid="workshops" aria-labelledby="pick" className="grid gap-4">
           <div className="grid gap-1">
             <h2 id="pick" className="text-lg font-semibold">The monitoring series: open one part</h2>
-            <p className="text-sm text-muted-foreground">Going live opens the doors: phones join and wait until you press Begin. The room stays open 2 hours; the join code works for 60 minutes.</p>
+            <p className="text-sm text-muted-foreground">Going live opens the doors: phones join and wait until you press Begin. The room and its join code stay open 2 hours. Sign everyone out makes a new code.</p>
           </div>
           <form action={goLiveAction} className="grid gap-4">
           <Card data-testid="intro-settings">

@@ -11,7 +11,7 @@ export type RoomState = {
 };
 
 const LIVE_MS = 2 * 3600_000;
-const JOIN_MS = 60 * 60_000;
+const JOIN_MS = LIVE_MS; // the code works as long as the room is open; "Sign everyone out" replaces it
 
 // The plain code is never stored: it is derived from the secret and the code's own expiry, so any
 // console instance (laptop or Vercel) recomputes it. Supabase keeps only its HMAC.

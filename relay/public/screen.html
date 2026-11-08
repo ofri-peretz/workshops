@@ -705,6 +705,16 @@
       const TUNNEL = location.hostname.endsWith(".trycloudflare.com"); // npm run tunnel: practice with real phones
       const JOIN = Q.get("join") || (LOCAL || TUNNEL ? location.origin + "/" : LIVE);
       const CODE = /^\d{6}$/.test(Q.get("c") || "") ? Q.get("c") : "";
+      // Served from the console: follow its current code (New code, Sign everyone out) without a reload.
+      setInterval(async () => {
+        const r = await fetch("/join-code", { cache: "no-store" }).catch(() => null);
+        if (!r?.ok) return; // on the relay's own host there is no /join-code
+        const { code } = await r.json().catch(() => ({}));
+        if ((code || "") === CODE) return;
+        const u = new URL(location.href);
+        if (code) u.searchParams.set("c", code); else u.searchParams.delete("c");
+        location.replace(u);
+      }, 5000);
       const JOIN_QR = CODE ? JOIN + "?c=" + CODE : JOIN;
       const $ = (id) => document.getElementById(id);
       const esc = (s) =>
