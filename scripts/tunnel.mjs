@@ -19,10 +19,11 @@ tunnel.stderr.on("data", async (chunk) => {
   if (!url || tunnel.started) return;
   tunnel.started = true;
   for (let i = 0; i < 30; i++) { // the tunnel's DNS takes a few seconds to answer
-    try { if ((await fetch(`${url}/status`)).ok) break; } catch {}
+    // eslint-disable-next-line reliability/no-silent-errors -- polling until the tunnel's DNS answers; failures are the expected state
+    try { if ((await fetch(`${url}/status`, { signal: AbortSignal.timeout(5_000) })).ok) break; } catch {}
     await new Promise((r) => setTimeout(r, 1000));
   }
-  await fetch(`http://localhost:${port}/api/control?t=${token}`, { method: "POST", body: JSON.stringify({ op: "start", w: 5 }) });
+  await fetch(`http://localhost:${port}/api/control?t=${token}`, { signal: AbortSignal.timeout(10_000), method: "POST", body: JSON.stringify({ op: "start", w: 5 }) });
   const screen = `${url}/screen?t=${token}&c=${code}`;
   console.log(`\nPhones:      ${url}/?c=${code}`);
   console.log(`Big screen:  ${screen}   (keep this one to yourself)`);

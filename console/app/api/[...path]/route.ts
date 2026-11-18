@@ -12,6 +12,7 @@ async function forward(request: Request, { params }: { params: Promise<{ path: s
   target.searchParams.set("t", env.presenterToken());
   const r = await fetch(target, {
     method: request.method,
+    signal: AbortSignal.timeout(10_000),
     headers: { "content-type": "application/json" },
     body: request.method === "GET" ? undefined : await request.text(),
     cache: "no-store",

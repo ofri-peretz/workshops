@@ -45,6 +45,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { server, token, code } = createServer({ store, token: process.env.PRESENTER_TOKEN || undefined, codeSecret: process.env.CODE_SECRET || undefined, code: process.env.JOIN_CODE || undefined });
   server.listen(port, process.env.HOST || "127.0.0.1", () => {
     console.log(`Phones:     http://localhost:${port}/?c=${code}`);
+    // eslint-disable-next-line secure-coding/no-sensitive-data-exposure -- the presenter's own link, printed once on their own terminal
     console.log(`Projector:  http://localhost:${port}/screen?t=${token}   (keep this link to yourself)`);
     console.log(`Status:     http://localhost:${port}/status`);
   });

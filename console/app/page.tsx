@@ -137,7 +137,7 @@ export default async function Console({ searchParams }: { searchParams: Promise<
           </CardHeader>
           <CardContent className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
             {qr ? (
-              // eslint-disable-next-line @next/next/no-img-element
+              // a data: URL QR code; next/image would add nothing
               <img src={qr} alt={`QR code that opens ${joinLink}`} width={200} height={200} className="rounded-md bg-white p-2" />
             ) : null}
             <div className="grid gap-3">
@@ -169,7 +169,7 @@ export default async function Console({ searchParams }: { searchParams: Promise<
                 <p>No code is active on this console. Make a new one; phones already in stay in.</p>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button data-testid="open-screen" render={<a href={screenHref} target="_blank" rel="noreferrer" />}>Open the big screen</Button>
+                <Button data-testid="open-screen" render={<a href={screenHref} target="_blank" rel="noreferrer" />} /* eslint-disable-line react-a11y/anchor-has-content, react-a11y/control-has-associated-label -- FP ofri-peretz/eslint#1562: content comes from the Button */>Open the big screen</Button>
                 <form action={newCodeAction}><Button data-testid="new-code" variant="outline" type="submit">New code</Button></form>
                 <ConfirmSignOut action={signOutAllAction} />
                 <ConfirmReset action={resetAction} />
@@ -236,7 +236,7 @@ export default async function Console({ searchParams }: { searchParams: Promise<
           <CardDescription>Test yourself on every term in the series before you teach it.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button data-testid="open-rehearsal" variant="outline" render={<a href="/rehearsal" target="_blank" rel="noreferrer" />}>Open the rehearsal</Button>
+          <Button data-testid="open-rehearsal" variant="outline" render={<a href="/rehearsal" target="_blank" rel="noreferrer" />} /* eslint-disable-line react-a11y/anchor-has-content, react-a11y/control-has-associated-label -- FP ofri-peretz/eslint#1562: content comes from the Button */>Open the rehearsal</Button>
         </CardContent>
       </Card>
     </main>

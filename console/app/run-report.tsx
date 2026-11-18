@@ -38,7 +38,7 @@ export function RunReportCard({ report: r }: { report: RunReport }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm tabular-nums">
                 <thead><tr className="text-left text-muted-foreground"><th>Name</th><th>Points</th><th>Right</th><th>Terms</th><th>Msgs</th><th>Practice</th><th>Recap</th></tr></thead>
-                <tbody>{r.participants.map((p, i) => <tr key={i}><td>{p.name}</td><td>{p.points}</td><td>{p.right}/{p.answered}</td><td>{p.terms ? `${p.terms.before} → ${p.terms.after}` : "—"}</td><td>{p.sends}</td><td>{p.practice}</td><td>{p.recapOpened ? "✓" : ""}</td></tr>)}</tbody>
+                <tbody>{r.participants.map((p, i) => <tr key={i} /* eslint-disable-line react-features/jsx-key -- a fixed report table, never reordered; names can repeat */><td>{p.name}</td><td>{p.points}</td><td>{p.right}/{p.answered}</td><td>{p.terms ? `${p.terms.before} → ${p.terms.after}` : "—"}</td><td>{p.sends}</td><td>{p.practice}</td><td>{p.recapOpened ? "✓" : ""}</td></tr>)}</tbody>
               </table>
             </div>
           </section>

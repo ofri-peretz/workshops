@@ -6,20 +6,20 @@ const dir = new URL(".", import.meta.url).pathname;
 const terms = { ...GLOSSARY, ...EXTRA };
 const groupOf = (t) => {
   for (const [w, list] of Object.entries(WORKSHOP_OF))
-    if (list.includes(t)) return "w" + w;
+    if (list.includes(t)) return `w${w}`;
   return "w2";
 };
 const missing = Object.values(WORKSHOP_OF)
   .flat()
   .filter((t) => !terms[t]);
 if (missing.length)
-  throw new Error("mapped but undefined: " + missing.join(", "));
+  throw new Error(`mapped but undefined: ${missing.join(", ")}`);
 
 const humanize = (id) =>
   id.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 const items = [
   ...Object.entries(terms).map(([t, v]) => ({
-    id: "t:" + t,
+    id: `t:${t}`,
     kind: "term",
     group: groupOf(t),
     title: t,
@@ -27,14 +27,14 @@ const items = [
     example: v.example,
   })),
   ...Object.entries(CONCEPTS).map(([id, v]) => ({
-    id: "c:" + id,
+    id: `c:${id}`,
     kind: "idea",
     group: "ideas",
     title: humanize(id),
     def: v.claim,
   })),
   ...OLDER.map((o) => ({
-    id: "o:" + o.name,
+    id: `o:${o.name}`,
     kind: "older",
     group: "older",
     title: o.name,
@@ -63,16 +63,16 @@ const series = [
     what: "SLOs and the nines, error budgets and burn rate, alerts that page on what users feel, status pages and incident updates.",
   },
 ];
-const html = readFileSync(dir + "template.html", "utf8").replace(
+const html = readFileSync(`${dir}template.html`, "utf8").replace(
   "__DATA__",
   JSON.stringify({ items, older: OLDER, series }).replace(/</g, "\\u003c"),
 );
-writeFileSync(dir + "rehearsal.html", html); // Not under public/: Vercel would serve it to anyone. The admin route serves it after sign-in (relay-access).
+writeFileSync(`${dir}rehearsal.html`, html); // Not under public/: Vercel would serve it to anyone. The admin route serves it after sign-in (relay-access).
 const count = (g) => items.filter((i) => i.group === g).length;
 console.log(
   "items",
   items.length,
   ["w1", "w2", "w3", "w4", "ideas", "older"]
-    .map((g) => g + "=" + count(g))
+    .map((g) => `${g}=${count(g)}`)
     .join(" "),
 );

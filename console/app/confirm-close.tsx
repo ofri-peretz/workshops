@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-a11y/click-events-have-key-events -- FP ofri-peretz/eslint#1561: <Button> renders a native <button> */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 

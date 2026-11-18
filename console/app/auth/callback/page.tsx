@@ -9,6 +9,7 @@ export default function Callback() {
     if (p.get("error_description")) { setMessage(`${p.get("error_description")}. Request a new link.`); return; }
     fetch("/auth/session", {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ access_token: p.get("access_token"), refresh_token: p.get("refresh_token"), expires_in: p.get("expires_in") }),
     }).then(async (r) => {
