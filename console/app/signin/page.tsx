@@ -17,6 +17,7 @@ async function roomLive() {
   try {
     const r = await fetch(`${env.supabaseUrl()}/rest/v1/rpc/relay_gate`, {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: { apikey: env.anonKey(), authorization: `Bearer ${env.anonKey()}`, "content-type": "application/json" },
       body: "{}",
       cache: "no-store",

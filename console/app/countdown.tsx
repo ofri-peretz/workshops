@@ -13,7 +13,7 @@ export function Countdown({ until }: { until: string | null }) {
   const left = until ? Date.parse(until) - now : 0;
   useEffect(() => {
     if (until && left <= 0) router.refresh();
-  }, [until, left <= 0, router]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [until, left <= 0, router]); // eslint-disable-line react-features/hooks-exhaustive-deps -- refresh once when the countdown crosses zero, not on every tick
   if (!until) return <span>—</span>;
   if (left <= 0) return <span>now</span>;
   const m = Math.floor(left / 60_000), s = Math.floor((left % 60_000) / 1000);

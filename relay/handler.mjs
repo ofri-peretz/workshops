@@ -1,6 +1,6 @@
 // Relay's API as one fetch-style handler: (Request) => Response. The local server and the Vercel
 // function both call it; only the store differs.
-import { randomUUID, randomBytes, createHmac } from "node:crypto";
+import { randomUUID, randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { SCENES } from "./scenes.mjs";
 import { GLOSSARY } from "./concepts.mjs";
 import { WORKSHOPS } from "./workshops.mjs";
@@ -9,6 +9,13 @@ import { reportOf, validName, TAKEAWAYS, runOf, recapView, chapterList, promText
 const ID = /^[0-9a-f-]{36}$/;
 const TRACEPARENT = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/; // W3C Trace Context
 const r1 = (x) => Math.round(x * 10) / 10;
+
+// The presenter token is a secret: compare in constant time, so response timing does not leak it.
+const sameSecret = (given, secret) => {
+  if (typeof given !== "string" || typeof secret !== "string") return false;
+  const a = Buffer.from(given), b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
 export const hmac = (secret, value) => createHmac("sha256", secret).update(value).digest("hex");
 // What a phone sees for each join outcome. Each says what happened and what to do.
 const JOIN = {
@@ -43,9 +50,9 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
   return async function handle(request) {
     const t0 = performance.now(); // the server's root span starts here
     const url = new URL(request.url);
-    const path = "/" + (url.searchParams.get("path") ?? url.pathname.replace(/^\/api\//, "")).replace(/^\/+/, "");
+    const path = `/${(url.searchParams.get("path") ?? url.pathname.replace(/^\/api\//, "")).replace(/^\/+/, "")}`;
     const method = request.method;
-    const presenter = url.searchParams.get("t") === token;
+    const presenter = sameSecret(url.searchParams.get("t"), token);
     const id = (request.headers.get("cookie") || "").match(/(?:^|;\s*)rid=([^;]+)/)?.[1];
     const phoneId = id && ID.test(id) ? id : null;
     try {
@@ -64,12 +71,12 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "POST" && (path === "/screen-link" || path === "/screen-unlock") && !(sb && sbKey && owner)) return json(503, { error: "Email sign-in isn't set up on this relay." });
       if (method === "POST" && path === "/screen-link") {
         const back = /(^|\.)workshop\.ofriperetz\.dev$|^localhost$|^127\.0\.0\.1$/.test(url.hostname) ? url.origin : "https://screen.signals.workshop.ofriperetz.dev";
-        const r = await fetch(`${sb}/auth/v1/otp?redirect_to=${encodeURIComponent(back + "/screen")}`, { method: "POST", headers: { apikey: sbKey, "content-type": "application/json" }, body: JSON.stringify({ email: owner, create_user: false }) });
+        const r = await fetch(`${sb}/auth/v1/otp?redirect_to=${encodeURIComponent(`${back}/screen`)}`, { signal: AbortSignal.timeout(10_000), method: "POST", headers: { apikey: sbKey, "content-type": "application/json" }, body: JSON.stringify({ email: owner, create_user: false }) });
         return r.ok ? json(200, { sent: true }) : json(r.status === 429 ? 429 : 502, { error: r.status === 429 ? "A link was just sent. Check your email, or wait a minute." : "The email couldn't be sent." });
       }
       if (method === "POST" && path === "/screen-unlock") {
         const { access_token } = await read(request).catch(() => ({}));
-        const r = typeof access_token === "string" ? await fetch(`${sb}/auth/v1/user`, { headers: { apikey: sbKey, authorization: `Bearer ${access_token}` } }) : null;
+        const r = typeof access_token === "string" ? await fetch(`${sb}/auth/v1/user`, { signal: AbortSignal.timeout(10_000), headers: { apikey: sbKey, authorization: `Bearer ${access_token}` } }) : null;
         const user = r?.ok ? await r.json() : null;
         return user?.email?.toLowerCase() === owner.toLowerCase() ? json(200, { t: token }) : json(403, { error: "This link isn't the owner's. Request a new one." });
       }
@@ -82,7 +89,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
         return json(200, screenView(room, Date.now()));
       }
       // After the room: the recap (public) and the one-week follow-up (needs the phone's signed link).
-      const follow = (pid) => hmac(codeSecret, "follow:" + pid).slice(0, 24);
+      const follow = (pid) => hmac(codeSecret, `follow:${pid}`).slice(0, 24);
       const signed = (q) => ID.test(q.get("p") || "") && q.get("k") === follow(q.get("p"));
       if (method === "GET" && path === "/recap") {
         const r = Number(url.searchParams.get("r"));
@@ -107,7 +114,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           const d = day.toISOString().slice(0, 10).replaceAll("-", "");
           const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//workshop.ofriperetz.dev//EN", "BEGIN:VEVENT", `UID:${q.get("p")}@workshop.ofriperetz.dev`,
             `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`, `DTSTART;VALUE=DATE:${d}`, "SUMMARY:Did you do it? (workshop follow-up)",
-            `DESCRIPTION:${item.replace(/[,;\\]/g, (c) => "\\" + c)}\\n${link}`, `URL:${link}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+            `DESCRIPTION:${item.replace(/[,;\\]/g, (c) => `\\${c}`)}\\n${link}`, `URL:${link}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
           return new Response(ics, { headers: { "content-type": "text/calendar; charset=utf-8", "content-disposition": "attachment; filename=followup.ics" } });
         }
         if (method === "GET") return json(200, { pick: item, done: done ? done.data.value === 1 : null });
@@ -167,7 +174,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
             ctrl.enqueue(enc.encode("retry: 1000\n: open\n\n"));
             while (Date.now() < until && !request.signal?.aborted) {
               await new Promise((r) => setTimeout(r, 250));
-              try { await store.sync(); } catch {}
+              try { await store.sync(); } catch {} // eslint-disable-line reliability/no-silent-errors -- a failed sync retries on the next 250 ms tick
               const seq = store.room().seq || 0;
               if (seq !== last) { last = seq; ctrl.enqueue(enc.encode(`event: step\ndata: ${seq}\n\n`)); }
             }
@@ -185,10 +192,10 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
           const code = String((await read(request)).code ?? "");
           if (!/^\d{6}$/.test(code)) return json(401, { error: "Enter the 6-digit code from the big screen.", needCode: true });
           const ip = (request.headers.get("x-forwarded-for") || "local").split(",")[0].trim();
-          const outcome = await store.tryJoin(hmac(codeSecret, code), hmac(codeSecret, "ip:" + ip).slice(0, 16)); // never store an IP
+          const outcome = await store.tryJoin(hmac(codeSecret, code), hmac(codeSecret, `ip:${ip}`).slice(0, 16)); // never store an IP
           if (outcome !== "ok") { const [status, error] = JOIN[outcome] ?? JOIN.closed; return json(status, { error, needCode: outcome === "wrong" || outcome === "expired" }); }
           // a device mark (never the raw IP or user agent): two sessions from one phone count as a reconnection
-          const dev = hmac(codeSecret, "dev:" + room.runId + "|" + ip + "|" + (request.headers.get("user-agent") || "")).slice(0, 16); // per run: a device can't be linked across workshops
+          const dev = hmac(codeSecret, `dev:${room.runId}|${ip}|${request.headers.get("user-agent") || ""}`).slice(0, 16); // per run: a device can't be linked across workshops
           rid = randomUUID(); await store.append({ phone: rid, kind: "join", data: { t: Date.now(), dev } }); room = store.room(); p = room.phones.get(rid); }
         return json(200, phoneView(room, p), { "set-cookie": `rid=${rid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${url.protocol === "https:" ? "; Secure" : ""}` });
       }
@@ -197,7 +204,7 @@ export function createHandler({ store, token, codeSecret, scale = 1, random = Ma
       if (method === "GET" && path === "/metrics") // what a Prometheus scrape of Relay would read
         return new Response(promText(room, Date.now()), { headers: { "content-type": "text/plain; version=0.0.4", "cache-control": "no-store" } });
       if (!p) return json(401, { error: "join first", signedOut: !!room.signedOut });
-      if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, "follow:" + p.id).slice(0, 24), url.origin));
+      if (method === "GET" && path === "/view") return json(200, withLinks(phoneView(room, p), room, p, hmac(codeSecret, `follow:${p.id}`).slice(0, 24), url.origin));
 
       if (method === "POST" && path === "/send") { // a chat message: waits the phone's group time
         if (used(p, "send")) return json(429, { error: "that's plenty for today" });

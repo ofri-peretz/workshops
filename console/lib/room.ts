@@ -16,11 +16,12 @@ const JOIN_MS = LIVE_MS; // the code works as long as the room is open; "Sign ev
 // The plain code is never stored: it is derived from the secret and the code's own expiry, so any
 // console instance (laptop or Vercel) recomputes it. Supabase keeps only its HMAC.
 const codeFor = (joinUntil: string) =>
-  String(parseInt(createHmac("sha256", env.codeSecret()).update("code:" + Date.parse(joinUntil)).digest("hex").slice(0, 12), 16) % 1_000_000).padStart(6, "0");
+  String(parseInt(createHmac("sha256", env.codeSecret()).update(`code:${Date.parse(joinUntil)}`).digest("hex").slice(0, 12), 16) % 1_000_000).padStart(6, "0");
 
 const rest = async (jwt: string, path: string, init: RequestInit = {}) => {
   const r = await fetch(`${env.supabaseUrl()}/rest/v1/${path}`, {
     ...init,
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: env.anonKey(), authorization: `Bearer ${jwt}`, "content-type": "application/json", prefer: "return=representation", ...init.headers },
     cache: "no-store",
   });
@@ -84,7 +85,7 @@ export async function closeRoom(jwt: string) {
 /** Whether the workshop has begun and how many phones are in. Null when the relay can't be read. */
 export type Stage = { begun: boolean; people: number; title: string; step: number; steps: number; scene: string; present: number; answered: number | null; clock: number; total: number; lost: number; ok: number; questions: number };
 export async function readStage(): Promise<Stage | null> {
-  const r = await fetch(`${env.relayUrl()}/api/screen?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  const r = await fetch(`${env.relayUrl()}/api/screen?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!r?.ok) return null;
   const v = await r.json();
   return { begun: v.begun !== false, people: v.people, title: v.workshop ?? "", step: (v.i ?? 0) + 1, steps: v.n ?? 0, scene: v.scene?.title ?? "", present: v.present ?? v.people,
@@ -95,7 +96,7 @@ export async function readStage(): Promise<Stage | null> {
 /** Across every session: who picked one thing to do, and who said they did it a week later. */
 export type Impact = { picked: number; followedUp: number; did: number; questions: { id: string; q: string; right: number; total: number }[] };
 export async function readImpact(): Promise<Impact | null> {
-  const r = await fetch(`${env.relayUrl()}/api/impact?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  const r = await fetch(`${env.relayUrl()}/api/impact?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) }).catch(() => null);
   return r?.ok ? r.json() : null;
 }
 
@@ -114,12 +115,12 @@ export type RunReport = {
 export type Run = { r: number; t: number; w: number; title: string; joined: number; label?: string; test?: boolean };
 /** Every run ever, newest first: the history behind each report. */
 export async function readRuns(): Promise<Run[]> {
-  const r = await fetch(`${env.relayUrl()}/api/runs?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  const r = await fetch(`${env.relayUrl()}/api/runs?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) }).catch(() => null);
   return r?.ok ? (await r.json()).runs : [];
 }
 /** One run's report (the latest unless `run` is given): reach, presence, churn, engagement, learning, clicks. */
 export async function readRunReport(run?: number): Promise<RunReport | null> {
-  const r = await fetch(`${env.relayUrl()}/api/run-report?t=${encodeURIComponent(env.presenterToken())}${run ? `&r=${run}` : ""}`, { cache: "no-store" }).catch(() => null);
+  const r = await fetch(`${env.relayUrl()}/api/run-report?t=${encodeURIComponent(env.presenterToken())}${run ? `&r=${run}` : ""}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) }).catch(() => null);
   return r?.ok ? r.json() : null;
 }
 
@@ -127,13 +128,14 @@ export type Chapter = { id: string; name: string; q: string; min: number; in: { 
 
 /** The relay's chapter library, for Compose. Empty when the relay can't be read. */
 export async function readChapters(): Promise<Chapter[]> {
-  const r = await fetch(`${env.relayUrl()}/api/chapters?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" }).catch(() => null);
+  const r = await fetch(`${env.relayUrl()}/api/chapters?t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store", signal: AbortSignal.timeout(10_000) }).catch(() => null);
   return r?.ok ? (await r.json()).chapters : [];
 }
 
 export async function relayControl(body: Record<string, unknown>) {
   const r = await fetch(`${env.relayUrl()}/api/control?t=${encodeURIComponent(env.presenterToken())}`, {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });

@@ -14,5 +14,6 @@ const ranges = [
 ];
 const cfg = JSON.parse(readFileSync("stryker.config.json", "utf8"));
 cfg.mutate = ranges;
-writeFileSync("stryker.config.json", JSON.stringify(cfg, null, 2) + "\n");
+writeFileSync("stryker.config.json", `${JSON.stringify(cfg, null, 2)}
+`);
 console.log("oxmutate ranges:", ranges.join(" "));

@@ -110,14 +110,14 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/api`;
 const room = () => store.room();
 const here = () => sceneAt(room()).id;
-const ctl = (op, extra = {}) => fetch(base + "/control?t=t", { method: "POST", body: JSON.stringify({ op, ...extra }) });
+const ctl = (op, extra = {}) => fetch(`${base}/control?t=t`, { method: "POST", body: JSON.stringify({ op, ...extra }) });
 const go = (id) => ctl("goto", { i: room().path.indexOf(id) });
-const screen = async () => (await fetch(base + "/screen?t=t")).json();
+const screen = async () => (await fetch(`${base}/screen?t=t`)).json();
 async function phone() {
-  const r = await fetch(base + "/join", { method: "POST", body: JSON.stringify({ code: CODE }) });
+  const r = await fetch(`${base}/join`, { method: "POST", body: JSON.stringify({ code: CODE }) });
   const cookie = r.headers.get("set-cookie").split(";")[0];
   const call = (path, body, headers = {}) => fetch(base + path, { method: "POST", headers: { cookie, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
-  call.view = async () => (await fetch(base + "/view", { headers: { cookie } })).json();
+  call.view = async () => (await fetch(`${base}/view`, { headers: { cookie } })).json();
   call.cookie = cookie;
   return call;
 }
@@ -195,7 +195,7 @@ assert.equal((await ctl("detour", { id: "nope" })).status, 400);
 await ctl("break");
 const codes = await Promise.all([1, 2, 3, 4].map(() => phones[0]("/request").then((r) => r.status)));
 assert.ok(codes.includes(500) && codes.includes(200), "some requests fail while broken");
-assert.equal((await (await fetch(base + "/status")).json()).components[0].status, "Partial outage");
+assert.equal((await (await fetch(`${base}/status`)).json()).components[0].status, "Partial outage");
 await ctl("fix");
 
 // Fan-out: a job is slow when any of its 100 calls is.
@@ -232,8 +232,8 @@ assert.ok(fixed.spans.some((x) => x.n === "db.pool.acquire"), "after Add span th
 assert.ok(!buildTrace(room().chat.findLast((c) => c.trace === fixed.trace)).gaps.some((x) => x.dur >= 50), "and the gap is gone");
 
 // Presenter controls and the projector's data need the token; reset clears the room.
-assert.equal((await fetch(base + "/control", { method: "POST", body: "{}" })).status, 403);
-assert.equal((await fetch(base + "/screen")).status, 403);
+assert.equal((await fetch(`${base}/control`, { method: "POST", body: "{}" })).status, 403);
+assert.equal((await fetch(`${base}/screen`)).status, 403);
 await ctl("reset");
 assert.equal(room().phones.size, 0);
 assert.equal(room().audience, "jewish-community", "reset keeps the event's audience");
@@ -272,7 +272,7 @@ await phones[0]("/answer", { value: 1 });
 await ctl("reveal");
 assert.ok(room().incidents[0].updates.some((u) => u.text.startsWith("Some messages fail")), "winning update is posted");
 await ctl("fix");
-assert.ok((await (await fetch(base + "/status")).json()).incidents[0].updates.at(-1).text.startsWith("Resolved"));
+assert.ok((await (await fetch(`${base}/status`)).json()).incidents[0].updates.at(-1).text.startsWith("Resolved"));
 await go("fork:w2");
 await ctl("next");
 assert.equal(here(), "graphql", "Next without a vote takes the default detour");
@@ -291,7 +291,7 @@ assert.deepEqual(m.buckets, [...m.buckets].sort((a, b) => a - b), "histogram buc
 assert.ok(m.p95 != null && m.p95FromBuckets != null, "p95 exact and from buckets");
 const mine = await sig[0].view();
 assert.equal(mine.mySent, 3, "each phone sees its own counter");
-const prom = await (await fetch(base + "/metrics")).text();
+const prom = await (await fetch(`${base}/metrics`)).text();
 assert.match(prom, /^# TYPE relay_messages_total counter$/m);
 assert.match(prom, /^relay_send_duration_seconds_bucket\{le="\+Inf"\} \d+$/m);
 for (const line of prom.trim().split("\n")) assert.match(line, /^(# (HELP|TYPE) \w+ .+|\w+(\{[^}]*\})? -?[\d.]+)$/, `valid Prometheus text: ${line}`);
@@ -302,7 +302,7 @@ assert.ok(logs.myLines.every((l) => l.client_id === logs.client && /^[0-9a-f]{32
 assert.ok(!JSON.stringify(logs.lines).includes(sig[0].cookie.split("=")[1]), "log lines never show a phone's cookie id");
 
 // ---- the room is closed unless the presenter opened it; the join code is guarded -----------------
-const join = (code, ip = "198.51.100.1") => fetch(base + "/join", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify({ code }) });
+const join = (code, ip = "198.51.100.1") => fetch(`${base}/join`, { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify({ code }) });
 const wrong = CODE === "000000" ? "000001" : "000000";
 const insider = await phone();
 assert.equal((await join("12")).status, 401, "a malformed code is refused");
@@ -319,8 +319,8 @@ assert.equal((await join(wrong, "203.0.113.200")).status, 429, "30 wrong tries a
 assert.equal((await join(CODE, "203.0.113.201")).status, 429, "locked means locked, even with the right code");
 store.setAccess({ liveUntil: Date.now() - 1 });
 for (const path of ["/view", "/send", "/status"]) assert.equal((await insider(path)).status, 403, `closed: ${path} is 403`);
-assert.equal((await fetch(base + "/metrics")).status, 403, "closed: /metrics is 403 too");
-assert.equal((await fetch(base + "/status")).status, 403, "closed: the status page API is 403 too");
+assert.equal((await fetch(`${base}/metrics`)).status, 403, "closed: /metrics is 403 too");
+assert.equal((await fetch(`${base}/status`)).status, 403, "closed: the status page API is 403 too");
 assert.equal((await screen()).total !== undefined, true, "the presenter's screen still works while closed");
 
 // Headlines follow docs/storytelling.md: a few words, the takeaway as a claim. Enforced on the Signals path.
@@ -366,9 +366,9 @@ assert.equal(room().chapters.join(), "welcome,sig-logs,gql-find,sig-close", "a r
 assert.equal((await ctl("start", { w: 5, c: ["welcome", "sig-logs"], title: "<script>" })).status, 400, "a program title is plain words");
 await ctl("start", { w: 5, c: ["welcome", "sig-logs", "gql-find", "sig-close"], title: "Logs and GraphQL" });
 assert.deepEqual([(await screen()).workshop, (await screen()).promise], ["Logs and GraphQL", "Logs · Find it"], "a composed program shows its own title, and its parts as the promise");
-const lib = (await (await fetch(base + "/chapters?t=t")).json()).chapters;
+const lib = (await (await fetch(`${base}/chapters?t=t`)).json()).chapters;
 assert.ok(lib.find((c) => c.id === "sig-logs").min === CHAPTERS["sig-logs"].scenes.reduce((t, id) => t + SCENE[id].min, 0) && lib.every((c) => c.q), "the console reads the chapter library with minutes");
-assert.equal((await fetch(base + "/chapters")).status, 403, "the chapter library is for the presenter");
+assert.equal((await fetch(`${base}/chapters`)).status, 403, "the chapter library is for the presenter");
 
 await ctl("start", { w: 5 });
 await go("mean");
@@ -420,7 +420,7 @@ assert.match(await (await fetch(`${base}/followup.ics?${q}`)).text(), /BEGIN:VEV
 const did = (x) => fetch(`${base}/followup?${q}`, { method: "POST", body: JSON.stringify({ did: x }) });
 assert.equal((await did(true)).status, 200);
 assert.equal((await did(false)).status, 409, "one answer per follow-up");
-const imp = await (await fetch(base + "/impact?t=t")).json();
+const imp = await (await fetch(`${base}/impact?t=t`)).json();
 assert.deepEqual([imp.picked, imp.followedUp, imp.did], [1, 1, 1], "the console sees picks and follow-through");
 assert.ok(imp.questions.some((x) => x.id === "mean" && x.total >= 2), "the console sees how rooms answer each question");
 await ctl("start", { w: 1 }); // the next session must not leak into this recap
@@ -438,7 +438,7 @@ assert.equal((await fetch(`${base}/recap?r=${runId + 1}`)).status, 404, "a recap
 store.setAccess({ liveUntil: Infinity, joinUntil: Infinity, locked: false, openedAt: Date.now() });
 await ctl("start", { w: 5 });
 const listener = await phone();
-const res = await fetch(base + "/stream", { headers: { cookie: listener.cookie } });
+const res = await fetch(`${base}/stream`, { headers: { cookie: listener.cookie } });
 assert.equal(res.headers.get("content-type"), "text/event-stream");
 const reader = res.body.getReader(), dec = new TextDecoder();
 const heard = (async () => { let buf = ""; for (;;) { const { value, done } = await reader.read(); if (done) return null; buf += dec.decode(value); if (buf.includes("event: step")) return Date.now(); } })();
@@ -447,7 +447,7 @@ await ctl("next");
 const at = await Promise.race([heard, new Promise((r) => setTimeout(() => r(null), 3000))]);
 assert.ok(at && at - sentAt < 1000, `the phone hears Next within a second (took ${at ? at - sentAt : "never"} ms)`);
 await reader.cancel();
-assert.equal((await fetch(base + "/stream")).status, 401, "the stream is for joined phones and the presenter");
+assert.equal((await fetch(`${base}/stream`)).status, 401, "the stream is for joined phones and the presenter");
 
 // The road: a phone sees its own message travel into the logging and tracing systems.
 await go("sig-road");
@@ -477,7 +477,7 @@ const lb = (await screen()).leaderboard;
 assert.deepEqual(lb.map((x) => x.name), ["Dana", "Noa", "Player 3"], "the leaderboard orders by points; unnamed phones are players");
 assert.ok(lb[0].points > lb[1].points && lb[1].points >= 500 && lb[2].points === 0, "right and fast beats right and slow; wrong scores 0");
 assert.equal((await screen()).who, undefined, "the screen never names who answered what");
-assert.deepEqual((await (await fetch(base + "/run-report?t=t")).json()).participants.slice(0, 2).map((x) => [x.name, x.right]), [["Dana", 1], ["Noa", 1]], "the presenter's report has each participant, by name");
+assert.deepEqual((await (await fetch(`${base}/run-report?t=t`)).json()).participants.slice(0, 2).map((x) => [x.name, x.right]), [["Dana", 1], ["Noa", 1]], "the presenter's report has each participant, by name");
 assert.equal((await fast.view()).who, undefined, "voters never reach phones");
 assert.equal((await fast.view()).rank, 1, "each phone knows its rank");
 await ctl("mode", { voters: false });
@@ -496,11 +496,11 @@ await phone(); // the same device (same address and browser) joins again
 assert.ok(room().reconnects >= 1, "a second session from the same device counts as a reconnection");
 
 // The run report: reach, presence, engagement, learning, conversion, reconnection.
-const rep = await (await fetch(base + "/run-report?t=t")).json();
+const rep = await (await fetch(`${base}/run-report?t=t`)).json();
 assert.ok(rep.reach.joined >= 1 && rep.presence[0].minute === 0, "the report has reach and a presence curve");
 assert.ok(rep.polls.some((x) => x.id === "mean" && x.answered >= 1 && x.rate > 0), "the report has answered/present per poll");
 assert.ok(rep.reconnectionRate > 0 && rep.churnRate >= 0, "the report has reconnection and churn rates");
-assert.equal((await fetch(base + "/run-report")).status, 403, "the run report is for the presenter");
+assert.equal((await fetch(`${base}/run-report`)).status, 403, "the run report is for the presenter");
 await ctl("start", { w: 5 });
 const learner = await phone();
 const peer = await phone();
@@ -528,7 +528,7 @@ assert.deepEqual([sc.before, sc.after, sc.n], [2, fin.quiz.length, fin.quiz.leng
 await ctl("reveal");
 const board = (await screen()).leaderboard;
 assert.ok(board.length >= 2 && board.every((x) => Number.isInteger(x.move)), "the leaderboard says how far each player moved");
-const termsRep = (await (await fetch(base + "/run-report?t=t")).json()).terms;
+const termsRep = (await (await fetch(`${base}/run-report?t=t`)).json()).terms;
 assert.ok(termsRep && termsRep.after > termsRep.before, "the run report has the room's terms before and after");
 
 // Sign everyone out: phones are removed, the step stays, and their next call says why (so they don't retry an old code).
@@ -536,21 +536,21 @@ const before = room().pos;
 assert.equal((await ctl("signout")).status, 200);
 assert.equal(room().phones.size, 0, "sign-out removes every phone");
 assert.equal(room().pos, before, "the room stays on its step");
-const out = await fetch(base + "/view", { headers: { cookie: learner.cookie } });
+const out = await fetch(`${base}/view`, { headers: { cookie: learner.cookie } });
 assert.equal(out.status, 401); assert.equal((await out.json()).signedOut, true, "a signed-out phone is told so");
 
 // History: every run is listed, and any run's raw log can be exported; both are the presenter's only.
-const runs = (await (await fetch(base + "/runs?t=t")).json()).runs;
+const runs = (await (await fetch(`${base}/runs?t=t`)).json()).runs;
 assert.ok(runs.length >= 2 && runs[0].r > runs[1].r && runs.every((x) => x.title && Number.isInteger(x.joined)), "runs are listed newest first with their title and joins");
-const runLog = await (await fetch(base + `/run-events?r=${runs[1].r}&t=t`)).json();
+const runLog = await (await fetch(`${base}/run-events?r=${runs[1].r}&t=t`)).json();
 assert.ok(runLog.events.length && runLog.events.every((e) => e.id >= runs[1].r && e.id < runs[0].r), "a run's export holds exactly its own events");
-assert.equal((await fetch(base + "/runs")).status, 403, "the history is the presenter's");
+assert.equal((await fetch(`${base}/runs`)).status, 403, "the history is the presenter's");
 await ctl("start", { w: 5, test: true });
-let tagged = (await (await fetch(base + "/runs?t=t")).json()).runs;
+let tagged = (await (await fetch(`${base}/runs?t=t`)).json()).runs;
 assert.equal(tagged[0].test, true, "a session started as a test is marked Test");
 assert.equal(tagged[1].test, false, "real sessions are not");
 await ctl("tag", { i: tagged[1].r, test: true }); await ctl("tag", { i: tagged[0].r, test: false });
-tagged = (await (await fetch(base + "/runs?t=t")).json()).runs;
+tagged = (await (await fetch(`${base}/runs?t=t`)).json()).runs;
 assert.deepEqual([tagged[0].test, tagged[1].test], [false, true], "a past session can be marked a test, or not, later; the last tag wins");
 assert.equal((await ctl("tag", { i: tagged[1].r, test: "yes" })).status, 400, "a tag is true or false");
 

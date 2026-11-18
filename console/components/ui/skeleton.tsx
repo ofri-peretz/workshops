@@ -152,7 +152,7 @@ function Skeleton({
         {...props}
       >
         {Array.from({ length: count }).map((_, i) => (
-          <Skeleton key={i} variant={variant} label={null} />
+          <Skeleton key={i} /* eslint-disable-line react-features/jsx-key -- identical placeholders, never reordered */ variant={variant} label={null} />
         ))}
         {label !== null ? <SkeletonLabel>{label}</SkeletonLabel> : null}
       </div>
@@ -359,7 +359,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
         <div className="flex flex-col gap-xs p-md">
           {[0.4, 0.7, 0.55, 0.85, 0.6, 0.3].map((w, i) => (
             <div
-              key={i}
+              key={i} /* eslint-disable-line react-features/jsx-key -- a fixed set of placeholder widths, never reordered */
               className="bg-muted-foreground/10 h-3 rounded-sm"
               style={{ width: `${w * 100}%` }}
             />

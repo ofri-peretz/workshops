@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   if (!(await accessToken())) return Response.json({ error: "Sign in to the console first." }, { status: 401 });
   const r = Number(new URL(request.url).searchParams.get("r"));
   if (!Number.isInteger(r) || r < 1) return Response.json({ error: "which run? ?r=" }, { status: 400 });
+  // eslint-disable-next-line reliability/require-network-timeout -- the body streams the run log to the browser; a fixed timeout would cut a long download short
   const res = await fetch(`${env.relayUrl()}/api/run-events?r=${r}&t=${encodeURIComponent(env.presenterToken())}`, { cache: "no-store" });
   return new Response(res.body, { status: res.status, headers: { "content-type": "application/json", "content-disposition": `attachment; filename="workshop-run-${r}.json"`, "cache-control": "no-store" } });
 }

@@ -8,8 +8,9 @@ type Session = { access: string; refresh: string; expiresAt: number };
 
 /** Supabase Auth over plain REST: the magic link signs the presenter in; the session lives in an HttpOnly cookie. */
 export async function sendSignInLink(email: string, origin: string) {
-  const r = await fetch(`${env.supabaseUrl()}/auth/v1/otp?redirect_to=${encodeURIComponent(origin + "/auth/callback")}`, {
+  const r = await fetch(`${env.supabaseUrl()}/auth/v1/otp?redirect_to=${encodeURIComponent(`${origin}/auth/callback`)}`, {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: env.anonKey(), "content-type": "application/json" },
     body: JSON.stringify({ email, create_user: false }),
   });
@@ -33,12 +34,14 @@ export async function accessToken(): Promise<string | null> {
   if (Date.now() < s.expiresAt - 60_000) return s.access;
   const r = await fetch(`${env.supabaseUrl()}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { apikey: env.anonKey(), "content-type": "application/json" },
     body: JSON.stringify({ refresh_token: s.refresh }),
   });
   if (!r.ok) return null;
   const t = await r.json();
   const next = { access: t.access_token, refresh: t.refresh_token, expiresAt: Date.now() + t.expires_in * 1000 };
+  // eslint-disable-next-line reliability/no-silent-errors -- documented in the catch: a page render cannot set cookies
   try { await saveSession(next); } catch { /* read-only context (a page render): the next action saves it */ }
   return next.access;
 }

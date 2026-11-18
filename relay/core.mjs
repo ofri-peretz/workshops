@@ -34,8 +34,8 @@ export const validPhases = (ph) => ph === undefined || (ph && typeof ph === "obj
   Object.entries(ph).every(([k, v]) => Object.hasOwn(PHASES, k) && Array.isArray(v) && v.length === 2 && v.every(num)));
 export function checkTrace(spans) { // what a well-formed server trace must hold
   const problems = [], root = spans[0];
-  for (const n of ["POST /send", "session.lookup", "relay.deliver", "db.append"]) if (!spans.some((x) => x.n === n)) problems.push("missing " + n);
-  for (const x of spans.slice(1)) if (x.s < root.s || x.s + x.d > root.s + root.d + 1) problems.push(x.n + " outside its parent");
+  for (const n of ["POST /send", "session.lookup", "relay.deliver", "db.append"]) if (!spans.some((x) => x.n === n)) problems.push(`missing ${n}`);
+  for (const x of spans.slice(1)) if (x.s < root.s || x.s + x.d > root.s + root.d + 1) problems.push(`${x.n} outside its parent`);
   return problems;
 }
 export function buildTrace(c) { // one message as a trace the projector and phone can draw, ms from the phone's start
@@ -64,7 +64,7 @@ const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
 // The room walks a path: the workshop's spine, with each fork's chosen detour spliced in after it
 // and any library jump inserted where it was played. Forks appear as "fork:<id>".
 // room.chapters is the workshop's list unless the console composed another one.
-const pathOf = (chapters) => spineOf(chapters).map((x) => (typeof x === "string" ? x : "fork:" + x.fork));
+const pathOf = (chapters) => spineOf(chapters).map((x) => (typeof x === "string" ? x : `fork:${x.fork}`));
 const FORKS = Object.fromEntries(Object.values(CHAPTERS).flatMap((c) => c.scenes.filter((x) => typeof x !== "string").map((f) => [f.fork, f])));
 const forkOf = (_w, id) => FORKS[id];
 // Each path step carries its chapter (room.part), so the header matches "Today"; detours and library
@@ -90,7 +90,7 @@ function arrive(room) { // freeze a fork's option order (by curiosity) the momen
 function choose(room, f, d) { // d = detour index in the workshop file
   if (room.choices[f.id] !== undefined || !f.detours[d]) return;
   room.choices[f.id] = d;
-  insertSteps(room, room.path.indexOf("fork:" + f.id) + 1, f.detours[d].scenes);
+  insertSteps(room, room.path.indexOf(`fork:${f.id}`) + 1, f.detours[d].scenes);
 }
 const minutes = (room, upto) => room.path.slice(0, upto).reduce((t, id, k) => {
   const s = sceneAt(room, k);

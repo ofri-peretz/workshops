@@ -4,7 +4,7 @@
 import { writeFileSync } from "node:fs";
 
 const SOURCE = process.env.BRAND_URL ?? "https://interlace.tools/brand.json";
-const r = await fetch(SOURCE);
+const r = await fetch(SOURCE, { signal: AbortSignal.timeout(10_000) });
 if (!r.ok) throw new Error(`${SOURCE}: HTTP ${r.status}`);
 const m = await r.json();
 if (!m.author?.facts?.length || /\{[\w.]+\}/.test(JSON.stringify(m))) throw new Error("brand: author lines missing, or a placeholder left unfilled");
@@ -19,7 +19,9 @@ const brand = {
   // Who's presenting: role, tenure, experience, the team, the open-source work. The workshops
   // never name the presenter's employer (Ofri, 2026-11-08): "Engineering Manager at X · 5 years"
   // becomes "Engineering Manager · 5 years". scripts/scrub.mjs fails if a name gets through.
+  // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex -- input is our own brand file: a few short strings we publish
   author: { lead: m.author.lead, facts: m.author.facts.map((f) => f.replace(/\s+at\s+[^·,]+?(?=\s*·|\s*,|$)/, "")) },
 };
-writeFileSync(new URL("../relay/brand.json", import.meta.url), JSON.stringify(brand, null, 2) + "\n");
+writeFileSync(new URL("../relay/brand.json", import.meta.url), `${JSON.stringify(brand, null, 2)}
+`);
 console.log(brand);
