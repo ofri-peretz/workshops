@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: console
+      - name: Lint (the repo's own ESLint config, errors fail the build)
+        run: npm run lint
       - name: Scrub and Relay self-check
         run: npm test
       - name: Unit tests of the room's rules
