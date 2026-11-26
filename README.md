@@ -72,4 +72,5 @@ refuse it.
 
 ## License
 
-Code: [MIT](LICENSE). Workshop content (scenes, concepts, specs): [CC BY 4.0](LICENSE-CONTENT).
+All rights reserved. This repository is public for visibility only; no permission to use, copy,
+modify or distribute its code or workshop content is granted. See [LICENSE](LICENSE).
