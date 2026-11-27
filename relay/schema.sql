@@ -1,5 +1,7 @@
--- Relay's Supabase schema (Supabase project relay-workshop; Vercel project workshop; eu-central-1), mirrored from the live database
--- on 2026-10-26. Change the database with a migration, then update this file; test.mjs checks that
+-- Relay's Supabase schema (Supabase project ofri-and-interlace-data, ref xzhsvszshidjhfnsstmg, us-west-1, shared with the
+-- impact ingest, whose tables never start with relay_; Vercel projects workshop and workshop-console). Moved from relay-workshop
+-- (nzlbondrpvbgxcksbarb, eu-central-1) on 2026-11-27 by migrations/20261127_port_to_data_project.sql.
+-- This file is the schema as first written on 2026-10-26; the migrations are the final state. Change the database with a migration, then update this file; test.mjs checks that
 -- every event kind the handler writes is allowed by relay_events_kind_check below.
 
 create table public.relay_events (
@@ -11,6 +13,7 @@ create table public.relay_events (
   constraint relay_events_kind_check
     check (kind = any (array['join','send','rtt','answer','request','job','load','control','curious']))
 );
+create index relay_events_control on public.relay_events (id) where kind = 'control';
 alter table public.relay_events enable row level security;
 create policy relay_events_read on public.relay_events for select to anon using (true);
 create policy relay_events_append on public.relay_events for insert to anon with check (true);
